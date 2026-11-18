@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@buddy/api-client": "workspace:*",
+    "@buddy/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~58.0.26",
     "expo-secure-store": "~58.0.3",

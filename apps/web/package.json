@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@buddy/api-client": "workspace:*",
+    "@buddy/shared": "workspace:*",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router-dom": "^7.6.0"

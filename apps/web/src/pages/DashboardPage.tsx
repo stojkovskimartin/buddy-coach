@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { daysUntil, goalDateBounds } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
+import { CheckinCard } from "./CheckinCard";
 
 const GOAL_LABELS: Record<Goal["goal_type"], string> = {
   lose_weight: "Lose weight",
@@ -38,6 +39,7 @@ export function DashboardPage() {
 
   return (
     <main className="stack">
+      <CheckinCard />
       <section className="card">
         <h1>Your goals</h1>
         {error && (

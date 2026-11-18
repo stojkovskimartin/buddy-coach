@@ -5,6 +5,8 @@
 import {
   BuddyClient,
   type ChatReply,
+  type Checkin,
+  type CheckinIn,
   type Goal,
   type GoalIn,
   type Profile,
@@ -24,6 +26,9 @@ export interface CoachApi {
   listGoals(status?: Goal["status"]): Promise<Goal[]>;
   createGoal(goal: GoalIn): Promise<Goal>;
   chat(message: string): Promise<ChatReply>;
+  getTodayCheckin(): Promise<Checkin | null>;
+  saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
+  saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }
 
 const STORAGE_KEY = "buddy-coach.tokens";

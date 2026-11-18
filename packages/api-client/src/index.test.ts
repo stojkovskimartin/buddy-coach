@@ -130,6 +130,73 @@ describe("BuddyClient", () => {
     expect(await client.getProfile()).toBeNull();
   });
 
+  describe("check-ins", () => {
+    const checkin = {
+      day: "2026-11-18",
+      sleep_quality: 4,
+      soreness: 3,
+      mood: 5,
+      sleep_hours: null,
+      hrv_ms: null,
+      resting_hr: null,
+      pain: false,
+      readiness: { score: 72, level: "green", limiting_factors: [] },
+    };
+
+    it("returns null when today's check-in is missing", async () => {
+      const api = fakeApi({
+        "GET /api/v1/checkins/today": () => json(404, { code: "not_found", detail: "None yet." }),
+      });
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+      expect(await client.getTodayCheckin()).toBeNull();
+    });
+
+    it("saves a new check-in (201) and returns its readiness", async () => {
+      const api = fakeApi({ "PUT /api/v1/checkins/2026-11-18": () => json(201, checkin) });
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+
+      const saved = await client.saveCheckin("2026-11-18", { sleep_quality: 4, soreness: 3, mood: 5 });
+
+      expect(saved.readiness.score).toBe(72);
+      expect(await api.calls[0]?.json()).toEqual({ sleep_quality: 4, soreness: 3, mood: 5 });
+    });
+
+    it("saves today's check-in without sending a date", async () => {
+      const api = fakeApi({ "PUT /api/v1/checkins/today": () => json(201, checkin) });
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+
+      expect((await client.saveTodayCheckin({ sleep_quality: 4, soreness: 3, mood: 5 })).day).toBe(
+        "2026-11-18",
+      );
+    });
+
+    it("lists check-ins with the from/to range", async () => {
+      const api = fakeApi({ "GET /api/v1/checkins": () => json(200, [checkin]) });
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+
+      expect(await client.listCheckins({ from: "2026-11-01", to: "2026-11-18" })).toHaveLength(1);
+      const url = new URL(api.calls[0]!.url);
+      expect(url.searchParams.get("from")).toBe("2026-11-01");
+      expect(url.searchParams.get("to")).toBe("2026-11-18");
+    });
+  });
+
   it("turns problem details into ApiError", async () => {
     const api = fakeApi({
       "POST /api/v1/auth/register": () =>

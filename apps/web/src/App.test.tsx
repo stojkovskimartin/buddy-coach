@@ -1,6 +1,6 @@
-import type { ChatReply, Goal, Profile, ProfileIn } from "@buddy/api-client";
+import type { ChatReply, Checkin, CheckinIn, Goal, Profile, ProfileIn } from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -35,6 +35,20 @@ const GOAL: Goal = {
   created_at: "2026-11-18T10:00:00Z",
 };
 
+function checkinFor(day: string, c: CheckinIn, readiness?: Checkin["readiness"]): Checkin {
+  return {
+    day,
+    sleep_quality: c.sleep_quality,
+    soreness: c.soreness,
+    mood: c.mood,
+    sleep_hours: c.sleep_hours ?? null,
+    hrv_ms: null,
+    resting_hr: null,
+    pain: c.pain ?? false,
+    readiness: readiness ?? { score: 81, level: "green", limiting_factors: [] },
+  };
+}
+
 function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
   return {
     register: vi.fn(async () => ({})),
@@ -54,6 +68,9 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
         degraded: false,
       }),
     ),
+    getTodayCheckin: vi.fn(async () => null),
+    saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
+    saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
   };
 }
@@ -251,4 +268,116 @@ describe("web app", () => {
     await userEvent.click(screen.getByRole("button", { name: "Log out" }));
     expect(await screen.findByRole("form", { name: "Log in" })).toBeInTheDocument();
   });
+
+  describe("morning check-in", () => {
+    async function answerAll(value: string) {
+      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      for (const group of within(form).getAllByRole("group")) {
+        await userEvent.click(within(group).getByRole("radio", { name: new RegExp(`^${value} of 5`) }));
+      }
+      return form;
+    }
+
+    it("takes three answers, lets the server pick today and shows readiness", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      const save = within(form).getByRole("button", { name: "Save check-in" });
+      expect(save).toBeDisabled();
+
+      const sleep = within(form).getByRole("group", { name: "How did you sleep?" });
+      await userEvent.click(within(sleep).getByRole("radio", { name: "4 of 5" }));
+      const sore = within(form).getByRole("group", { name: "How do your muscles feel?" });
+      await userEvent.click(within(sore).getByRole("radio", { name: "2 of 5" }));
+      const mood = within(form).getByRole("group", { name: "How do you feel?" });
+      await userEvent.click(within(mood).getByRole("radio", { name: "5 of 5 (Great)" }));
+      await userEvent.type(within(form).getByLabelText("Hours of sleep (optional)"), "7,5");
+      await userEvent.click(save);
+
+      expect(api.saveTodayCheckin).toHaveBeenCalledWith({
+        sleep_quality: 4,
+        soreness: 2,
+        mood: 5,
+        pain: false,
+        sleep_hours: 7.5,
+      });
+      expect(api.saveCheckin).not.toHaveBeenCalled();
+      expect(await screen.findByRole("status")).toHaveTextContent("Readiness 81/100");
+      expect(screen.getByText(/not medical advice/)).toBeInTheDocument();
+    });
+
+    it("accepts a comma as decimal separator for sleep hours", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const form = await answerAll("3");
+      await userEvent.type(within(form).getByLabelText("Hours of sleep (optional)"), "6,5");
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      await waitFor(() =>
+        expect(api.saveTodayCheckin).toHaveBeenCalledWith(expect.objectContaining({ sleep_hours: 6.5 })),
+      );
+    });
+
+    it("refuses impossible sleep hours", async () => {
+      renderAt("/", fakeApi(), true);
+      const form = await answerAll("3");
+      await userEvent.type(within(form).getByLabelText("Hours of sleep (optional)"), "20");
+      expect(screen.getByText("Enter 0 to 16 hours.")).toBeInTheDocument();
+      expect(within(form).getByRole("button", { name: "Save check-in" })).toBeDisabled();
+    });
+
+    it("shows what holds readiness back and saves changes to the same day", async () => {
+      const loadedDay = "2026-11-17"; // e.g. the profile's day differs from the device's
+      const today = checkinFor(
+        loadedDay,
+        { sleep_quality: 1, soreness: 2, mood: 3, pain: true },
+        { score: 20, level: "red", limiting_factors: ["sleep", "pain"] },
+      );
+      const api = fakeApi({ getTodayCheckin: vi.fn(async () => today) });
+      renderAt("/", api, true);
+
+      expect(await screen.findByRole("status")).toHaveTextContent("Consider rest or light recovery");
+      expect(screen.getByText("Held back by: sleep, pain.")).toBeInTheDocument();
+      expect(screen.getByText(/get medical help now/)).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Change today's answers" }));
+      const sleep = screen.getByRole("group", { name: "How did you sleep?" });
+      expect(within(sleep).getByRole("radio", { name: "1 of 5 (Very badly)" })).toBeChecked();
+      await userEvent.click(within(sleep).getByRole("radio", { name: "3 of 5" }));
+      await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+
+      await waitFor(() =>
+        expect(api.saveCheckin).toHaveBeenCalledWith(loadedDay, expect.objectContaining({ sleep_quality: 3 })),
+      );
+      expect(api.saveTodayCheckin).not.toHaveBeenCalled();
+    });
+
+    it("never shows an empty form when loading fails, and can try again", async () => {
+      const getTodayCheckin = vi
+        .fn<CoachApi["getTodayCheckin"]>()
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce(null);
+      renderAt("/", fakeApi({ getTodayCheckin }), true);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Network error");
+      expect(screen.queryByRole("form", { name: "Morning check-in" })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(await screen.findByRole("form", { name: "Morning check-in" })).toBeInTheDocument();
+    });
+
+    it("shows the error when saving fails and clears it on the next try", async () => {
+      const saveTodayCheckin = vi
+        .fn<CoachApi["saveTodayCheckin"]>()
+        .mockRejectedValueOnce(new Error("Server down"))
+        .mockImplementationOnce(async (c) => checkinFor("2026-11-19", c));
+      renderAt("/", fakeApi({ saveTodayCheckin }), true);
+      const form = await answerAll("3");
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Server down");
+
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      expect(await screen.findByRole("status")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
 });
