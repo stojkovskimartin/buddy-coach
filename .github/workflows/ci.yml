@@ -17,7 +17,7 @@ concurrency:
 jobs:
   backend:
     name: Backend (lint, types, tests)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -36,8 +36,8 @@ jobs:
     env:
       BUDDY_TEST_DATABASE_URL: postgresql+asyncpg://buddy:buddy@localhost:5432/buddy_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv python install 3.13
@@ -49,16 +49,16 @@ jobs:
 
   frontend:
     name: Frontend (types, tests, contract drift)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
