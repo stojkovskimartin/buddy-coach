@@ -14,6 +14,7 @@ from buddy_coach.identity.deps import CurrentUserDep
 router = APIRouter(prefix="/checkins", tags=["checkins"])
 
 
+# FastAPI types `responses` as dict[int | str, dict[str, Any]]; the values are OpenAPI snippets.
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
     status.HTTP_404_NOT_FOUND: {"description": "No check-in for this day yet"}
 }
