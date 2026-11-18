@@ -177,3 +177,52 @@ def test_catalogue_conform_supplement_advice_passes(text: str) -> None:
 )
 def test_supplement_questions_go_to_nutrition(message: str) -> None:
     assert router.route(message) is AgentName.NUTRITION
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "vitamin D3 5000 IU daily",
+        "5,000 IU vitamin D is fine",
+        "Take 50 000 IU vitamin D once a week",
+        "0.125 mg vitamin D per day",
+        "Caffeine: 6 mg per kg, so 540 mg before the race",
+        "Take 1,000 mg caffeine",
+        "1 g caffeine",
+        "Caffeine at 8 mg/kg helps",
+        "ferrous sulfate 325 mg each morning",
+        "Try 5 mg melatonin before bed",
+        "Eat only 800 kcal per day and drink water",
+    ],
+)
+def test_review_cases_are_blocked(text: str) -> None:
+    assert guard.check_output(text).category is SafetyCategory.UNSAFE_OUTPUT
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Men need about 11 mg iron per day from food.",
+        "Lentils give 3 mg iron per 100 g.",
+        "Folate 300 µg, vitamin D 20 µg are the daily references.",
+        "500 mg magnesium in food is fine, no caffeine after 4 pm.",
+        "calcium 1000 mg, caffeine 200 mg before the race",
+        "Caffeine: about 3 mg per kg, so 240 mg for you.",
+        "A 200 kcal gel every 45 minutes.",
+        "Vitamin D 2,000 IU after a blood test, as your doctor advises.",
+    ],
+)
+def test_review_false_alarms_pass(text: str) -> None:
+    assert guard.check_output(text).allowed
+
+
+@pytest.mark.parametrize(
+    ("message", "agent"),
+    [
+        ("I love pumping iron at the gym", AgentName.TRAINING),
+        ("Training for my first Iron Man", AgentName.TRAINING),
+        ("Do I need more iron?", AgentName.NUTRITION),
+    ],
+)
+def test_iron_routing(message: str, agent: AgentName) -> None:
+    assert router.route(message) is agent

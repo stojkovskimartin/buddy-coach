@@ -100,9 +100,16 @@ def test_protein_distribution_rejects_odd_meal_counts(meals: int) -> None:
 
 def test_quick_turnaround_needs_fast_refuelling() -> None:
     meal = post_session_recovery(MARTIN, 90, SessionIntensity.HARD, hours_until_next_session=6)
-    assert meal.carbs_g == round(1.2 * 79)
+    assert meal.carbs_g_per_hour == 79  # about 1 g/kg every hour
+    assert meal.refuel_hours == 4
     assert meal.protein_g > 0
     assert "soon" in meal.reason
+
+
+def test_short_easy_session_needs_no_quick_refuelling() -> None:
+    meal = post_session_recovery(MARTIN, 20, SessionIntensity.EASY, hours_until_next_session=3)
+    assert meal.carbs_g_per_hour is None
+    assert meal.carbs_g == 0
 
 
 def test_easy_session_needs_no_recovery_meal() -> None:
@@ -113,6 +120,15 @@ def test_easy_session_needs_no_recovery_meal() -> None:
 def test_long_session_counts_as_hard() -> None:
     meal = post_session_recovery(MARTIN, 120, SessionIntensity.MODERATE)
     assert meal.carbs_g == 79
+
+
+def test_large_fluid_loss_gets_a_warning() -> None:
+    meal = post_session_recovery(MARTIN, 180, SessionIntensity.HARD, body_mass_lost_kg=3.0)
+    assert meal.fluid_ml == 4500
+    assert meal.fluid_warning is not None
+    assert "gradually" in meal.fluid_warning
+    small = post_session_recovery(MARTIN, 60, SessionIntensity.MODERATE, body_mass_lost_kg=1.0)
+    assert small.fluid_warning is None
 
 
 def test_fluid_replacement_from_sweat_loss() -> None:
@@ -179,3 +195,25 @@ def test_heart_condition_excludes_caffeine() -> None:
         frozenset({Purpose.ENDURANCE}), frozenset({HealthFlag.HEART_CONDITION})
     )
     assert "caffeine" not in {s.key for s in advice.suggested}
+
+
+def test_magnesium_limit_is_not_applied_to_food() -> None:
+    days = [_day(magnesium=350)] * 3  # exactly the male reference, from food
+    magnesium = next(a for a in assess_intake(days, Sex.MALE) if a.nutrient is Nutrient.MAGNESIUM)
+    assert magnesium.status is IntakeStatus.OK
+
+
+def test_vitamin_d_limit_still_applies_to_all_sources() -> None:
+    days = [_day(vitamin_d=120)] * 3
+    vit_d = next(a for a in assess_intake(days, Sex.MALE) if a.nutrient is Nutrient.VITAMIN_D)
+    assert vit_d.status is IntakeStatus.ABOVE_UPPER_LIMIT
+
+
+def test_caffeine_excluded_with_medication_and_beta_alanine_has_maximum() -> None:
+    caffeine = get_supplement("caffeine")
+    assert caffeine is not None
+    assert HealthFlag.TAKES_MEDICATION in caffeine.contraindications
+    assert "200 mg" in caffeine.typical_use
+    beta = get_supplement("beta_alanine")
+    assert beta is not None
+    assert beta.max_daily == "6.4 g"

@@ -11,6 +11,7 @@ from buddy_coach.core.errors import NotFoundError
 from buddy_coach.profile.domain import GoalPriority, GoalStatus, GoalType, age_on
 from buddy_coach.science.micronutrients import (
     FOOD_SOURCES,
+    SUPPLEMENT_ONLY_LIMITS,
     UNITS,
     UPPER_LIMIT,
     Nutrient,
@@ -330,13 +331,19 @@ class RecoveryOutput(BaseModel):
     """Recovery meal plus protein spread over the day."""
 
     recovery_carbs_g: int
+    carbs_g_per_hour: int | None
+    refuel_hours: int | None
     recovery_protein_g: int
     fluid_ml: int | None
+    fluid_warning: str | None
     timing: str
     reason: str
     protein_per_meal_g: int
     meals_per_day: int
-    daily_protein_from_meals_g: int
+    note: str = (
+        "Protein per meal shows how to spread protein; the daily protein target comes from "
+        "calculate_nutrition_targets."
+    )
 
 
 async def recovery_nutrition(ctx: ToolContext, args: RecoveryInput) -> RecoveryOutput:
@@ -352,13 +359,15 @@ async def recovery_nutrition(ctx: ToolContext, args: RecoveryInput) -> RecoveryO
     spread = protein_distribution(body, args.meals_per_day)
     return RecoveryOutput(
         recovery_carbs_g=meal.carbs_g,
+        carbs_g_per_hour=meal.carbs_g_per_hour,
+        refuel_hours=meal.refuel_hours,
         recovery_protein_g=meal.protein_g,
         fluid_ml=meal.fluid_ml,
+        fluid_warning=meal.fluid_warning,
         timing=meal.timing,
         reason=meal.reason,
         protein_per_meal_g=spread.protein_per_meal_g,
         meals_per_day=spread.meals,
-        daily_protein_from_meals_g=spread.daily_total_g,
     )
 
 
@@ -378,7 +387,7 @@ class SupplementEntry(BaseModel):
     evidence: str
     what_it_does: str
     typical_use: str
-    max_daily: str
+    max_daily: str | None
     cautions: list[str]
     food_first: str | None
 
@@ -392,13 +401,18 @@ class SupplementOutput(BaseModel):
     rule: str = "Only present these entries, doses and cautions. Food first."
 
 
+PROFESSIONAL_ONLY_USE = "Only after a blood test and on your doctor's advice."
+
+
 def _entry(item: Supplement) -> SupplementEntry:
+    # Entries that need a doctor never carry a dose the model could pass on as advice.
+    professional = item.requires_professional
     return SupplementEntry(
         name=item.name,
         evidence=item.evidence.value,
         what_it_does=item.what_it_does,
-        typical_use=item.typical_use,
-        max_daily=item.max_daily,
+        typical_use=PROFESSIONAL_ONLY_USE if professional else item.typical_use,
+        max_daily=None if professional else item.max_daily,
         cautions=list(item.cautions),
         food_first=item.food_first,
     )
@@ -429,6 +443,7 @@ class MicronutrientReference(BaseModel):
     daily_reference: float
     unit: str
     upper_limit: float | None
+    upper_limit_applies_to: str | None
     food_sources: list[str]
 
 
@@ -454,6 +469,13 @@ async def micronutrient_reference(
                 daily_reference=reference_for(n, body.sex),
                 unit=UNITS[n],
                 upper_limit=UPPER_LIMIT.get(n),
+                upper_limit_applies_to=(
+                    None
+                    if n not in UPPER_LIMIT
+                    else "supplements only"
+                    if n in SUPPLEMENT_ONLY_LIMITS
+                    else "all sources"
+                ),
                 food_sources=list(FOOD_SOURCES[n]),
             )
             for n in wanted

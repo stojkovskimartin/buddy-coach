@@ -176,9 +176,11 @@ _DAILY_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _SNACK_CONTEXT = re.compile(
-    r"snack|\bbar\b|\bgel\b|drink|shake|before|after|during|vor dem|nach dem|während",
+    r"\s*(?:-\s*)?(snack|bar|gel|drink|shake|smoothie|riegel|before|after|during|vor dem|"
+    r"nach dem|während)\b",
     re.IGNORECASE,
 )
+_SNACK_BEFORE = re.compile(r"\b(snack|gel|bar|shake|drink|riegel) of\s*$", re.IGNORECASE)
 _DANGEROUS_ADVICE = _rx(
     r"train(ing)? through (the )?pain",
     r"ignore the pain",
@@ -190,38 +192,87 @@ _DANGEROUS_ADVICE = _rx(
 )
 MIN_SAFE_DAILY_KCAL = 1200
 
-# Supplement doses above the catalogue maxima (ADR-0005), or any self-prescribed iron dose.
+# Supplement doses above the catalogue maxima (ADR-0005), self-prescribed iron, and substances
+# that are out of scope. Numbers are normalised first ("5,000", "5'000", "5 000" -> "5000"), and
+# every number is tied to the nutrient right next to it, so one sentence can name several.
+_THOUSANDS = re.compile(r"(?<=\d)[,' \u00a0\u202f](?=\d{3}\b)")
+_DECIMAL_COMMA = re.compile(r"(?<=\d),(?=\d{1,2}\b)")
+_AMOUNT = r"(\d+(?:\.\d+)?)\s*(iu|ie|µg|mcg|ug|mg|g)\b"
+_VITAMIN_D = r"vitamin\s*d\s*3?|vitamin\s*d3|cholecalciferol"
 _VITAMIN_D_DOSE = re.compile(
-    r"vitamin d\D{0,30}?(\d[\d']*)\s*(iu|ie|µg|mcg|ug)\b"
-    r"|(\d[\d']*)\s*(iu|ie|µg|mcg|ug)\b\D{0,15}vitamin d",
+    rf"(?:{_VITAMIN_D})\s*[:(]?\s*(?:of\s+|about\s+|~\s*)?{_AMOUNT}"
+    rf"|{_AMOUNT}\s*(?:of\s+)?(?:{_VITAMIN_D})",
     re.IGNORECASE,
 )
+_CAFFEINE = r"caffeine|koffein"
 _CAFFEINE_DOSE = re.compile(
-    r"(\d{3,4})\s*mg\D{0,20}(caffeine|koffein)|(caffeine|koffein)\D{0,30}?(\d{3,4})\s*mg",
+    rf"(?:{_CAFFEINE})\s*[:(]?\s*(?:of\s+|about\s+|~\s*)?{_AMOUNT}"
+    rf"|{_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})",
     re.IGNORECASE,
 )
-_IRON_DOSE = re.compile(
-    r"\d+\s*mg\D{0,15}\b(iron|eisen)\b|\b(iron|eisen)\b\D{0,25}?\d+\s*mg", re.IGNORECASE
+# "Caffeine: 6 mg per kg, so 540 mg" - the total after "so" is checked on its own.
+_CAFFEINE_TOTAL = re.compile(rf"(?:{_CAFFEINE})[^.]{{0,40}}?\bso\s+{_AMOUNT}", re.IGNORECASE)
+_CAFFEINE_PER_KG = re.compile(
+    rf"(\d+(?:\.\d+)?)\s*mg\s*(?:per|/)\s*kg[^.]{{0,25}}(?:{_CAFFEINE})"
+    rf"|(?:{_CAFFEINE})[^.]{{0,25}}?(\d+(?:\.\d+)?)\s*mg\s*(?:per|/)\s*kg",
+    re.IGNORECASE,
 )
-MAX_VITAMIN_D_IU = 4000
-MAX_VITAMIN_D_UG = 100
-MAX_CAFFEINE_MG = 400
+# Iron is only flagged as a supplement instruction, never as a food fact ("lentils give 3 mg iron").
+_IRON_DOSE = re.compile(
+    r"\b(take|taking|supplement\w*|tablet|pill|capsule|nimm|einnehmen|tablette)\b[^.]{0,30}"
+    r"\d+\s*mg\s*(of\s+)?(iron|eisen)\b"
+    r"|\b(take|taking|nimm)\b[^.]{0,15}\b(iron|eisen)\b[^.]{0,15}\d+\s*mg"
+    r"|ferrous\s+(sulfate|sulphate|gluconate|fumarate)|eisen(ii)?[- ]?(sulfat|gluconat)",
+    re.IGNORECASE,
+)
+_OUT_OF_SCOPE = re.compile(
+    r"\b(melatonin|sarms?|testosterone|ephedrine|dnp|clenbuterol|anabolic steroids?)\b",
+    re.IGNORECASE,
+)
+MAX_VITAMIN_D_UG = 100.0  # = 4000 IU
+IU_PER_UG_VITAMIN_D = 40.0
+MAX_CAFFEINE_MG = 400.0
+MAX_CAFFEINE_MG_PER_KG = 6.0
 
 
-def _number(text: str) -> int:
-    return int(text.replace("'", ""))
+def _normalise_numbers(text: str) -> str:
+    return _DECIMAL_COMMA.sub(".", _THOUSANDS.sub("", text))
+
+
+def _first_amount(match: re.Match[str]) -> tuple[float, str]:
+    groups = [g for g in match.groups() if g is not None]
+    return float(groups[0]), groups[1].lower()
+
+
+def _vitamin_d_ug(amount: float, unit: str) -> float:
+    if unit in {"iu", "ie"}:
+        return amount / IU_PER_UG_VITAMIN_D
+    if unit == "mg":
+        return amount * 1000
+    if unit == "g":
+        return amount * 1_000_000
+    return amount  # µg, mcg, ug
+
+
+def _caffeine_mg(amount: float, unit: str) -> float:
+    return amount * 1000 if unit == "g" else amount
 
 
 def _unsafe_supplement_dose(text: str) -> bool:
+    text = _normalise_numbers(text)
+    if _OUT_OF_SCOPE.search(text) or _IRON_DOSE.search(text):
+        return True
     for m in _VITAMIN_D_DOSE.finditer(text):
-        amount, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
-        limit = MAX_VITAMIN_D_IU if unit.lower() in {"iu", "ie"} else MAX_VITAMIN_D_UG
-        if _number(amount) > limit:
+        if _vitamin_d_ug(*_first_amount(m)) > MAX_VITAMIN_D_UG:
             return True
-    for m in _CAFFEINE_DOSE.finditer(text):
-        if _number(m.group(1) or m.group(4)) > MAX_CAFFEINE_MG:
+    for m in [*_CAFFEINE_DOSE.finditer(text), *_CAFFEINE_TOTAL.finditer(text)]:
+        amount, unit = _first_amount(m)
+        if unit in {"mg", "g"} and _caffeine_mg(amount, unit) > MAX_CAFFEINE_MG:
             return True
-    return bool(_IRON_DOSE.search(text))
+    for m in _CAFFEINE_PER_KG.finditer(text):
+        if float(m.group(1) or m.group(2)) > MAX_CAFFEINE_MG_PER_KG:
+            return True
+    return False
 
 
 def safety_language(locale: str | None) -> str:
@@ -240,7 +291,8 @@ class SafetyGuard:
         return SafetyVerdict(SafetyCategory.NONE)
 
     def check_output(self, text: str, language: str = "en") -> SafetyVerdict:
-        """Block diagnoses, dangerously low daily calories and harmful training advice."""
+        """Block diagnoses, very low daily calories, harmful advice and unsafe supplement doses."""
+        text = _normalise_numbers(text)
         if _DIAGNOSIS.search(text) or _DANGEROUS_ADVICE.search(text):
             return self._escalate(SafetyCategory.UNSAFE_OUTPUT, language)
         if _unsafe_supplement_dose(text):
@@ -249,7 +301,11 @@ class SafetyGuard:
             if int(match.group(1)) >= MIN_SAFE_DAILY_KCAL:
                 continue
             window = text[max(0, match.start() - 40) : match.end() + 25]
-            if _DAILY_CONTEXT.search(window) and not _SNACK_CONTEXT.search(window):
+            # "a 200 kcal gel" is a snack; "800 kcal per day and drink water" is not.
+            snack = _SNACK_CONTEXT.match(text, match.end()) or _SNACK_BEFORE.search(
+                text[max(0, match.start() - 12) : match.start()]
+            )
+            if _DAILY_CONTEXT.search(window) and not snack:
                 return self._escalate(SafetyCategory.UNSAFE_OUTPUT, language)
         return SafetyVerdict(SafetyCategory.NONE)
 
