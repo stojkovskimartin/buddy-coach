@@ -6,7 +6,7 @@
 | Architecture | `services/api/tests/architecture` | nothing | module boundaries, pure engines |
 | Agents | `services/api/tests/agents` | scripted LLM (some need Postgres) | agent limits, tool permissions, safety, routing, provider mapping |
 | Integration | `services/api/tests/integration` | Postgres | endpoints, transactions, concurrency, migrations = models |
-| Client | `packages/*/src/**/*.test.ts`, `apps/web/src/**/*.test.tsx` (Vitest), `apps/mobile/__tests__` (jest-expo) | nothing | API client auth and refresh, web and mobile screens, secure token storage |
+| Client | `packages/*/src/**/*.test.ts`, `apps/web/src/**/*.test.ts(x)` (Vitest), `apps/mobile/__tests__` (jest-expo) | nothing | API client auth and refresh, web and mobile screens, secure token storage |
 | End-to-end | `e2e/` (planned) | running stack | full user journeys in the apps |
 
 ## Principles
@@ -30,4 +30,6 @@ See [running.md](running.md#3-run-the-tests).
 - **Frontend:** `pnpm typecheck` and `pnpm test` for every workspace package.
 - **Contract drift:** regenerates the API client and fails if it differs from the commit.
 
-Actions are pinned to commit SHAs and kept current by Dependabot. A red CI run blocks the merge.
+Actions are pinned to commit SHAs and kept current by Dependabot. CI must be green before a
+merge (see [development.md](development.md)); enforcing this with branch protection is in
+[backlog.md](backlog.md).

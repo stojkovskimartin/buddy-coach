@@ -89,9 +89,9 @@ frontend tests (API client, web, mobile).
 ## 4. Web and mobile apps
 
 - **Web:** `pnpm --filter @buddy/web dev`, then open http://localhost:5173 (with the API running).
-- **Mobile (iOS and Android):** install Expo Go on your phone, set
-  `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to your computer's Wi-Fi address
-  (e.g. `http://192.168.1.20:8000`), then `pnpm --filter @buddy/mobile start` and scan the QR
+- **Mobile (iOS and Android), with the API running:** install Expo Go on your phone,
+  `cp apps/mobile/.env.example apps/mobile/.env` and set `EXPO_PUBLIC_API_BASE_URL` there to
+  your computer's Wi-Fi address (e.g. `http://192.168.1.20:8000`), then `pnpm --filter @buddy/mobile start` and scan the QR
   code. Details: [apps/mobile/README.md](../apps/mobile/README.md).
 
 ## Configuration reference

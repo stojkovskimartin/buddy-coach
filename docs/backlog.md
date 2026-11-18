@@ -15,3 +15,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Safety Guard dose-pattern edge cases: dose after a semicolon ("Take vitamin D; 5000 IU daily"), alternatives ("5000 or 10000 IU"), space-grouped numbers read as one ("Session 3 200 mg" = 3200 mg, safe side). Replace with the AI safety classifier | #7 re-review round 4 | Milestone 3 |
 | Mobile: check `EXPO_PUBLIC_API_BASE_URL` is https at build time (app.config.ts or CI), so a wrong value never crashes a release app on launch | #13 re-review | Before app store builds |
 | Mobile: verify keyboard layout on a real Android device (edge-to-edge) | #13 re-review | Before beta |
+| Branch protection on `main` requiring the CI checks (needs repository admin settings) | docs review | Before beta |

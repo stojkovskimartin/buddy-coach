@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18, 21:30
+Last update: 2026-11-18, 20:57
 
 ## How to run it
 
@@ -19,6 +19,9 @@ Real AI answers: create `infra/.env` with `BUDDY_LLM_PROVIDER=anthropic` and
 **Web app (needs Node 22 + pnpm, with the API running):** `pnpm install`, then
 `pnpm --filter @buddy/web dev` and open http://localhost:5173.
 
+**Mobile app on your phone (with the API running):** see
+[apps/mobile/README.md](../apps/mobile/README.md) (Expo Go, same Wi-Fi as the computer).
+
 Full guide: [running.md](running.md).
 
 **Run the backend tests (developers, needs Python 3.13 + uv and a Postgres):**
@@ -33,6 +36,8 @@ BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_te
 (The Docker stack exposes Postgres on localhost:5433, user/password `buddy`.)
 
 ## Done
+
+Numbers from #6 on are merge labels in the git history (merge commits), not GitHub pull request numbers.
 
 | PR | What | Tests |
 | --- | --- | --- |

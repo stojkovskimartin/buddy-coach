@@ -47,5 +47,6 @@ A test (`test_migrations_match_models`) fails if models and migrations drift apa
 pnpm api:generate
 ```
 
-This exports `openapi.json` and regenerates the typed client. Commit both; TypeScript then
+This exports `openapi.json` (needs Python 3.13 and uv, with `uv sync` done in `services/api`)
+and regenerates the typed client. Commit both; TypeScript then
 shows every app that needs updating, and CI fails if they were forgotten.
