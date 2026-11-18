@@ -78,7 +78,15 @@ def test_token_signed_with_other_secret_is_rejected() -> None:
 def test_token_with_none_algorithm_is_rejected() -> None:
     settings = make_settings()
     forged = jwt.encode(
-        {"sub": str(uuid.uuid4()), "typ": "access", "jti": "x", "iat": 0, "exp": 9_999_999_999},
+        {
+            "sub": str(uuid.uuid4()),
+            "typ": "access",
+            "jti": "x",
+            "iss": "buddy-coach",
+            "aud": "buddy-coach-api",
+            "iat": 0,
+            "exp": 9_999_999_999,
+        },
         key=None,
         algorithm="none",
     )
@@ -90,9 +98,24 @@ def test_token_with_non_uuid_subject_is_rejected() -> None:
     settings = make_settings()
     now = int(datetime.now(UTC).timestamp())
     token = jwt.encode(
-        {"sub": "not-a-uuid", "typ": "access", "jti": "x", "iat": now, "exp": now + 60},
+        {
+            "sub": "not-a-uuid",
+            "typ": "access",
+            "jti": "x",
+            "iss": "buddy-coach",
+            "aud": "buddy-coach-api",
+            "iat": now,
+            "exp": now + 60,
+        },
         settings.jwt_secret.get_secret_value(),
         algorithm="HS256",
     )
     with pytest.raises(AuthenticationError):
         decode_token(token, TokenType.ACCESS, settings)
+
+
+def test_token_for_other_audience_is_rejected() -> None:
+    token, _ = create_token(uuid.uuid4(), TokenType.ACCESS, make_settings())
+    other = make_settings(jwt_audience="another-service")
+    with pytest.raises(AuthenticationError, match="invalid"):
+        decode_token(token, TokenType.ACCESS, other)

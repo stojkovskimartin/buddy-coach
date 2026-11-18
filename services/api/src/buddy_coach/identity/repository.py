@@ -52,5 +52,5 @@ class IdentityRepository:
         await self._session.execute(
             update(RefreshToken)
             .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
-            .values(revoked_at=at)
+            .values(revoked_at=at, revoked_reason="reuse")
         )

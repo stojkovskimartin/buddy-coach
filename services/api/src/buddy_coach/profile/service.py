@@ -55,9 +55,8 @@ class ProfileService:
     async def upsert_profile(self, user_id: uuid.UUID, data: ProfileIn) -> Profile:
         """Create or replace the profile."""
         validate_adult(data.birth_year, self._today())
-        profile = await self._repo.save_profile(Profile(user_id=user_id, **data.model_dump()))
+        profile = await self._repo.upsert_profile(user_id, data.model_dump())
         await self._session.commit()
-        await self._session.refresh(profile)
         await self._events.publish(ProfileUpdated(user_id=user_id))
         return profile
 
@@ -76,6 +75,7 @@ class ProfileService:
             event_distance_km=data.event_distance_km,
         )
         validate_goal(spec, self._today(), profile.weight_kg if profile else None)
+        await self._repo.lock_goals(user_id)
         if data.priority is GoalPriority.PRIMARY:
             await self._repo.demote_active_primary(user_id)
         goal = await self._repo.add_goal(
@@ -90,6 +90,7 @@ class ProfileService:
         self, user_id: uuid.UUID, goal_id: uuid.UUID, status: GoalStatus
     ) -> Goal:
         """Mark a goal achieved, abandoned or active again."""
+        await self._repo.lock_goals(user_id)
         goal = await self._repo.get_goal(user_id, goal_id)
         if goal is None:
             raise NotFoundError("Goal not found.")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +30,9 @@ from buddy_coach.identity.schemas import CurrentUser, TokenPair
 logger = logging.getLogger(__name__)
 
 INVALID_CREDENTIALS = "Email or password is incorrect."
+# Mobile apps often fire two refreshes at once on resume. A token revoked this recently is
+# treated as that race, not as theft (same idea as a "reuse interval" in common IdPs).
+REFRESH_REUSE_GRACE = timedelta(seconds=10)
 
 
 def normalise_email(email: str) -> str:
@@ -82,8 +85,13 @@ class IdentityService:
         now = datetime.now(UTC)
         if stored is None or stored.user_id != claims.subject:
             raise AuthenticationError("Refresh token is not recognised.")
-        if stored.revoked_at is not None:
-            # A revoked token being used again means it was probably stolen.
+        in_grace = (
+            stored.revoked_reason == "rotated"
+            and stored.revoked_at is not None
+            and now - stored.revoked_at <= REFRESH_REUSE_GRACE
+        )
+        if stored.revoked_at is not None and not in_grace:
+            # A revoked token being used again later means it was probably stolen.
             await self._repo.revoke_all_for_user(stored.user_id, now)
             await self._session.commit()
             logger.warning("refresh_token_reuse", extra={"user_id": str(stored.user_id)})
@@ -93,7 +101,9 @@ class IdentityService:
         user = await self._repo.get_user(stored.user_id)
         if user is None or not user.is_active:
             raise AuthenticationError("Account is not active.")
-        stored.revoked_at = now
+        if stored.revoked_at is None:
+            stored.revoked_at = now
+            stored.revoked_reason = "rotated"
         pair = await self._issue_pair(user.id)
         await self._session.commit()
         return pair
@@ -107,6 +117,7 @@ class IdentityService:
         stored = await self._repo.get_refresh_token(sha256_hex(claims.jti))
         if stored is not None and stored.revoked_at is None:
             stored.revoked_at = datetime.now(UTC)
+            stored.revoked_reason = "logout"
             await self._session.commit()
 
     async def authenticate_access_token(self, token: str) -> CurrentUser:

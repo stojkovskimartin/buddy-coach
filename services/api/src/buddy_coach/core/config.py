@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=10, ge=1, le=100)
     jwt_secret: SecretStr
     jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "buddy-coach"
+    jwt_audience: str = "buddy-coach-api"
     access_token_ttl_minutes: int = Field(default=15, ge=1, le=60)
     refresh_token_ttl_days: int = Field(default=30, ge=1, le=90)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])

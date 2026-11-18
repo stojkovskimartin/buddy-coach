@@ -178,6 +178,7 @@ def upgrade() -> None:
         sa.Column("jti_hash", sa.String(length=64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("revoked_reason", sa.String(length=16), nullable=True),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["identity_users.id"],

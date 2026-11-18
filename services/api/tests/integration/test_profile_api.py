@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import date, timedelta
 from typing import Any
 
@@ -148,3 +149,28 @@ async def test_users_cannot_touch_each_others_goals(client: httpx.AsyncClient) -
     assert patch.status_code == 404
     listed = await client.get("/api/v1/goals", headers=intruder)
     assert listed.json() == []
+
+
+async def test_concurrent_first_profile_saves_do_not_fail(client: httpx.AsyncClient) -> None:
+    headers = await register_and_login(client)
+    responses = await asyncio.gather(
+        *(
+            client.put(
+                "/api/v1/profile", json={**VALID_PROFILE, "weight_kg": 70 + i}, headers=headers
+            )
+            for i in range(4)
+        )
+    )
+    assert [r.status_code for r in responses] == [200] * 4
+
+
+async def test_concurrent_primary_goals_keep_exactly_one_primary(
+    client: httpx.AsyncClient,
+) -> None:
+    headers = await _with_profile(client)
+    responses = await asyncio.gather(
+        *(_create_goal(client, headers, title=f"Goal {i}") for i in range(5))
+    )
+    assert [r.status_code for r in responses] == [201] * 5
+    goals = (await client.get("/api/v1/goals", params={"status": "active"}, headers=headers)).json()
+    assert sum(g["priority"] == "primary" for g in goals) == 1

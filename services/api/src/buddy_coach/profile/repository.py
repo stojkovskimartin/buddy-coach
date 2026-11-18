@@ -5,7 +5,8 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.profile.domain import GoalPriority, GoalStatus
@@ -22,11 +23,26 @@ class ProfileRepository:
         """Return the profile of a user."""
         return await self._session.get(Profile, user_id)
 
-    async def save_profile(self, profile: Profile) -> Profile:
-        """Insert or update a profile."""
-        merged = await self._session.merge(profile)
-        await self._session.flush()
-        return merged
+    async def upsert_profile(self, user_id: uuid.UUID, values: dict[str, object]) -> Profile:
+        """Insert or update atomically (safe when two first-time saves race)."""
+        insert_stmt = insert(Profile).values(user_id=user_id, **values)
+        upsert = insert_stmt.on_conflict_do_update(
+            index_elements=[Profile.user_id],
+            set_={**values, "updated_at": func.now()},
+        ).returning(Profile)
+        result = await self._session.execute(upsert, execution_options={"populate_existing": True})
+        profile: Profile = result.scalar_one()
+        return profile
+
+    async def lock_goals(self, user_id: uuid.UUID) -> None:
+        """Serialise goal changes of one user until the transaction ends.
+
+        A row lock is not enough: with no goals yet there is no row to lock.
+        """
+        await self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"profile_goals:{user_id}"},
+        )
 
     async def list_goals(self, user_id: uuid.UUID, status: GoalStatus | None) -> Sequence[Goal]:
         """Goals of a user, newest first, optionally filtered by status."""
