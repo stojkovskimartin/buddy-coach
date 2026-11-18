@@ -195,16 +195,15 @@ MIN_SAFE_DAILY_KCAL = 1200
 # Supplement doses above the catalogue maxima (ADR-0005), self-prescribed iron, and substances
 # that are out of scope. Numbers are normalised first ("5,000", "5'000", "5 000" -> "5000"), and
 # every number is tied to the nutrient right next to it, so one sentence can name several.
-_THOUSANDS = re.compile(r"(?<=\d)[,' \u00a0\u202f](?=\d{3}\b)")
+_THOUSANDS = re.compile(r"(?<=\d)[,'\u2019 \u00a0\u202f](?=\d{3}\b)")
 _DECIMAL_COMMA = re.compile(r"(?<=\d),(?=\d{1,2}\b)")
 _AMOUNT = r"(\d+(?:\.\d+)?)\s*(iu|ie|µg|mcg|ug|mg|g)\b"
 _VITAMIN_D = r"\bvitamin[\s-]*d(?:\s*3)?\b|\bd3\b|cholecalciferol"
-# Words that end the link between a nutrient and a number: other nutrients, joins and food
-# words, so "vitamin D and magnesium 400 mg" or "Vitamin D: eat 150 g salmon" are not read as
-# vitamin D doses.
+# Other nutrients end the link between a nutrient and a number, so "vitamin D and magnesium
+# 400 mg" is not a vitamin D dose. Food amounts need no stop words: grams never count as a
+# vitamin D dose ("Vitamin D: eat 150 g salmon").
 _STOP_WORDS = (
-    r"and|und|plus|or|oder|from|aus|eat|eating|essen|iss|food|fish|salmon|lachs|eggs?|dairy"
-    r"|milk|sun|sunlight|sonne|magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine|koffein"
+    r"magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine|koffein"
     r"|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein"
 )
 
@@ -217,11 +216,14 @@ def _gap(max_chars: int, also_stop_at: str = "") -> str:
 _COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "zwei": 2, "drei": 3, "vier": 4}
 _COUNT = rf"(\d+|{'|'.join(_COUNTS)})"
 _TIMES = r"\s*[x\u00d7]\s*"
+_PILLS = r"pills?|tablets?|capsules?|tabletten|kapseln"
+# "2 x 5000 IU", "1 capsule (5000 IU)", "2 capsules of 1000 IU"
+_PER_PILL = rf"(?:{_TIMES}|\s+(?:{_PILLS})\s*(?:\(\s*|of\s+|à\s+|zu\s+)?)"
 # Groups: (count, amount, unit) for "vitamin D ... [2 x] 5000 IU", then (amount, unit) for
 # "5000 IU [daily] of vitamin D". A number before a comma belongs to what came before it
 # ("Folate 300 µg, vitamin D 20 µg").
 _VITAMIN_D_DOSE = re.compile(
-    rf"(?:{_VITAMIN_D}){_gap(25)}(?:{_COUNT}{_TIMES})?{_AMOUNT}"
+    rf"(?:{_VITAMIN_D}){_gap(25)}(?:{_COUNT}{_PER_PILL})?{_AMOUNT}"
     rf"|{_AMOUNT}{_gap(12, also_stop_at=',')}(?:of\s+)?(?:{_VITAMIN_D})",
     re.IGNORECASE,
 )
@@ -233,10 +235,10 @@ _CAFFEINE_DOSE = re.compile(
 )
 # Groups: (count, amount, unit) for "two 300 mg caffeine pills" and for
 # "2 caffeine tablets of 300 mg"; the per-dose amount is multiplied by the count.
-_PILLS = r"pills?|tablets?|capsules?|tabletten|kapseln"
 _CAFFEINE_COUNT = re.compile(
     rf"\b{_COUNT}(?:{_TIMES}|\s*){_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})"
-    rf"|\b{_COUNT}\s+(?:{_CAFFEINE})\s+(?:{_PILLS})\s+(?:of|à|a|zu)\s+{_AMOUNT}",
+    rf"|\b{_COUNT}\s+(?:{_CAFFEINE})\s+(?:{_PILLS})\s+(?:of|à|a|zu)\s+{_AMOUNT}"
+    rf"|(?:{_CAFFEINE})[:\s]+{_COUNT}{_PER_PILL}{_AMOUNT}",
     re.IGNORECASE,
 )
 # "Caffeine: 6 mg per kg, so 540 mg" - the total after "so" is checked on its own.
@@ -264,18 +266,21 @@ _OUT_OF_SCOPE_SUBSTANCE = (
 _OUT_OF_SCOPE_ADVICE = re.compile(
     r"\b(?:take|taking|try|use|using|start|dose|dosing|recommend\w*|suggest\w*|consider"
     r"|stack|cycle|nimm|nehmen|einnehmen|empfehle\w*|probier\w*)\b"
-    rf"(?:(?!\b(?:to|zu|um)\b)[^.;]){{0,30}}?{_OUT_OF_SCOPE_SUBSTANCE}",
+    rf"(?:(?!\b(?:to|zu|um)\b)(?:[^.;]|(?<=\d)\.(?=\d))){{0,30}}?{_OUT_OF_SCOPE_SUBSTANCE}",
     re.IGNORECASE,
 )
-_ANY_DOSE = re.compile(r"\d+(?:\.\d+)?\s*(?:mg|µg|mcg|ug|g|iu|ie)\b", re.IGNORECASE)
+# Grams are food ("a 200 g yoghurt"), never a dose of these substances.
+_ANY_DOSE = re.compile(r"\d+(?:\.\d+)?\s*(?:mg|µg|mcg|ug|iu|ie)\b", re.IGNORECASE)
 # A negation directly before the verb ("never take", "I can't recommend", "avoid taking") makes
 # it a warning; "if sleep is not great, take melatonin" is still advice.
 _NEGATION = re.compile(
     r"\b(?:don['\u2019]?t|do not|never|avoid|can['\u2019]?t|cannot|can not|won['\u2019]?t|will not"
-    r"|shouldn['\u2019]?t|should not|wouldn['\u2019]?t|would not|nie|nicht|keine?)\s+$",
+    r"|shouldn['\u2019]?t|should not|wouldn['\u2019]?t|would not|not|no need to|nie|nicht|keine?)"
+    r"\s+$",
     re.IGNORECASE,
 )
-_SENTENCE = re.compile(r"[^.;!?]+")
+# Sentences, without splitting decimals ("0.5 mg").
+_SENTENCE = re.compile(r"(?:[^.;!?]|(?<=\d)\.(?=\d))+")
 MAX_VITAMIN_D_UG = 100.0  # = 4000 IU
 IU_PER_UG_VITAMIN_D = 40.0
 MAX_CAFFEINE_MG = 400.0

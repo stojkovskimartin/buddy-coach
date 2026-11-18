@@ -210,6 +210,17 @@ def test_supplement_questions_go_to_nutrition(message: str) -> None:
         "Take 5000 IU daily of vitamin D.",
         "Vitamin D: 2 x 5000 IU daily.",
         "Take 2 caffeine tablets of 300 mg.",
+        # Fourth review round
+        "Take 0.5 mg melatonin before bed.",
+        "Melatonin (0.5 mg) helps you sleep.",
+        "Melatonin 0.3 mg is enough.",
+        "Never take more than 0.5 mg melatonin.",
+        "Vitamin D 10\u2019000 IE täglich",
+        "Take vitamin D with food, 10000 IU daily.",
+        "Vitamin D with fish oil: 5000 IU a day.",
+        "Take vitamin D from a capsule: 10000 IU.",
+        "Vitamin D: 1 capsule (5000 IU) daily.",
+        "Caffeine: 2 tablets of 300 mg.",
     ],
 )
 def test_review_cases_are_blocked(text: str) -> None:
@@ -245,6 +256,11 @@ def test_review_cases_are_blocked(text: str) -> None:
         "Try heavy squats to boost testosterone.",
         "Use compound lifts to raise testosterone naturally.",
         "Before your run, testosterone is higher in the morning.",
+        # Fourth review round
+        "No need to take melatonin; sleep hygiene works.",
+        "Not taking melatonin is fine.",
+        "Don't take melatonin, a 200 g yoghurt before bed works better.",
+        "Vitamin D: eat 150 g salmon and 2 eggs twice a week.",
     ],
 )
 def test_review_false_alarms_pass(text: str) -> None:
