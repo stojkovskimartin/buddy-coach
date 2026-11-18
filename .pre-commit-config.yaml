@@ -11,8 +11,11 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=1024"]
       - id: detect-private-key
+      # Generated API client files are checked by CI contract drift, never rewritten here.
       - id: end-of-file-fixer
+        exclude: ^packages/api-client/(openapi\.json|src/generated/)
       - id: trailing-whitespace
+        exclude: ^packages/api-client/(openapi\.json|src/generated/)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.0
     hooks:
