@@ -7,17 +7,21 @@ It reads your watch, sees your meals, listens to how you feel and adjusts your p
 
 ## Monorepo layout
 
-| Path | What it is | Stack |
-| --- | --- | --- |
-| `services/api` | Backend: REST API, domain modules, coach agent network | Python 3.13, FastAPI, SQLAlchemy 2 (async), Alembic |
-| `apps/web` | Web app (dashboard, coach chat, logging) | React 19, TypeScript, Vite |
-| `apps/mobile` | iOS and Android app (HealthKit, Health Connect, camera) | Expo / React Native, TypeScript |
-| `apps/desktop` | Desktop app for Windows, macOS, Linux (wraps the web app) | Tauri 2 |
-| `packages/api-client` | Typed API client generated from the FastAPI OpenAPI spec | TypeScript |
-| `infra` | Local infrastructure (Postgres, Redis) and deployment files | Docker Compose |
-| `docs` | Architecture, ADRs, runbooks | Markdown |
+The repository is built up PR by PR; the Status column shows what exists today.
+
+| Path | What it is | Stack | Status |
+| --- | --- | --- | --- |
+| `services/api` | Backend: REST API, domain modules, coach agent network | Python 3.13, FastAPI, SQLAlchemy 2 (async), Alembic | in progress |
+| `apps/web` | Web app (dashboard, coach chat, logging) | React 19, TypeScript, Vite | planned |
+| `apps/mobile` | iOS and Android app (HealthKit, Health Connect, camera) | Expo / React Native, TypeScript | planned |
+| `apps/desktop` | Desktop app for Windows, macOS, Linux (wraps the web app) | Tauri 2 | planned |
+| `packages/api-client` | Typed API client generated from the FastAPI OpenAPI spec | TypeScript | planned |
+| `infra` | Local infrastructure (Postgres, Redis) and deployment files | Docker Compose | planned |
+| `docs` | Architecture, ADRs, runbooks | Markdown | done |
 
 ## Quick start
+
+Commands below work once the corresponding path exists (see Status).
 
 Prerequisites: Python 3.13 + [uv](https://docs.astral.sh/uv/), Node 22 + pnpm 10, Docker.
 

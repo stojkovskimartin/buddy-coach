@@ -1,4 +1,5 @@
 # Python
+*.egg-info/
 __pycache__/
 *.py[cod]
 .venv/
@@ -18,6 +19,9 @@ coverage/
 *.tsbuildinfo
 .expo/
 web-build/
+# Expo continuous native generation: native folders are generated, not committed
+apps/mobile/ios/
+apps/mobile/android/
 
 # Tauri / Rust
 apps/desktop/src-tauri/target/
@@ -28,6 +32,18 @@ apps/desktop/src-tauri/target/
 !.env.example
 *.pem
 *.key
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# Local data and logs
+*.log
+*.sqlite
+*.db
 
 # OS / IDE
 .DS_Store
