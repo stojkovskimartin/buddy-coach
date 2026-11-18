@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18, 20:20
+Last update: 2026-11-18, 22:10
 
 ## How to run it
 
@@ -45,13 +45,14 @@ BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_te
 | #7 | Recovery nutrition: vitamins and minerals (D-A-CH references), recovery meals, protein per meal, evidence-graded supplement catalogue (creatine, caffeine, vitamin D, iron, …), 3 coach tools, dose limits in the Safety Guard (ADR-0005) | +46 |
 | #8 | Shared typed API client (generated from OpenAPI) and web app: login, onboarding, goals, coach chat | 30 frontend |
 | #9 | Full documentation in `docs/` (running, API, agents, science, development, testing) | – |
+| #10 | Post-merge review of #7: magnesium limit for supplements only, recovery meal per hour, vitamin D and iron only via a doctor, Safety Guard catches dose phrasings (vitamin D, iron, caffeine pill counts, decimals, Swiss numbers) without blocking food-first answers or warnings | +78 |
 
-Totals: backend 304 tests, frontend 30 tests; lint and strict typing clean; no API contract drift.
+Totals: backend 382 tests, frontend 30 tests; lint and strict typing clean; no API contract drift.
 
 ## In progress
 
-- #8 (clients) post-merge re-review: approved, all 11 findings fixed.
-- #7 (recovery nutrition) post-merge review: running; findings get fixed on a `fix/…` branch.
+- Mobile app (Expo, iOS and Android) on `feat/mobile`.
+- Task tracker with every feature and its status: https://claude.ai/artifact/2uRQPCZYqwALLndwByTcHX
 
 ## Next
 

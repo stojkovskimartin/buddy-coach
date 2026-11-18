@@ -261,6 +261,8 @@ def test_review_cases_are_blocked(text: str) -> None:
         "Not taking melatonin is fine.",
         "Don't take melatonin, a 200 g yoghurt before bed works better.",
         "Vitamin D: eat 150 g salmon and 2 eggs twice a week.",
+        "Vitamin D and selenium 200 µg.",
+        "Vitamin D and iodine: 150 µg iodine a day.",
     ],
 )
 def test_review_false_alarms_pass(text: str) -> None:

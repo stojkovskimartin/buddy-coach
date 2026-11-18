@@ -204,7 +204,7 @@ _VITAMIN_D = r"\bvitamin[\s-]*d(?:\s*3)?\b|\bd3\b|cholecalciferol"
 # vitamin D dose ("Vitamin D: eat 150 g salmon").
 _STOP_WORDS = (
     r"magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine|koffein"
-    r"|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein"
+    r"|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein|selenium|selen|iodine|jod|biotin"
 )
 
 
