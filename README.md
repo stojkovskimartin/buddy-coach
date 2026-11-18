@@ -8,6 +8,7 @@ It reads your watch, sees your meals, listens to how you feel and adjusts your p
 ## Monorepo layout
 
 The repository is built up PR by PR; the Status column shows what exists today.
+Current status, next steps and how to run everything: **[docs/PROGRESS.md](docs/PROGRESS.md)**.
 
 | Path | What it is | Stack | Status |
 | --- | --- | --- | --- |
