@@ -83,9 +83,16 @@ uv run mypy
 
 The test database is created and migrated automatically.
 
-Frontend (once `feat/clients` is merged): `pnpm install` once at the repo root, then
-`pnpm test` for all tests and `pnpm --filter @buddy/web dev` for the web app on
-http://localhost:5173 (with the API running).
+Frontend: `pnpm install` once at the repo root (Node 22 + pnpm), then `pnpm test` for all
+frontend tests (API client, web, mobile).
+
+## 4. Web and mobile apps
+
+- **Web:** `pnpm --filter @buddy/web dev`, then open http://localhost:5173 (with the API running).
+- **Mobile (iOS and Android), with the API running:** install Expo Go on your phone,
+  `cp apps/mobile/.env.example apps/mobile/.env` and set `EXPO_PUBLIC_API_BASE_URL` there to
+  your computer's Wi-Fi address (e.g. `http://192.168.1.20:8000`), then run
+  `pnpm --filter @buddy/mobile start` and scan the QR code. Details: [apps/mobile/README.md](../apps/mobile/README.md).
 
 ## Configuration reference
 

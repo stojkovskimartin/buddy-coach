@@ -2,7 +2,7 @@
 
 Base path `/api/v1`. The live, always-current reference is the OpenAPI page at
 http://localhost:8000/docs (disabled in production, as is `/openapi.json`). The apps use a
-committed snapshot of the contract, `packages/api-client/openapi.json` (with `feat/clients`).
+committed snapshot of the contract, `packages/api-client/openapi.json`.
 
 ## Authentication
 
