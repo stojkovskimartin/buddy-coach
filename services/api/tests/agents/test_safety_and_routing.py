@@ -204,6 +204,12 @@ def test_supplement_questions_go_to_nutrition(message: str) -> None:
         "If sleep is not great, take melatonin",
         "Melatonin 3 mg helps you sleep",
         "I recommend a short testosterone cycle",
+        # Third review round
+        "Never take more than 5 mg melatonin.",
+        "Don't take melatonin unless you need it, then 3 mg works.",
+        "Take 5000 IU daily of vitamin D.",
+        "Vitamin D: 2 x 5000 IU daily.",
+        "Take 2 caffeine tablets of 300 mg.",
     ],
 )
 def test_review_cases_are_blocked(text: str) -> None:
@@ -228,6 +234,17 @@ def test_review_cases_are_blocked(text: str) -> None:
         "Vitamin D and magnesium 400 mg are often discussed.",
         "One 200 mg caffeine tablet an hour before is enough.",
         "Two 100 mg caffeine doses spread over the race.",
+        # Third review round: food-first answers and warnings
+        "Vitamin D: eat 150 g salmon twice a week.",
+        "For vitamin D eat fatty fish, about 200 g a week.",
+        "Vitamin D from sunlight, 1200 mg calcium from dairy.",
+        "Vitamin D needs fat to absorb, 1000 mg calcium too.",
+        "Avoid taking melatonin without a doctor.",
+        "I can't recommend melatonin; ask your doctor.",
+        "I won't recommend SARMs.",
+        "Try heavy squats to boost testosterone.",
+        "Use compound lifts to raise testosterone naturally.",
+        "Before your run, testosterone is higher in the morning.",
     ],
 )
 def test_review_false_alarms_pass(text: str) -> None:
@@ -244,3 +261,9 @@ def test_review_false_alarms_pass(text: str) -> None:
 )
 def test_iron_routing(message: str, agent: AgentName) -> None:
     assert router.route(message) is agent
+
+
+def test_space_separated_digit_groups_are_read_as_one_number() -> None:
+    """Deliberate trade-off: "5 000 IU" must count as 5000, so "Session 3 200 mg caffeine" is
+    read as 3200 mg and blocked. Blocking a rare odd phrasing is safer than missing a dose."""
+    assert not guard.check_output("Session 3 200 mg caffeine").allowed

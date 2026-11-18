@@ -199,15 +199,30 @@ _THOUSANDS = re.compile(r"(?<=\d)[,' \u00a0\u202f](?=\d{3}\b)")
 _DECIMAL_COMMA = re.compile(r"(?<=\d),(?=\d{1,2}\b)")
 _AMOUNT = r"(\d+(?:\.\d+)?)\s*(iu|ie|µg|mcg|ug|mg|g)\b"
 _VITAMIN_D = r"\bvitamin[\s-]*d(?:\s*3)?\b|\bd3\b|cholecalciferol"
-# Up to 25 characters between nutrient and number ("Vitamin D, about 5000 IU", "For vitamin D I
-# suggest 10000 IU"), but never across a sentence end, another number or another nutrient,
-# so "vitamin D and magnesium 400 mg" does not tie the magnesium amount to vitamin D.
-_GAP = (
-    r"(?:(?!\b(?:and|und|plus|or|oder|magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine"
-    r"|koffein|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein)\b)[^.;\d]){0,25}?"
+# Words that end the link between a nutrient and a number: other nutrients, joins and food
+# words, so "vitamin D and magnesium 400 mg" or "Vitamin D: eat 150 g salmon" are not read as
+# vitamin D doses.
+_STOP_WORDS = (
+    r"and|und|plus|or|oder|from|aus|eat|eating|essen|iss|food|fish|salmon|lachs|eggs?|dairy"
+    r"|milk|sun|sunlight|sonne|magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine|koffein"
+    r"|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein"
 )
+
+
+def _gap(max_chars: int, also_stop_at: str = "") -> str:
+    """Up to `max_chars` characters that cross no sentence end, number or stop word."""
+    return rf"(?:(?!\b(?:{_STOP_WORDS})\b)[^.;\d{also_stop_at}]){{0,{max_chars}}}?"
+
+
+_COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "zwei": 2, "drei": 3, "vier": 4}
+_COUNT = rf"(\d+|{'|'.join(_COUNTS)})"
+_TIMES = r"\s*[x\u00d7]\s*"
+# Groups: (count, amount, unit) for "vitamin D ... [2 x] 5000 IU", then (amount, unit) for
+# "5000 IU [daily] of vitamin D". A number before a comma belongs to what came before it
+# ("Folate 300 µg, vitamin D 20 µg").
 _VITAMIN_D_DOSE = re.compile(
-    rf"(?:{_VITAMIN_D}){_GAP}{_AMOUNT}|{_AMOUNT}\s*(?:of\s+)?(?:{_VITAMIN_D})",
+    rf"(?:{_VITAMIN_D}){_gap(25)}(?:{_COUNT}{_TIMES})?{_AMOUNT}"
+    rf"|{_AMOUNT}{_gap(12, also_stop_at=',')}(?:of\s+)?(?:{_VITAMIN_D})",
     re.IGNORECASE,
 )
 _CAFFEINE = r"caffeine|koffein"
@@ -216,10 +231,12 @@ _CAFFEINE_DOSE = re.compile(
     rf"|{_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})",
     re.IGNORECASE,
 )
-# "two 300 mg caffeine pills" - the per-dose amount is multiplied by the count.
-_COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "zwei": 2, "drei": 3, "vier": 4}
+# Groups: (count, amount, unit) for "two 300 mg caffeine pills" and for
+# "2 caffeine tablets of 300 mg"; the per-dose amount is multiplied by the count.
+_PILLS = r"pills?|tablets?|capsules?|tabletten|kapseln"
 _CAFFEINE_COUNT = re.compile(
-    rf"\b(\d+|{'|'.join(_COUNTS)})\s*(?:[x\u00d7]\s*)?{_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})",
+    rf"\b{_COUNT}(?:{_TIMES}|\s*){_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})"
+    rf"|\b{_COUNT}\s+(?:{_CAFFEINE})\s+(?:{_PILLS})\s+(?:of|à|a|zu)\s+{_AMOUNT}",
     re.IGNORECASE,
 )
 # "Caffeine: 6 mg per kg, so 540 mg" - the total after "so" is checked on its own.
@@ -238,20 +255,27 @@ _IRON_DOSE = re.compile(
     re.IGNORECASE,
 )
 # Out-of-scope substances are blocked when recommended or dosed, not when merely mentioned
-# ("Avoid SARMs: they are banned", "Strength training raises testosterone a little").
+# ("Avoid SARMs: they are banned", "Squats raise testosterone a little").
 _OUT_OF_SCOPE_SUBSTANCE = (
     r"\b(?:melatonin|sarms?|testosterone|ephedrine|dnp|clenbuterol|anabolic steroids?)\b"
 )
+# The substance must be the object of the verb: "try squats to boost testosterone" is not advice
+# to take it, so the link stops at "to".
 _OUT_OF_SCOPE_ADVICE = re.compile(
-    r"\b(?P<verb>take|taking|try|use|using|start|dose|dosing|recommend\w*|suggest\w*|consider"
-    r"|stack|cycle|run|nimm|nehmen|einnehmen|empfehle\w*|probier\w*)\b"
-    rf"[^.;]{{0,30}}?{_OUT_OF_SCOPE_SUBSTANCE}"
-    rf"|{_OUT_OF_SCOPE_SUBSTANCE}[^.;\d]{{0,20}}\d+(?:\.\d+)?\s*(?:mg|µg|mcg|ug|g|iu|ie)\b",
+    r"\b(?:take|taking|try|use|using|start|dose|dosing|recommend\w*|suggest\w*|consider"
+    r"|stack|cycle|nimm|nehmen|einnehmen|empfehle\w*|probier\w*)\b"
+    rf"(?:(?!\b(?:to|zu|um)\b)[^.;]){{0,30}}?{_OUT_OF_SCOPE_SUBSTANCE}",
     re.IGNORECASE,
 )
-# Only a negation directly before the verb counts ("never take"), so "if sleep is not great,
-# take melatonin" is still blocked.
-_NEGATION = re.compile(r"\b(?:don'?t|do not|never|nie|nicht)\s+$", re.IGNORECASE)
+_ANY_DOSE = re.compile(r"\d+(?:\.\d+)?\s*(?:mg|µg|mcg|ug|g|iu|ie)\b", re.IGNORECASE)
+# A negation directly before the verb ("never take", "I can't recommend", "avoid taking") makes
+# it a warning; "if sleep is not great, take melatonin" is still advice.
+_NEGATION = re.compile(
+    r"\b(?:don['\u2019]?t|do not|never|avoid|can['\u2019]?t|cannot|can not|won['\u2019]?t|will not"
+    r"|shouldn['\u2019]?t|should not|wouldn['\u2019]?t|would not|nie|nicht|keine?)\s+$",
+    re.IGNORECASE,
+)
+_SENTENCE = re.compile(r"[^.;!?]+")
 MAX_VITAMIN_D_UG = 100.0  # = 4000 IU
 IU_PER_UG_VITAMIN_D = 40.0
 MAX_CAFFEINE_MG = 400.0
@@ -262,18 +286,24 @@ def _normalise_numbers(text: str) -> str:
     return _DECIMAL_COMMA.sub(".", _THOUSANDS.sub("", text))
 
 
-def _first_amount(match: re.Match[str]) -> tuple[float, str]:
+def _amounts(match: re.Match[str]) -> tuple[float, float, str]:
+    """(count, amount, unit) from a match whose groups are [count,] amount, unit."""
     groups = [g for g in match.groups() if g is not None]
-    return float(groups[0]), groups[1].lower()
+    count = 1.0
+    if len(groups) == 3:
+        word = groups.pop(0).lower()
+        count = float(_COUNTS.get(word) or word)
+    return count, float(groups[0]), groups[1].lower()
 
 
-def _vitamin_d_ug(amount: float, unit: str) -> float:
+def _vitamin_d_ug(amount: float, unit: str) -> float | None:
+    """Micrograms, or None when the unit cannot be a vitamin D dose (grams of food, whole mg)."""
     if unit in {"iu", "ie"}:
         return amount / IU_PER_UG_VITAMIN_D
     if unit == "mg":
-        return amount * 1000
+        return amount * 1000 if amount < 1 else None
     if unit == "g":
-        return amount * 1_000_000
+        return None
     return amount  # µg, mcg, ug
 
 
@@ -282,9 +312,14 @@ def _caffeine_mg(amount: float, unit: str) -> float:
 
 
 def _recommends_out_of_scope(text: str) -> bool:
-    for m in _OUT_OF_SCOPE_ADVICE.finditer(text):
-        # "Don't take melatonin" is a warning, not a recommendation; a dose is never fine.
-        if m.group("verb") is None or not _NEGATION.search(text[: m.start()]):
+    for sentence in _SENTENCE.finditer(text):
+        part = sentence.group()
+        for m in _OUT_OF_SCOPE_ADVICE.finditer(part):
+            # A warning is fine, but never one that also names a dose ("never more than 5 mg").
+            if not _NEGATION.search(part[: m.start()]) or _ANY_DOSE.search(part):
+                return True
+        # A dose right after the substance is never fine ("Melatonin 3 mg helps").
+        if re.search(rf"{_OUT_OF_SCOPE_SUBSTANCE}[^\d]{{0,20}}{_ANY_DOSE.pattern}", part, re.I):
             return True
     return False
 
@@ -294,15 +329,16 @@ def _unsafe_supplement_dose(text: str) -> bool:
     if _recommends_out_of_scope(text) or _IRON_DOSE.search(text):
         return True
     for m in _CAFFEINE_COUNT.finditer(text):
-        count = _COUNTS.get(m.group(1).lower()) or float(m.group(1))
-        amount, unit = float(m.group(2)), m.group(3).lower()
+        count, amount, unit = _amounts(m)
         if unit in {"mg", "g"} and count * _caffeine_mg(amount, unit) > MAX_CAFFEINE_MG:
             return True
     for m in _VITAMIN_D_DOSE.finditer(text):
-        if _vitamin_d_ug(*_first_amount(m)) > MAX_VITAMIN_D_UG:
+        count, amount, unit = _amounts(m)
+        micrograms = _vitamin_d_ug(amount, unit)
+        if micrograms is not None and count * micrograms > MAX_VITAMIN_D_UG:
             return True
     for m in [*_CAFFEINE_DOSE.finditer(text), *_CAFFEINE_TOTAL.finditer(text)]:
-        amount, unit = _first_amount(m)
+        _, amount, unit = _amounts(m)
         if unit in {"mg", "g"} and _caffeine_mg(amount, unit) > MAX_CAFFEINE_MG:
             return True
     for m in _CAFFEINE_PER_KG.finditer(text):
