@@ -30,6 +30,10 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | GET | `/goals?status=active` | Goals, newest first |
 | POST | `/goals` | Create a goal; a new primary goal demotes the old one |
 | PATCH | `/goals/{id}` | Change a goal's status |
+| PUT | `/checkins/today` | Create (201) or replace (200) today's check-in; the server picks the day in the athlete's time zone |
+| PUT | `/checkins/{day}` | Same for a given day (today or up to 7 days late) |
+| GET | `/checkins/today`, `/checkins/{day}` | One check-in with its readiness (404 until entered) |
+| GET | `/checkins?from=&to=` | Check-ins, newest first (default 14 days, max 92) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 

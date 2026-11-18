@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18, 20:57
+Last update: 2026-11-18, 21:21
 
 ## How to run it
 
@@ -56,8 +56,10 @@ pull request numbers.
 | #12 | One React version (19.3.0) for web and mobile | – |
 | #13 | Mobile app (iOS + Android, Expo): login, Today with goal countdown, coach chat, secure token storage | 36 mobile |
 | #14 | Docs: running the mobile app, CI, API client workflow | – |
+| #15 | Daily check-in API: sleep, soreness, mood, optional sleep hours, HRV, resting HR, pain; readiness 0-100 with personal baselines, in the athlete's time zone | +42 |
+| #16 | Morning check-in on web and mobile (three taps, readiness traffic light), shared wording package `@buddy/shared` | +32 frontend |
 
-Totals: backend 382 tests, frontend 66 tests (client 14, web 16, mobile 36); lint and strict typing clean; no API contract drift.
+Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobile 45); CI runs all of them.
 
 ## In progress
 
@@ -66,7 +68,7 @@ Totals: backend 382 tests, frontend 66 tests (client 14, web 16, mobile 36); lin
 ## Next
 
 1. Guided onboarding wizard (web and mobile) and the shared design system: easy first start.
-2. Daily check-in (sleep, soreness, mood) and the Today screen with readiness and targets.
+2. Today screen: nutrition targets and today's session next to readiness; the coach uses the check-in.
 3. Consent for AI processing and chat history (see `docs/backlog.md`).
 4. Food logging (text and grams first, then photo and barcode) feeding the vitamin and mineral check.
 5. Workouts with session feedback; HealthKit / Health Connect import on mobile.
