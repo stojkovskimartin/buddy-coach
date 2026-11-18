@@ -146,6 +146,24 @@ describe("CheckinCard", () => {
     await waitFor(() => expect(api.getTodayCheckin).toHaveBeenCalledTimes(2));
   });
 
+  it("keeps typed answers when the Today tab is shown again", async () => {
+    const getTodayCheckin = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("Offline"));
+    await render(<App {...appProps(fakeApi({ getTodayCheckin }), true)} />);
+    await screen.findByRole("button", { name: "Save check-in" });
+    await answer("How did you sleep?", 2);
+
+    await fireEvent.press(screen.getByRole("tab", { name: "Coach" }));
+    await fireEvent.press(screen.getByRole("tab", { name: "Today" }));
+
+    expect(await screen.findByText("Offline")).toBeTruthy();
+    expect(
+      within(scale("How did you sleep?")).getByRole("radio", { name: /^How did you sleep\? 2 of 5/ }),
+    ).toBeChecked();
+  });
+
   it("shows the error when saving fails and clears it on the next try", async () => {
     const saveTodayCheckin = jest
       .fn()

@@ -306,6 +306,17 @@ describe("web app", () => {
       expect(screen.getByText(/not medical advice/)).toBeInTheDocument();
     });
 
+    it("accepts a comma as decimal separator for sleep hours", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const form = await answerAll("3");
+      await userEvent.type(within(form).getByLabelText("Hours of sleep (optional)"), "6,5");
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      await waitFor(() =>
+        expect(api.saveTodayCheckin).toHaveBeenCalledWith(expect.objectContaining({ sleep_hours: 6.5 })),
+      );
+    });
+
     it("refuses impossible sleep hours", async () => {
       renderAt("/", fakeApi(), true);
       const form = await answerAll("3");

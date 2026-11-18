@@ -52,10 +52,14 @@ export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
       const checkin = await api.getTodayCheckin();
       if (id !== request.current) return;
       setToday(checkin);
-      setEditing(false);
       setLoad({ state: "ready" });
     } catch (e) {
-      if (id === request.current) setLoad({ state: "failed", error: errorMessage(e) });
+      if (id !== request.current) return;
+      // After a first successful load, a failed background refresh keeps what is on screen
+      // (and anything being typed) and only reports the problem.
+      const message = errorMessage(e);
+      setLoad((current) => (current.state === "ready" ? current : { state: "failed", error: message }));
+      setSaveError((current) => current ?? message);
     }
   }, [api]);
 
@@ -84,6 +88,7 @@ export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
           initial={today}
           onSaving={() => setSaveError(null)}
           onSaved={(saved) => {
+            request.current++; // a load started before the save must not undo it
             setToday(saved);
             setEditing(false);
             announce(`Readiness ${saved.readiness.score} of 100. ${READINESS_TEXT[saved.readiness.level]}`);
