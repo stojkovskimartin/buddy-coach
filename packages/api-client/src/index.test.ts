@@ -169,6 +169,19 @@ describe("BuddyClient", () => {
       expect(await api.calls[0]?.json()).toEqual({ sleep_quality: 4, soreness: 3, mood: 5 });
     });
 
+    it("saves today's check-in without sending a date", async () => {
+      const api = fakeApi({ "PUT /api/v1/checkins/today": () => json(201, checkin) });
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+
+      expect((await client.saveTodayCheckin({ sleep_quality: 4, soreness: 3, mood: 5 })).day).toBe(
+        "2026-11-18",
+      );
+    });
+
     it("lists check-ins with the from/to range", async () => {
       const api = fakeApi({ "GET /api/v1/checkins": () => json(200, [checkin]) });
       const client = new BuddyClient({

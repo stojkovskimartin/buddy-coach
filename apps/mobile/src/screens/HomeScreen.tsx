@@ -1,5 +1,5 @@
 import type { Goal, Profile } from "@buddy/api-client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CheckinCard } from "../components/CheckinCard";
@@ -36,7 +36,6 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
 
   const load = useCallback(async () => {
     setLoading(true);
-    setReloads((n) => n + 1);
     setError(null);
     try {
       const [p, g] = await Promise.all([api.getProfile(), api.listGoals("active")]);
@@ -49,16 +48,27 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
     }
   }, [api]);
 
+  /** Reload goals and the check-in card (pull to refresh, tab shown again). */
+  const reload = useCallback(() => {
+    setReloads((n) => n + 1);
+    void load();
+  }, [load]);
+
+  // First show loads once (the card loads itself); showing the tab again reloads everything.
+  const shown = useRef(false);
   useEffect(() => {
-    if (active) void load();
-  }, [active, load]);
+    if (!active) return;
+    if (shown.current) reload();
+    else void load();
+    shown.current = true;
+  }, [active, load, reload]);
 
   const primary = goals.find((g) => g.priority === "primary");
 
   return (
     <ScrollView
       contentContainerStyle={styles.screen}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
     >
       <Text accessibilityRole="header" style={styles.title}>
         Today

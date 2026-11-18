@@ -127,7 +127,12 @@ export class BuddyClient {
     return unwrap(result);
   }
 
-  /** Create or replace the check-in of a day (ISO date, today or up to 7 days late). */
+  /** Create or replace today's check-in; the server picks the day in the athlete's time zone. */
+  async saveTodayCheckin(checkin: CheckinIn): Promise<Checkin> {
+    return unwrap(await this.raw.PUT("/api/v1/checkins/today", { body: checkin }));
+  }
+
+  /** Create or replace the check-in of a given day (ISO date, today or up to 7 days late). */
   async saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin> {
     return unwrap(
       await this.raw.PUT("/api/v1/checkins/{day}", { params: { path: { day } }, body: checkin }),

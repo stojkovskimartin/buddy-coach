@@ -1,95 +1,111 @@
-import type { Checkin, CheckinIn, Readiness } from "@buddy/api-client";
-import { useEffect, useState, type FormEvent } from "react";
+import type { Checkin, CheckinIn } from "@buddy/api-client";
+import {
+  CHECKIN_QUESTIONS,
+  PAIN_LABEL,
+  PAIN_NOTE,
+  READINESS_NOTE,
+  READINESS_TEXT,
+  SCALE_VALUES,
+  SLEEP_HOURS_ERROR,
+  limitingText,
+  parseSleepHours,
+  scaleOptionLabel,
+  type CheckinScale,
+} from "@buddy/shared";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { isoDate } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
 
-type Scale = "sleep_quality" | "soreness" | "mood";
+type Load = { state: "loading" } | { state: "failed"; error: string } | { state: "ready" };
 
-/** The three morning questions, 1 (bad) to 5 (great). Same wording as the mobile app. */
-export const QUESTIONS: { key: Scale; question: string; low: string; high: string }[] = [
-  { key: "sleep_quality", question: "How did you sleep?", low: "Very badly", high: "Great" },
-  { key: "soreness", question: "How do your muscles feel?", low: "Very sore", high: "Fresh" },
-  { key: "mood", question: "How do you feel?", low: "Very low", high: "Great" },
-];
-
-const LEVEL_TEXT: Record<Readiness["level"], string> = {
-  green: "Ready to train as planned.",
-  amber: "Train, but keep it easy today.",
-  red: "Rest or recovery only today.",
-};
-
-export const FACTOR_LABELS: Record<string, string> = {
-  sleep: "sleep",
-  soreness: "sore muscles",
-  mood: "mood",
-  hrv: "heart rate variability",
-  resting_hr: "resting heart rate",
-  training_load: "recent training load",
-  pain: "pain",
-};
-
-/** Morning check-in: three taps, then today's readiness. */
+/** Morning check-in: three taps, then today's readiness. Reloads when the tab is shown again. */
 export function CheckinCard() {
   const { api } = useSession();
   const [today, setToday] = useState<Checkin | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [load, setLoad] = useState<Load>({ state: "loading" });
   const [editing, setEditing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const request = useRef(0);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getTodayCheckin()
-      .then((c) => active && setToday(c))
-      .catch((e: unknown) => active && setError(errorMessage(e)))
-      .finally(() => active && setLoaded(true));
-    return () => {
-      active = false;
-    };
+  const fetchToday = useCallback(async () => {
+    const id = ++request.current; // only the newest request may update the card
+    try {
+      const checkin = await api.getTodayCheckin();
+      if (id !== request.current) return;
+      setToday(checkin);
+      setLoad({ state: "ready" });
+    } catch (e) {
+      if (id === request.current) setLoad({ state: "failed", error: errorMessage(e) });
+    }
   }, [api]);
 
-  if (!loaded) return null;
-  return (
-    <section className="card" aria-labelledby="checkin-title">
-      <h2 id="checkin-title">Morning check-in</h2>
-      {error && (
+  useEffect(() => {
+    void fetchToday();
+    // A dashboard left open overnight shows the new day when the tab is visible again.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void fetchToday();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchToday]);
+
+  let body;
+  if (load.state === "loading") {
+    body = <p className="muted">Loading…</p>;
+  } else if (load.state === "failed") {
+    // Never show an empty form here: saving it would overwrite a check-in we could not load.
+    body = (
+      <>
         <p role="alert" className="error">
-          {error}
+          {load.error}
         </p>
-      )}
-      {today && !editing ? (
-        <ReadinessView checkin={today} onEdit={() => setEditing(true)} />
-      ) : (
+        <button type="button" onClick={() => void fetchToday()}>
+          Try again
+        </button>
+      </>
+    );
+  } else if (today && !editing) {
+    body = <ReadinessView checkin={today} onEdit={() => setEditing(true)} />;
+  } else {
+    body = (
+      <>
+        {saveError && (
+          <p role="alert" className="error">
+            {saveError}
+          </p>
+        )}
         <CheckinForm
           initial={today}
+          onSaving={() => setSaveError(null)}
           onSaved={(saved) => {
             setToday(saved);
             setEditing(false);
-            setError(null);
           }}
-          onError={setError}
+          onError={setSaveError}
         />
-      )}
+      </>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="checkin-title">
+      <h2 id="checkin-title">Morning check-in</h2>
+      {body}
     </section>
   );
 }
 
 function ReadinessView({ checkin, onEdit }: { checkin: Checkin; onEdit: () => void }) {
   const { score, level, limiting_factors } = checkin.readiness;
+  const limiting = limitingText(limiting_factors);
   return (
     <div className="readiness">
       <p className={`traffic ${level}`} role="status">
-        <strong>Readiness {score}/100</strong> – {LEVEL_TEXT[level]}
+        <strong>Readiness {score}/100</strong> – {READINESS_TEXT[level]}
       </p>
-      {limiting_factors.length > 0 && (
-        <p className="muted">
-          Held back by: {limiting_factors.map((f) => FACTOR_LABELS[f] ?? f).join(", ")}.
-        </p>
-      )}
-      {checkin.pain && (
-        <p className="muted">You reported pain. If it does not ease, see a doctor or physio.</p>
-      )}
+      {limiting && <p className="muted">{limiting}</p>}
+      {checkin.pain && <p>{PAIN_NOTE}</p>}
+      <p className="muted small">{READINESS_NOTE}</p>
       <button type="button" className="link" onClick={onEdit}>
         Change today's answers
       </button>
@@ -99,15 +115,17 @@ function ReadinessView({ checkin, onEdit }: { checkin: Checkin; onEdit: () => vo
 
 function CheckinForm({
   initial,
+  onSaving,
   onSaved,
   onError,
 }: {
   initial: Checkin | null;
+  onSaving: () => void;
   onSaved: (checkin: Checkin) => void;
   onError: (message: string) => void;
 }) {
   const { api } = useSession();
-  const [answers, setAnswers] = useState<Partial<Record<Scale, number>>>(() =>
+  const [answers, setAnswers] = useState<Partial<Record<CheckinScale, number>>>(() =>
     initial
       ? { sleep_quality: initial.sleep_quality, soreness: initial.soreness, mood: initial.mood }
       : {},
@@ -116,21 +134,28 @@ function CheckinForm({
   const [pain, setPain] = useState(initial?.pain ?? false);
   const [busy, setBusy] = useState(false);
 
-  const complete = QUESTIONS.every((q) => answers[q.key] !== undefined);
+  const hours = parseSleepHours(sleepHours);
+  const complete =
+    CHECKIN_QUESTIONS.every((q) => answers[q.key] !== undefined) && hours !== "invalid";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!complete) return;
+    if (hours === "invalid" || !complete) return;
     const body: CheckinIn = {
       sleep_quality: answers.sleep_quality!,
       soreness: answers.soreness!,
       mood: answers.mood!,
       pain,
-      ...(sleepHours ? { sleep_hours: Number(sleepHours) } : {}),
+      ...(hours !== null ? { sleep_hours: hours } : {}),
     };
+    onSaving();
     setBusy(true);
     try {
-      onSaved(await api.saveCheckin(isoDate(new Date()), body));
+      // Editing keeps the day that was loaded; a new check-in lets the server pick today.
+      const saved = initial
+        ? await api.saveCheckin(initial.day, body)
+        : await api.saveTodayCheckin(body);
+      onSaved(saved);
     } catch (e) {
       onError(errorMessage(e));
     } finally {
@@ -140,11 +165,11 @@ function CheckinForm({
 
   return (
     <form onSubmit={submit} aria-label="Morning check-in">
-      {QUESTIONS.map((q) => (
+      {CHECKIN_QUESTIONS.map((q) => (
         <fieldset key={q.key} className="scale">
           <legend>{q.question}</legend>
           <div className="scale-options">
-            {[1, 2, 3, 4, 5].map((value) => (
+            {SCALE_VALUES.map((value) => (
               <label key={value} className={answers[q.key] === value ? "selected" : ""}>
                 <input
                   type="radio"
@@ -152,7 +177,7 @@ function CheckinForm({
                   value={value}
                   checked={answers[q.key] === value}
                   onChange={() => setAnswers((a) => ({ ...a, [q.key]: value }))}
-                  aria-label={`${value} of 5${value === 1 ? ` (${q.low})` : value === 5 ? ` (${q.high})` : ""}`}
+                  aria-label={scaleOptionLabel(value, q)}
                 />
                 <span aria-hidden="true">{value}</span>
               </label>
@@ -167,18 +192,22 @@ function CheckinForm({
       <label>
         Hours of sleep (optional)
         <input
-          type="number"
+          type="text"
           inputMode="decimal"
-          min={0}
-          max={16}
-          step={0.5}
           value={sleepHours}
+          aria-invalid={hours === "invalid"}
+          aria-describedby={hours === "invalid" ? "sleep-hours-error" : undefined}
           onChange={(e) => setSleepHours(e.target.value)}
         />
       </label>
+      {hours === "invalid" && (
+        <p id="sleep-hours-error" className="error">
+          {SLEEP_HOURS_ERROR}
+        </p>
+      )}
       <label className="checkbox">
         <input type="checkbox" checked={pain} onChange={(e) => setPain(e.target.checked)} />
-        I have pain today (not normal muscle soreness)
+        {PAIN_LABEL}
       </label>
       <button type="submit" disabled={!complete || busy}>
         {busy ? "Saving…" : "Save check-in"}
