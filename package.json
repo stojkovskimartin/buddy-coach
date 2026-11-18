@@ -11,7 +11,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "api:generate": "pnpm --filter @buddy/api-client generate"
+    "api:export": "cd services/api && uv run python scripts/export_openapi.py ../../packages/api-client/openapi.json",
+    "api:generate": "pnpm api:export && pnpm --filter @buddy/api-client generate"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
