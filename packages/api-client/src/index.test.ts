@@ -155,8 +155,8 @@ describe("BuddyClient", () => {
       expect(await client.getTodayCheckin()).toBeNull();
     });
 
-    it("saves a check-in for a day and returns its readiness", async () => {
-      const api = fakeApi({ "PUT /api/v1/checkins/2026-11-18": () => json(200, checkin) });
+    it("saves a new check-in (201) and returns its readiness", async () => {
+      const api = fakeApi({ "PUT /api/v1/checkins/2026-11-18": () => json(201, checkin) });
       const client = new BuddyClient({
         baseUrl: BASE,
         tokens: memoryTokenStore(tokens(1)),
