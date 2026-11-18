@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18
+Last update: 2026-11-18, 20:20
 
 ## How to run it
 
@@ -15,6 +15,11 @@ docker compose -f infra/docker-compose.yml up --build
 Open http://localhost:8000/docs and follow "Try it in 5 minutes" in the README.
 Real AI answers: create `infra/.env` with `BUDDY_LLM_PROVIDER=anthropic` and
 `BUDDY_ANTHROPIC_API_KEY=...`, then start again.
+
+**Web app (needs Node 22 + pnpm, with the API running):** `pnpm install`, then
+`pnpm --filter @buddy/web dev` and open http://localhost:5173.
+
+Full guide: [running.md](running.md).
 
 **Run the backend tests (developers, needs Python 3.13 + uv and a Postgres):**
 
@@ -36,25 +41,28 @@ BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_te
 | #3 | Nutrition engine (BMR, targets, macros, adaptive TDEE), training engine (load, fitness, ramp, readiness) | +78 |
 | #4 | Coach agent network: Head Coach + 5 specialists, tool limits, Safety Guard, Anthropic provider | +99 |
 | #5 | One-command local run (Docker Compose), "Try it" guide | smoke-tested |
+| #6 | Living progress file (this document) | – |
+| #7 | Recovery nutrition: vitamins and minerals (D-A-CH references), recovery meals, protein per meal, evidence-graded supplement catalogue (creatine, caffeine, vitamin D, iron, …), 3 coach tools, dose limits in the Safety Guard (ADR-0005) | +46 |
+| #8 | Shared typed API client (generated from OpenAPI) and web app: login, onboarding, goals, coach chat | 30 frontend |
+| #9 | Full documentation in `docs/` (running, API, agents, science, development, testing) | – |
 
-Backend total: 258 tests, lint and strict typing clean.
+Totals: backend 304 tests, frontend 30 tests; lint and strict typing clean; no API contract drift.
 
 ## In progress
 
-- `feat/micronutrients` – vitamins, minerals, protein distribution, creatine and other
-  evidence-based supplements, recovery nutrition; new coach tools.
-- `feat/clients` – shared typed API client (done, 8 tests), web app next, then mobile and desktop.
+- #8 (clients) post-merge re-review: approved, all 11 findings fixed.
+- #7 (recovery nutrition) post-merge review: running; findings get fixed on a `fix/…` branch.
 
 ## Next
 
-1. Web app: login, onboarding, goals, coach chat.
-2. Mobile app (Expo): same screens, HealthKit / Health Connect import.
-3. Desktop app (Tauri) wrapping the web app.
-4. CI on GitHub (lint, types, tests, contract drift) and branch protection.
-5. Food logging (photo, text, barcode) and workout import.
+1. Mobile app (Expo, iOS and Android): same screens, secure token storage, HealthKit / Health Connect import.
+2. Desktop app (Tauri) wrapping the web app.
+3. CI on GitHub (lint, types, tests, contract drift on every push) and branch protection.
+4. Food logging (photo, text, barcode, grams) feeding the micronutrient assessment.
+5. Workout import and session feedback (RPE, feeling, pain).
 6. Consent for AI processing, chat history, email verification (see `docs/backlog.md`).
 
 ## Open decisions for the product owner
 
-- Who merges: Claude merges and pushes (default), or you merge PRs on GitHub.
 - App name (shortlist: BuddyCoach, Coachli, FuelStride).
+- Repository visibility: currently public.
