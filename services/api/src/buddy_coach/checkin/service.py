@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Sequence
-from datetime import UTC, date, datetime, timedelta
+from collections.abc import Sequence
+from datetime import UTC, date, timedelta
+from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,13 +21,15 @@ from buddy_coach.checkin.events import CheckinSaved
 from buddy_coach.checkin.models import DailyCheckin
 from buddy_coach.checkin.repository import CheckinRepository
 from buddy_coach.checkin.schemas import CheckinIn, CheckinOut, ReadinessOut
+from buddy_coach.core.deps import Clock
 from buddy_coach.core.errors import NotFoundError
 from buddy_coach.core.events import EventBus
-from buddy_coach.profile.service import ProfileService
 
 
-def _now() -> datetime:
-    return datetime.now(UTC)
+class TimezoneLookup(Protocol):
+    """What the check-in module needs from the profile module."""
+
+    async def timezone_for(self, user_id: uuid.UUID) -> str | None: ...
 
 
 def _values(checkin: DailyCheckin) -> CheckinValues:
@@ -48,8 +51,8 @@ class CheckinService:
         self,
         session: AsyncSession,
         events: EventBus,
-        profiles: ProfileService,
-        now: Callable[[], datetime] = _now,
+        profiles: TimezoneLookup,
+        now: Clock,
     ) -> None:
         self._session = session
         self._repo = CheckinRepository(session)
@@ -59,18 +62,18 @@ class CheckinService:
 
     async def local_today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone (UTC until the profile exists)."""
-        profile = await self._profiles.find_profile(user_id)
-        zone = ZoneInfo(profile.timezone) if profile else UTC
+        timezone = await self._profiles.timezone_for(user_id)
+        zone = ZoneInfo(timezone) if timezone else UTC
         return self._now().astimezone(zone).date()
 
-    async def save(self, user_id: uuid.UUID, day: date, data: CheckinIn) -> CheckinOut:
-        """Create or replace the check-in of a day."""
+    async def save(self, user_id: uuid.UUID, day: date, data: CheckinIn) -> tuple[CheckinOut, bool]:
+        """Create or replace the check-in of a day; True when it was created."""
         validate_day(day, await self.local_today(user_id))
-        checkin = await self._repo.upsert(user_id, day, data.model_dump())
+        checkin, created = await self._repo.upsert(user_id, day, data.model_dump())
         out = await self._with_readiness(user_id, checkin)
         await self._session.commit()
         await self._events.publish(CheckinSaved(user_id=user_id, day=day))
-        return out
+        return out, created
 
     async def get(self, user_id: uuid.UUID, day: date) -> CheckinOut:
         """The check-in of a day with its readiness."""
@@ -83,7 +86,7 @@ class CheckinService:
         """Check-ins in a date range, newest first, each with its readiness."""
         validate_range(start, end)
         rows = await self._repo.between(user_id, start - timedelta(days=BASELINE_DAYS), end)
-        return [self._out(row, rows[i + 1 :]) for i, row in enumerate(rows) if row.day >= start]
+        return [self._out(row, rows) for row in rows if row.day >= start]
 
     async def _with_readiness(self, user_id: uuid.UUID, checkin: DailyCheckin) -> CheckinOut:
         previous = await self._repo.between(
@@ -92,10 +95,9 @@ class CheckinService:
         return self._out(checkin, previous)
 
     @staticmethod
-    def _out(checkin: DailyCheckin, previous: Sequence[DailyCheckin]) -> CheckinOut:
-        """``previous`` is newest first; only the days within the baseline window count."""
-        window = [p for p in previous if (checkin.day - p.day).days <= BASELINE_DAYS]
-        result = readiness_for(_values(checkin), [_values(p) for p in window])
+    def _out(checkin: DailyCheckin, others: Sequence[DailyCheckin]) -> CheckinOut:
+        """``others`` may hold any days; the domain picks the baseline window."""
+        result = readiness_for(checkin.day, _values(checkin), [(o.day, _values(o)) for o in others])
         return CheckinOut(
             day=checkin.day,
             sleep_quality=checkin.sleep_quality,

@@ -152,7 +152,7 @@
         "type": "object"
       },
       "CheckinOut": {
-        "description": "A saved check-in with the readiness computed for that day.",
+        "description": "A saved check-in with the readiness for that day.\n\nReadiness is computed when read, not stored: a late check-in for an earlier day can change\nthe baselines, and so the readiness, of the days after it.",
         "properties": {
           "day": {
             "format": "date",
@@ -1191,7 +1191,7 @@
         ]
       },
       "put": {
-        "description": "Create or replace the check-in of a day (today or up to 7 days late).",
+        "description": "Create (201) or replace (200) the check-in of a day (today or up to 7 days late).",
         "operationId": "put_checkin_api_v1_checkins__day__put",
         "parameters": [
           {
@@ -1225,6 +1225,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Created"
           },
           "422": {
             "content": {

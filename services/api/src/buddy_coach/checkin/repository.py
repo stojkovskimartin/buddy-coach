@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import Boolean, func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,8 +21,8 @@ class CheckinRepository:
 
     async def upsert(
         self, user_id: uuid.UUID, day: date, values: dict[str, object]
-    ) -> DailyCheckin:
-        """Insert or replace the check-in of one day atomically."""
+    ) -> tuple[DailyCheckin, bool]:
+        """Insert or replace the check-in of one day atomically; True when it was new."""
         statement = (
             insert(DailyCheckin)
             .values(user_id=user_id, day=day, **values)
@@ -30,13 +30,15 @@ class CheckinRepository:
                 index_elements=[DailyCheckin.user_id, DailyCheckin.day],
                 set_={**values, "updated_at": func.now()},
             )
-            .returning(DailyCheckin)
+            # xmax is 0 for a freshly inserted row and set for an updated one (PostgreSQL).
+            .returning(DailyCheckin, literal_column("xmax = 0", Boolean).label("inserted"))
         )
         result = await self._session.execute(
             statement, execution_options={"populate_existing": True}
         )
-        checkin: DailyCheckin = result.scalar_one()
-        return checkin
+        row = result.one()
+        checkin: DailyCheckin = row[0]
+        return checkin, bool(row[1])
 
     async def get(self, user_id: uuid.UUID, day: date) -> DailyCheckin | None:
         """The check-in of one day."""

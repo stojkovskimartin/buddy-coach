@@ -30,7 +30,11 @@ class ReadinessOut(BaseModel):
 
 
 class CheckinOut(CheckinIn):
-    """A saved check-in with the readiness computed for that day."""
+    """A saved check-in with the readiness for that day.
+
+    Readiness is computed when read, not stored: a late check-in for an earlier day can change
+    the baselines, and so the readiness, of the days after it.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 

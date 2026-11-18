@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response, status
 
 from buddy_coach.checkin.deps import CheckinServiceDep
 from buddy_coach.checkin.schemas import CheckinIn, CheckinOut
@@ -39,9 +39,20 @@ async def get_checkin(day: date, current: CurrentUserDep, service: CheckinServic
     return await service.get(current.id, day)
 
 
-@router.put("/{day}", response_model=CheckinOut)
+@router.put(
+    "/{day}",
+    response_model=CheckinOut,
+    responses={status.HTTP_201_CREATED: {"model": CheckinOut, "description": "Created"}},
+)
 async def put_checkin(
-    day: date, body: CheckinIn, current: CurrentUserDep, service: CheckinServiceDep
+    day: date,
+    body: CheckinIn,
+    current: CurrentUserDep,
+    service: CheckinServiceDep,
+    response: Response,
 ) -> CheckinOut:
-    """Create or replace the check-in of a day (today or up to 7 days late)."""
-    return await service.save(current.id, day, body)
+    """Create (201) or replace (200) the check-in of a day (today or up to 7 days late)."""
+    checkin, created = await service.save(current.id, day, body)
+    if created:
+        response.status_code = status.HTTP_201_CREATED
+    return checkin

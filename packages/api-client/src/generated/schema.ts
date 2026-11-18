@@ -138,7 +138,7 @@ export interface paths {
         get: operations["get_checkin_api_v1_checkins__day__get"];
         /**
          * Put Checkin
-         * @description Create or replace the check-in of a day (today or up to 7 days late).
+         * @description Create (201) or replace (200) the check-in of a day (today or up to 7 days late).
          */
         put: operations["put_checkin_api_v1_checkins__day__put"];
         post?: never;
@@ -376,7 +376,10 @@ export interface components {
         };
         /**
          * CheckinOut
-         * @description A saved check-in with the readiness computed for that day.
+         * @description A saved check-in with the readiness for that day.
+         *
+         *     Readiness is computed when read, not stored: a late check-in for an earlier day can change
+         *     the baselines, and so the readiness, of the days after it.
          */
         CheckinOut: {
             /**
@@ -941,6 +944,15 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

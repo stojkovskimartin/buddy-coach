@@ -19,6 +19,9 @@ class DailyCheckin(TimestampMixin, Base):
         CheckConstraint("sleep_quality BETWEEN 1 AND 5", name="sleep_quality"),
         CheckConstraint("soreness BETWEEN 1 AND 5", name="soreness"),
         CheckConstraint("mood BETWEEN 1 AND 5", name="mood"),
+        CheckConstraint("sleep_hours BETWEEN 0 AND 16", name="sleep_hours"),
+        CheckConstraint("hrv_ms > 0 AND hrv_ms <= 300", name="hrv_ms"),
+        CheckConstraint("resting_hr BETWEEN 25 AND 150", name="resting_hr"),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)

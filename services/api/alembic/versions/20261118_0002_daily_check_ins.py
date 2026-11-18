@@ -42,6 +42,13 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("mood BETWEEN 1 AND 5", name=op.f("ck_checkin_daily_mood")),
         sa.CheckConstraint(
+            "sleep_hours BETWEEN 0 AND 16", name=op.f("ck_checkin_daily_sleep_hours")
+        ),
+        sa.CheckConstraint("hrv_ms > 0 AND hrv_ms <= 300", name=op.f("ck_checkin_daily_hrv_ms")),
+        sa.CheckConstraint(
+            "resting_hr BETWEEN 25 AND 150", name=op.f("ck_checkin_daily_resting_hr")
+        ),
+        sa.CheckConstraint(
             "sleep_quality BETWEEN 1 AND 5", name=op.f("ck_checkin_daily_sleep_quality")
         ),
         sa.CheckConstraint("soreness BETWEEN 1 AND 5", name=op.f("ck_checkin_daily_soreness")),

@@ -50,7 +50,7 @@ def validate_day(day: date, today: date) -> None:
 def validate_range(start: date, end: date) -> None:
     """History queries are bounded so one request never loads years of data."""
     if end < start:
-        raise ValidationFailedError("'to' must not be before 'from'.")
+        raise ValidationFailedError(f"The range ends ({end}) before it starts ({start}).")
     if (end - start).days + 1 > MAX_RANGE_DAYS:
         raise ValidationFailedError(f"At most {MAX_RANGE_DAYS} days per request.")
 
@@ -60,12 +60,23 @@ def _baseline(values: Sequence[float | None], minimum: int) -> list[float]:
     return present if len(present) >= minimum else []
 
 
-def readiness_for(today: CheckinValues, previous: Sequence[CheckinValues]) -> Readiness:
-    """Today's readiness from the check-in and the previous days in the baseline window
-    (newest first). HRV and resting heart rate only count when there is a baseline.
+def readiness_for(
+    day: date, today: CheckinValues, previous: Sequence[tuple[date, CheckinValues]]
+) -> Readiness:
+    """Readiness of ``day`` from its check-in and earlier check-ins (any order).
+
+    Only the ``BASELINE_DAYS`` days before ``day`` form the device baselines; HRV and resting
+    heart rate only count when such a baseline exists. Readiness is computed when read, so a
+    check-in entered late can change the readiness shown for the days after it.
     """
-    hrv_baseline = _baseline([c.hrv_ms for c in previous], MIN_HRV_VALUES)
-    rhr_baseline = _baseline([c.resting_hr for c in previous], MIN_RESTING_HR_VALUES)
+    window = sorted(
+        ((d, v) for d, v in previous if 0 < (day - d).days <= BASELINE_DAYS),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    earlier = [v for _, v in window]
+    hrv_baseline = _baseline([c.hrv_ms for c in earlier], MIN_HRV_VALUES)
+    rhr_baseline = _baseline([c.resting_hr for c in earlier], MIN_RESTING_HR_VALUES)
     return readiness(
         ReadinessInputs(
             sleep_quality=today.sleep_quality,
