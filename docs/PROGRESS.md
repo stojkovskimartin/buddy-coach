@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18, 22:10
+Last update: 2026-11-18, 21:30
 
 ## How to run it
 
@@ -46,22 +46,25 @@ BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_te
 | #8 | Shared typed API client (generated from OpenAPI) and web app: login, onboarding, goals, coach chat | 30 frontend |
 | #9 | Full documentation in `docs/` (running, API, agents, science, development, testing) | – |
 | #10 | Post-merge review of #7: magnesium limit for supplements only, recovery meal per hour, vitamin D and iron only via a doctor, Safety Guard catches dose phrasings (vitamin D, iron, caffeine pill counts, decimals, Swiss numbers) without blocking food-first answers or warnings | +78 |
+| #11 | CI on GitHub: lint, types, all tests on Postgres, frontend tests, API contract drift on every PR and push to main | runs everything |
+| #12 | One React version (19.3.0) for web and mobile | – |
+| #13 | Mobile app (iOS + Android, Expo): login, Today with goal countdown, coach chat, secure token storage | 36 mobile |
+| #14 | Docs: running the mobile app, CI, API client workflow | – |
 
-Totals: backend 382 tests, frontend 30 tests; lint and strict typing clean; no API contract drift.
+Totals: backend 382 tests, frontend 66 tests (client 14, web 16, mobile 36); lint and strict typing clean; no API contract drift.
 
 ## In progress
 
-- Mobile app (Expo, iOS and Android) on `feat/mobile`.
 - Task tracker with every feature and its status: https://claude.ai/artifact/2uRQPCZYqwALLndwByTcHX
 
 ## Next
 
-1. Mobile app (Expo, iOS and Android): same screens, secure token storage, HealthKit / Health Connect import.
-2. Desktop app (Tauri) wrapping the web app.
-3. CI on GitHub (lint, types, tests, contract drift on every push) and branch protection.
-4. Food logging (photo, text, barcode, grams) feeding the micronutrient assessment.
-5. Workout import and session feedback (RPE, feeling, pain).
-6. Consent for AI processing, chat history, email verification (see `docs/backlog.md`).
+1. Guided onboarding wizard (web and mobile) and the shared design system: easy first start.
+2. Daily check-in (sleep, soreness, mood) and the Today screen with readiness and targets.
+3. Consent for AI processing and chat history (see `docs/backlog.md`).
+4. Food logging (text and grams first, then photo and barcode) feeding the vitamin and mineral check.
+5. Workouts with session feedback; HealthKit / Health Connect import on mobile.
+6. Desktop app (Tauri) wrapping the web app.
 
 ## Open decisions for the product owner
 
