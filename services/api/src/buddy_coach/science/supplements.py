@@ -97,8 +97,9 @@ CATALOGUE: tuple[Supplement, ...] = (
         evidence=Evidence.A,
         purposes=frozenset({Purpose.ENDURANCE, Purpose.STRENGTH_POWER}),
         what_it_does="Lowers perceived effort and improves endurance and power.",
-        typical_use="About 3 mg per kg body weight, 30-60 minutes before a key session or race.",
-        max_daily="400 mg from all sources (about 4 espressos)",
+        typical_use="About 3 mg per kg body weight, 30-60 minutes before a key session or race; "
+        "not more than 200 mg in one dose.",
+        max_daily="400 mg from all sources (about 5 espressos)",
         cautions=(
             "Avoid within about 6 hours of bedtime: poor sleep costs more than caffeine gives.",
             "Try it in training first, never new on race day.",
@@ -108,6 +109,7 @@ CATALOGUE: tuple[Supplement, ...] = (
                 HealthFlag.HEART_CONDITION,
                 HealthFlag.HIGH_BLOOD_PRESSURE,
                 HealthFlag.PREGNANT_OR_BREASTFEEDING,
+                HealthFlag.TAKES_MEDICATION,
             }
         ),
     ),
@@ -142,7 +144,7 @@ CATALOGUE: tuple[Supplement, ...] = (
         purposes=frozenset({Purpose.STRENGTH_POWER, Purpose.ENDURANCE}),
         what_it_does="May help hard efforts lasting about 1-4 minutes.",
         typical_use="Split doses with meals over several weeks; follow the product label.",
-        max_daily="Follow the product label",
+        max_daily="6.4 g",
         cautions=("Harmless tingling of the skin is common; split doses reduce it.",),
         contraindications=frozenset({HealthFlag.PREGNANT_OR_BREASTFEEDING}),
     ),
@@ -199,7 +201,11 @@ CATALOGUE: tuple[Supplement, ...] = (
 )
 
 _BY_KEY = {s.key: s for s in CATALOGUE}
-OUT_OF_SCOPE = frozenset({"melatonin", "sarms", "testosterone", "ephedrine", "dnp", "clenbuterol"})
+# Medicines and banned or dangerous substances: the coach never recommends them (the Safety Guard
+# blocks answers that mention them).
+OUT_OF_SCOPE = frozenset(
+    {"melatonin", "sarms", "testosterone", "ephedrine", "dnp", "clenbuterol", "anabolic steroids"}
+)
 
 
 @dataclass(frozen=True, slots=True)

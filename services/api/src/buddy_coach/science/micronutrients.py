@@ -57,13 +57,15 @@ REFERENCE_INTAKE: dict[Nutrient, dict[Sex, float]] = {
     Nutrient.FIBRE: {Sex.MALE: 30, Sex.FEMALE: 30},
 }
 
-# Tolerable upper intake level per day from all sources (EFSA). Magnesium: supplements only.
+# Tolerable upper intake level per day (EFSA). Most apply to all sources together; the magnesium
+# limit applies to supplements only, so food intake is never compared with it.
 UPPER_LIMIT: dict[Nutrient, float] = {
     Nutrient.VITAMIN_D: 100,
     Nutrient.CALCIUM: 2500,
     Nutrient.ZINC: 25,
     Nutrient.MAGNESIUM: 250,
 }
+SUPPLEMENT_ONLY_LIMITS: frozenset[Nutrient] = frozenset({Nutrient.MAGNESIUM})
 
 FOOD_SOURCES: dict[Nutrient, tuple[str, ...]] = {
     Nutrient.VITAMIN_D: ("fatty fish (salmon, herring, mackerel)", "eggs", "sunlight on skin"),
@@ -126,7 +128,7 @@ def assess_intake(
         average = sum(values) / len(values)
         reference = reference_for(nutrient, sex)
         ratio = average / reference
-        upper = UPPER_LIMIT.get(nutrient)
+        upper = None if nutrient in SUPPLEMENT_ONLY_LIMITS else UPPER_LIMIT.get(nutrient)
         if upper is not None and average > upper:
             status = IntakeStatus.ABOVE_UPPER_LIMIT
         elif ratio < LOW_THRESHOLD:

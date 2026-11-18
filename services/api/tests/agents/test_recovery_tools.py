@@ -47,6 +47,7 @@ async def test_recovery_meal_after_hard_session(
     assert result["recovery_carbs_g"] == 79  # 1.0 g/kg for 79 kg
     assert result["protein_per_meal_g"] == 24
     assert result["meals_per_day"] == 4
+    assert "daily_protein_from_meals_g" not in result  # no second, conflicting daily target
 
 
 async def test_creatine_advice_comes_from_catalogue(
@@ -108,3 +109,48 @@ async def test_unknown_purpose_is_rejected_back_to_model(
         purposes=["steroids"],
     )
     assert "Invalid arguments" in str(result["error"])
+
+
+async def test_professional_only_supplements_carry_no_dose(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    result = await _ask(
+        client,
+        llm_provider,
+        "Should I take vitamin D or iron?",
+        "supplement_guidance",
+        purposes=["general_health"],
+    )
+    professional = {e["name"]: e for e in result["ask_a_professional"]}  # type: ignore[union-attr]
+    for name in ("Vitamin D", "Iron"):
+        assert professional[name]["max_daily"] is None
+        assert "blood test" in professional[name]["typical_use"]
+
+
+async def test_contraindication_through_tool_for_caffeine(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    result = await _ask(
+        client,
+        llm_provider,
+        "Can I use caffeine before races? I take medication.",
+        "supplement_guidance",
+        purposes=["endurance"],
+        health_flags=["takes_medication"],
+    )
+    suggested = {s["name"] for s in result["suggested"]}  # type: ignore[union-attr]
+    assert "Caffeine" not in suggested
+
+
+async def test_magnesium_limit_is_labelled_supplements_only(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    result = await _ask(
+        client,
+        llm_provider,
+        "How much magnesium do I need?",
+        "micronutrient_reference",
+        nutrients=["magnesium"],
+    )
+    ref = result["references"][0]  # type: ignore[index]
+    assert ref["upper_limit_applies_to"] == "supplements only"

@@ -50,13 +50,24 @@ def protein_distribution(body: BodyData, meals: int = 4) -> ProteinDistribution:
     )
 
 
+LARGE_FLUID_LOSS_SHARE = 0.03  # > 3% of body mass lost in one session
+QUICK_REFUEL_HOURS = 4
+
+
 @dataclass(frozen=True, slots=True)
 class RecoveryMeal:
-    """What to eat and drink after a session."""
+    """What to eat and drink after a session.
+
+    ``carbs_g`` is the amount for the recovery meal. With a quick turnaround the guidance is
+    ``carbs_g_per_hour`` instead, repeated for ``refuel_hours``.
+    """
 
     carbs_g: int
+    carbs_g_per_hour: int | None
+    refuel_hours: int | None
     protein_g: int
     fluid_ml: int | None
+    fluid_warning: str | None
     timing: str
     reason: str
 
@@ -69,7 +80,11 @@ def post_session_recovery(
     hours_until_next_session: float | None = None,
     body_mass_lost_kg: float | None = None,
 ) -> RecoveryMeal:
-    """Carbohydrate and protein after training; urgent when the next session is soon."""
+    """Carbohydrate and protein after training; faster when a demanding session is followed soon.
+
+    Quick refuelling (about 1 g/kg per hour for 4 hours) only applies after sessions that used
+    real glycogen: not after short easy ones.
+    """
     if not math.isfinite(duration_min) or not 0 < duration_min <= 24 * 60:
         msg = "duration_min must be between 0 and 1440"
         raise ValueError(msg)
@@ -78,9 +93,16 @@ def post_session_recovery(
         max(PROTEIN_G_PER_KG_PER_MEAL * body.reference_weight_kg, MIN_PROTEIN_PER_MEAL_G),
         MAX_PROTEIN_PER_MEAL_G,
     )
-    quick_turnaround = hours_until_next_session is not None and hours_until_next_session < 8
+    demanding = intensity is not SessionIntensity.EASY or duration_min >= 60
+    quick_turnaround = (
+        demanding and hours_until_next_session is not None and hours_until_next_session < 8
+    )
+    per_hour: int | None = None
+    hours: int | None = None
     if quick_turnaround:
-        carbs_per_kg, timing = 1.2, "within 30-60 minutes, then again every 1-2 hours"
+        carbs_per_kg = 1.0
+        per_hour, hours = round(1.0 * weight), QUICK_REFUEL_HOURS
+        timing = "start within 30 minutes, then the same amount every hour for about 4 hours"
         reason = "Your next session is soon, so refilling glycogen quickly matters."
     elif intensity is SessionIntensity.HARD or duration_min >= 90:
         carbs_per_kg, timing = 1.0, "within about 2 hours, as a normal meal"
@@ -93,16 +115,26 @@ def post_session_recovery(
         reason = "An easy session: just eat your planned meals."
 
     fluid_ml: int | None = None
+    fluid_warning: str | None = None
     if body_mass_lost_kg is not None:
         if not math.isfinite(body_mass_lost_kg) or not 0 <= body_mass_lost_kg <= 5:
             msg = "body_mass_lost_kg must be between 0 and 5"
             raise ValueError(msg)
         fluid_ml = round(body_mass_lost_kg * FLUID_REPLACEMENT_FACTOR * 1000)
+        if body_mass_lost_kg > LARGE_FLUID_LOSS_SHARE * weight:
+            fluid_warning = (
+                "That is a large fluid loss. Drink it back gradually over several hours with "
+                "salty food or an electrolyte drink, not all at once. If you feel dizzy, confused "
+                "or unwell, get medical help."
+            )
 
     return RecoveryMeal(
         carbs_g=round(carbs_per_kg * weight),
+        carbs_g_per_hour=per_hour,
+        refuel_hours=hours,
         protein_g=round(protein) if carbs_per_kg > 0 else 0,
         fluid_ml=fluid_ml,
+        fluid_warning=fluid_warning,
         timing=timing,
         reason=reason,
     )

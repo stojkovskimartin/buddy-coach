@@ -177,3 +177,111 @@ def test_catalogue_conform_supplement_advice_passes(text: str) -> None:
 )
 def test_supplement_questions_go_to_nutrition(message: str) -> None:
     assert router.route(message) is AgentName.NUTRITION
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "vitamin D3 5000 IU daily",
+        "5,000 IU vitamin D is fine",
+        "Take 50 000 IU vitamin D once a week",
+        "0.125 mg vitamin D per day",
+        "Caffeine: 6 mg per kg, so 540 mg before the race",
+        "Take 1,000 mg caffeine",
+        "1 g caffeine",
+        "Caffeine at 8 mg/kg helps",
+        "ferrous sulfate 325 mg each morning",
+        "Try 5 mg melatonin before bed",
+        "Eat only 800 kcal per day and drink water",
+        # Second review round
+        "Vitamin-D 5000 IE täglich",
+        "Take 5000 IU of D3 daily",
+        "Take vitamin D, about 5000 IU a day",
+        "For vitamin D I suggest 10000 IU",
+        "Take 65 mg of elemental iron daily",
+        "Have two 300 mg caffeine pills before the start",
+        "2x 250 mg caffeine before the race",
+        "If sleep is not great, take melatonin",
+        "Melatonin 3 mg helps you sleep",
+        "I recommend a short testosterone cycle",
+        # Third review round
+        "Never take more than 5 mg melatonin.",
+        "Don't take melatonin unless you need it, then 3 mg works.",
+        "Take 5000 IU daily of vitamin D.",
+        "Vitamin D: 2 x 5000 IU daily.",
+        "Take 2 caffeine tablets of 300 mg.",
+        # Fourth review round
+        "Take 0.5 mg melatonin before bed.",
+        "Melatonin (0.5 mg) helps you sleep.",
+        "Melatonin 0.3 mg is enough.",
+        "Never take more than 0.5 mg melatonin.",
+        "Vitamin D 10\u2019000 IE täglich",
+        "Take vitamin D with food, 10000 IU daily.",
+        "Vitamin D with fish oil: 5000 IU a day.",
+        "Take vitamin D from a capsule: 10000 IU.",
+        "Vitamin D: 1 capsule (5000 IU) daily.",
+        "Caffeine: 2 tablets of 300 mg.",
+    ],
+)
+def test_review_cases_are_blocked(text: str) -> None:
+    assert guard.check_output(text).category is SafetyCategory.UNSAFE_OUTPUT
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Men need about 11 mg iron per day from food.",
+        "Lentils give 3 mg iron per 100 g.",
+        "Folate 300 µg, vitamin D 20 µg are the daily references.",
+        "500 mg magnesium in food is fine, no caffeine after 4 pm.",
+        "calcium 1000 mg, caffeine 200 mg before the race",
+        "Caffeine: about 3 mg per kg, so 240 mg for you.",
+        "A 200 kcal gel every 45 minutes.",
+        "Vitamin D 2,000 IU after a blood test, as your doctor advises.",
+        # Second review round
+        "Strength training raises testosterone a little.",
+        "Avoid SARMs: they are banned and unsafe.",
+        "Never take melatonin without asking your doctor.",
+        "Vitamin D and magnesium 400 mg are often discussed.",
+        "One 200 mg caffeine tablet an hour before is enough.",
+        "Two 100 mg caffeine doses spread over the race.",
+        # Third review round: food-first answers and warnings
+        "Vitamin D: eat 150 g salmon twice a week.",
+        "For vitamin D eat fatty fish, about 200 g a week.",
+        "Vitamin D from sunlight, 1200 mg calcium from dairy.",
+        "Vitamin D needs fat to absorb, 1000 mg calcium too.",
+        "Avoid taking melatonin without a doctor.",
+        "I can't recommend melatonin; ask your doctor.",
+        "I won't recommend SARMs.",
+        "Try heavy squats to boost testosterone.",
+        "Use compound lifts to raise testosterone naturally.",
+        "Before your run, testosterone is higher in the morning.",
+        # Fourth review round
+        "No need to take melatonin; sleep hygiene works.",
+        "Not taking melatonin is fine.",
+        "Don't take melatonin, a 200 g yoghurt before bed works better.",
+        "Vitamin D: eat 150 g salmon and 2 eggs twice a week.",
+        "Vitamin D and selenium 200 µg.",
+        "Vitamin D and iodine: 150 µg iodine a day.",
+    ],
+)
+def test_review_false_alarms_pass(text: str) -> None:
+    assert guard.check_output(text).allowed
+
+
+@pytest.mark.parametrize(
+    ("message", "agent"),
+    [
+        ("I love pumping iron at the gym", AgentName.TRAINING),
+        ("Training for my first Iron Man", AgentName.TRAINING),
+        ("Do I need more iron?", AgentName.NUTRITION),
+    ],
+)
+def test_iron_routing(message: str, agent: AgentName) -> None:
+    assert router.route(message) is agent
+
+
+def test_space_separated_digit_groups_are_read_as_one_number() -> None:
+    """Deliberate trade-off: "5 000 IU" must count as 5000, so "Session 3 200 mg caffeine" is
+    read as 3200 mg and blocked. Blocking a rare odd phrasing is safer than missing a dose."""
+    assert not guard.check_output("Session 3 200 mg caffeine").allowed

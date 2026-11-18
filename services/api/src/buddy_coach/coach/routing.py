@@ -45,7 +45,7 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "vitamin*",
         "mineral",
         "magnesium",
-        "iron",
+        r"re:(?<!pumping )\biron\b(?!\s*-?\s*man)",
         "eisen",
         "omega",
         "caffeine",
@@ -78,6 +78,8 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "gym",
         "plan",
         "lauf*",
+        "pumping iron",
+        "iron man",
         "laufe",
         "jogg*",
         "rennen",
@@ -133,6 +135,8 @@ _SUFFIXES = r"(?:s|es|ed|ing|ning|ming|er|en|e|n)?"
 
 
 def _pattern(keyword: str) -> str:
+    if keyword.startswith("re:"):  # a hand-written regex for words with sporty meanings
+        return keyword[3:]
     if keyword.endswith("*"):
         return r"\b" + re.escape(keyword[:-1]) + r"\w*"
     return r"\b" + re.escape(keyword) + _SUFFIXES + r"\b"
@@ -159,7 +163,7 @@ _STRONG: dict[AgentName, re.Pattern[str]] = {
                 "vitamin*",
                 "mineral",
                 "magnesium",
-                "iron",
+                r"re:(?<!pumping )\biron\b(?!\s*-?\s*man)",
                 "eisen",
                 "caffeine",
                 "koffein",

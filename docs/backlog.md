@@ -12,3 +12,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | LLM-based safety classifier in addition to the pattern floor; more languages (FR, IT) | PR #4 review | Milestone 3 |
 | Low-kcal output check: snack words after the number can mask daily limits ("eat only 800 kcal, drink water") | PR #4 re-review | Next coach PR |
 | Web: move tokens from localStorage to httpOnly, SameSite cookies (needs a backend cookie auth mode); CSP mitigates meanwhile | feat/clients review | Before public launch |
+| Safety Guard dose-pattern edge cases: dose after a semicolon ("Take vitamin D; 5000 IU daily"), alternatives ("5000 or 10000 IU"), space-grouped numbers read as one ("Session 3 200 mg" = 3200 mg, safe side). Replace with the AI safety classifier | #7 re-review round 4 | Milestone 3 |
