@@ -135,3 +135,45 @@ def test_german_escalation_message() -> None:
 
 def test_tie_goes_to_head_coach() -> None:
     assert router.route("food and sleep") is AgentName.HEAD_COACH
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Take 10000 IU vitamin D daily.",
+        "Vitamin D: 250 µg per day works well.",
+        "Have 600 mg caffeine before the race.",
+        "Take 65 mg iron every morning.",
+        "Nimm täglich 100 mg Eisen.",
+    ],
+)
+def test_supplement_overdoses_are_blocked(text: str) -> None:
+    assert guard.check_output(text).category is SafetyCategory.UNSAFE_OUTPUT
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Creatine: 3-5 g per day.",
+        "About 240 mg caffeine an hour before your race.",
+        "Ask your doctor for a vitamin D test; the dose depends on the result.",
+        "Iron only after a blood test with your doctor.",
+        "Vitamin D 20 µg is the daily reference.",
+    ],
+)
+def test_catalogue_conform_supplement_advice_passes(text: str) -> None:
+    assert guard.check_output(text).allowed
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Should I take creatine?",
+        "Should I take creatine for strength?",
+        "Brauche ich Vitamin D im Winter?",
+        "Is whey protein useful?",
+        "What should I eat after my hard interval session?",
+    ],
+)
+def test_supplement_questions_go_to_nutrition(message: str) -> None:
+    assert router.route(message) is AgentName.NUTRITION

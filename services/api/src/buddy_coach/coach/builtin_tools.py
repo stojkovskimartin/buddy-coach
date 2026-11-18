@@ -9,6 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from buddy_coach.coach.tools import Tool, ToolContext, ToolRegistry
 from buddy_coach.core.errors import NotFoundError
 from buddy_coach.profile.domain import GoalPriority, GoalStatus, GoalType, age_on
+from buddy_coach.science.micronutrients import (
+    FOOD_SOURCES,
+    UNITS,
+    UPPER_LIMIT,
+    Nutrient,
+    reference_for,
+)
 from buddy_coach.science.nutrition import (
     BodyData,
     EnergyGoal,
@@ -16,6 +23,17 @@ from buddy_coach.science.nutrition import (
     Sex,
     daily_targets,
     session_carbs_g_per_hour,
+)
+from buddy_coach.science.recovery import (
+    SessionIntensity,
+    post_session_recovery,
+    protein_distribution,
+)
+from buddy_coach.science.supplements import (
+    HealthFlag,
+    Purpose,
+    Supplement,
+    supplement_advice,
 )
 from buddy_coach.science.training import (
     ReadinessInputs,
@@ -284,6 +302,165 @@ async def assess_readiness(_: ToolContext, args: ReadinessInput) -> ReadinessOut
     )
 
 
+async def _body(ctx: ToolContext) -> BodyData:
+    profile = await ctx.profiles.find_profile(ctx.user_id)
+    if profile is None:
+        raise NotFoundError(ONBOARDING_NEEDED)
+    return BodyData(
+        weight_kg=profile.weight_kg,
+        height_cm=profile.height_cm,
+        age_years=age_on(profile.birth_year, ctx.today),
+        sex=Sex(profile.sex.value),
+    )
+
+
+class RecoveryInput(BaseModel):
+    """A finished (or planned) session and the day around it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    duration_min: float = Field(gt=0, le=24 * 60)
+    intensity: SessionIntensity
+    hours_until_next_session: float | None = Field(default=None, ge=0, le=72)
+    body_mass_lost_kg: float | None = Field(default=None, ge=0, le=5)
+    meals_per_day: int = Field(default=4, ge=3, le=6)
+
+
+class RecoveryOutput(BaseModel):
+    """Recovery meal plus protein spread over the day."""
+
+    recovery_carbs_g: int
+    recovery_protein_g: int
+    fluid_ml: int | None
+    timing: str
+    reason: str
+    protein_per_meal_g: int
+    meals_per_day: int
+    daily_protein_from_meals_g: int
+
+
+async def recovery_nutrition(ctx: ToolContext, args: RecoveryInput) -> RecoveryOutput:
+    """Post-session refuelling and protein distribution from the recovery engine."""
+    body = await _body(ctx)
+    meal = post_session_recovery(
+        body,
+        args.duration_min,
+        args.intensity,
+        hours_until_next_session=args.hours_until_next_session,
+        body_mass_lost_kg=args.body_mass_lost_kg,
+    )
+    spread = protein_distribution(body, args.meals_per_day)
+    return RecoveryOutput(
+        recovery_carbs_g=meal.carbs_g,
+        recovery_protein_g=meal.protein_g,
+        fluid_ml=meal.fluid_ml,
+        timing=meal.timing,
+        reason=meal.reason,
+        protein_per_meal_g=spread.protein_per_meal_g,
+        meals_per_day=spread.meals,
+        daily_protein_from_meals_g=spread.daily_total_g,
+    )
+
+
+class SupplementInput(BaseModel):
+    """What the user wants to achieve and any health information they shared."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    purposes: list[Purpose] = Field(min_length=1, max_length=5)
+    health_flags: list[HealthFlag] = Field(default_factory=list, max_length=5)
+
+
+class SupplementEntry(BaseModel):
+    """A catalogue entry as the model may present it."""
+
+    name: str
+    evidence: str
+    what_it_does: str
+    typical_use: str
+    max_daily: str
+    cautions: list[str]
+    food_first: str | None
+
+
+class SupplementOutput(BaseModel):
+    """Suggested supplements, ones that need a professional, and notes."""
+
+    suggested: list[SupplementEntry]
+    ask_a_professional: list[SupplementEntry]
+    notes: list[str]
+    rule: str = "Only present these entries, doses and cautions. Food first."
+
+
+def _entry(item: Supplement) -> SupplementEntry:
+    return SupplementEntry(
+        name=item.name,
+        evidence=item.evidence.value,
+        what_it_does=item.what_it_does,
+        typical_use=item.typical_use,
+        max_daily=item.max_daily,
+        cautions=list(item.cautions),
+        food_first=item.food_first,
+    )
+
+
+async def supplement_guidance(_: ToolContext, args: SupplementInput) -> SupplementOutput:
+    """Evidence-graded supplement options from the curated catalogue."""
+    advice = supplement_advice(frozenset(args.purposes), frozenset(args.health_flags))
+    return SupplementOutput(
+        suggested=[_entry(s) for s in advice.suggested],
+        ask_a_professional=[_entry(s) for s in advice.ask_a_professional],
+        notes=list(advice.notes),
+    )
+
+
+class MicronutrientInput(BaseModel):
+    """Which nutrients to look up; all when empty."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nutrients: list[Nutrient] = Field(default_factory=list, max_length=10)
+
+
+class MicronutrientReference(BaseModel):
+    """Daily reference for one nutrient."""
+
+    nutrient: Nutrient
+    daily_reference: float
+    unit: str
+    upper_limit: float | None
+    food_sources: list[str]
+
+
+class MicronutrientOutput(BaseModel):
+    """References for the user's sex; intake is judged once food is logged."""
+
+    references: list[MicronutrientReference]
+    note: str = (
+        "These are reference values, not a diagnosis. Intake can only be judged from logged food."
+    )
+
+
+async def micronutrient_reference(
+    ctx: ToolContext, args: MicronutrientInput
+) -> MicronutrientOutput:
+    """Daily vitamin and mineral references with food sources."""
+    body = await _body(ctx)
+    wanted = args.nutrients or list(Nutrient)
+    return MicronutrientOutput(
+        references=[
+            MicronutrientReference(
+                nutrient=n,
+                daily_reference=reference_for(n, body.sex),
+                unit=UNITS[n],
+                upper_limit=UPPER_LIMIT.get(n),
+                food_sources=list(FOOD_SOURCES[n]),
+            )
+            for n in wanted
+        ]
+    )
+
+
 def build_default_registry() -> ToolRegistry:
     """Registry with every built-in tool."""
     registry = ToolRegistry()
@@ -335,6 +512,31 @@ def build_default_registry() -> ToolRegistry:
             "resting heart rate.",
             ReadinessInput,
             assess_readiness,
+        )
+    )
+    registry.register(
+        Tool(
+            "recovery_nutrition",
+            "Recovery meal after a session (carbs, protein, fluids, timing) and protein per meal.",
+            RecoveryInput,
+            recovery_nutrition,
+        )
+    )
+    registry.register(
+        Tool(
+            "supplement_guidance",
+            "Evidence-graded supplement options (e.g. creatine, caffeine, vitamin D) for given "
+            "purposes, filtered by health information. The only source for supplement advice.",
+            SupplementInput,
+            supplement_guidance,
+        )
+    )
+    registry.register(
+        Tool(
+            "micronutrient_reference",
+            "Daily reference intakes, upper limits and food sources for vitamins and minerals.",
+            MicronutrientInput,
+            micronutrient_reference,
         )
     )
     return registry

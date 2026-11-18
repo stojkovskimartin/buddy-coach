@@ -190,6 +190,39 @@ _DANGEROUS_ADVICE = _rx(
 )
 MIN_SAFE_DAILY_KCAL = 1200
 
+# Supplement doses above the catalogue maxima (ADR-0005), or any self-prescribed iron dose.
+_VITAMIN_D_DOSE = re.compile(
+    r"vitamin d\D{0,30}?(\d[\d']*)\s*(iu|ie|µg|mcg|ug)\b"
+    r"|(\d[\d']*)\s*(iu|ie|µg|mcg|ug)\b\D{0,15}vitamin d",
+    re.IGNORECASE,
+)
+_CAFFEINE_DOSE = re.compile(
+    r"(\d{3,4})\s*mg\D{0,20}(caffeine|koffein)|(caffeine|koffein)\D{0,30}?(\d{3,4})\s*mg",
+    re.IGNORECASE,
+)
+_IRON_DOSE = re.compile(
+    r"\d+\s*mg\D{0,15}\b(iron|eisen)\b|\b(iron|eisen)\b\D{0,25}?\d+\s*mg", re.IGNORECASE
+)
+MAX_VITAMIN_D_IU = 4000
+MAX_VITAMIN_D_UG = 100
+MAX_CAFFEINE_MG = 400
+
+
+def _number(text: str) -> int:
+    return int(text.replace("'", ""))
+
+
+def _unsafe_supplement_dose(text: str) -> bool:
+    for m in _VITAMIN_D_DOSE.finditer(text):
+        amount, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+        limit = MAX_VITAMIN_D_IU if unit.lower() in {"iu", "ie"} else MAX_VITAMIN_D_UG
+        if _number(amount) > limit:
+            return True
+    for m in _CAFFEINE_DOSE.finditer(text):
+        if _number(m.group(1) or m.group(4)) > MAX_CAFFEINE_MG:
+            return True
+    return bool(_IRON_DOSE.search(text))
+
 
 def safety_language(locale: str | None) -> str:
     """Language for safety messages: German for ``de`` locales, otherwise English."""
@@ -209,6 +242,8 @@ class SafetyGuard:
     def check_output(self, text: str, language: str = "en") -> SafetyVerdict:
         """Block diagnoses, dangerously low daily calories and harmful training advice."""
         if _DIAGNOSIS.search(text) or _DANGEROUS_ADVICE.search(text):
+            return self._escalate(SafetyCategory.UNSAFE_OUTPUT, language)
+        if _unsafe_supplement_dose(text):
             return self._escalate(SafetyCategory.UNSAFE_OUTPUT, language)
         for match in _KCAL_NUMBER.finditer(text):
             if int(match.group(1)) >= MIN_SAFE_DAILY_KCAL:
