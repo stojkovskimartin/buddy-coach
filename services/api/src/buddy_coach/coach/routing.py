@@ -39,6 +39,23 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "hunger",
         "frühstück",
         "eiweiss",
+        "supplement",
+        "creatine",
+        "kreatin",
+        "vitamin*",
+        "mineral",
+        "magnesium",
+        "iron",
+        "eisen",
+        "omega",
+        "caffeine",
+        "koffein",
+        "electrolyte*",
+        "nahrungsergänzung*",
+        "zinc",
+        "zink",
+        "calcium",
+        "whey",
     ),
     AgentName.TRAINING: (
         "run",
@@ -126,13 +143,46 @@ _PATTERNS = {
     for agent, keywords in _KEYWORDS.items()
 }
 
+# Words that decide the topic on their own count three times ("what should I eat after my session"
+# is a nutrition question even though "session" is a training word).
+_STRONG: dict[AgentName, re.Pattern[str]] = {
+    AgentName.NUTRITION: re.compile(
+        "|".join(
+            _pattern(k)
+            for k in (
+                "eat",
+                "ate",
+                "essen",
+                "supplement",
+                "creatine",
+                "kreatin",
+                "vitamin*",
+                "mineral",
+                "magnesium",
+                "iron",
+                "eisen",
+                "caffeine",
+                "koffein",
+                "whey",
+                "electrolyte*",
+                "nahrungsergänzung*",
+            )
+        ),
+        re.IGNORECASE,
+    ),
+}
+
 
 class IntentRouter:
     """Picks the specialist with the most keyword hits; ties and no hits go to the Head Coach."""
 
     def route(self, message: str) -> AgentName:
         """Return the agent that should handle the message."""
-        scores = {agent: len(pattern.findall(message)) for agent, pattern in _PATTERNS.items()}
+        scores = {
+            agent: len(pattern.findall(message))
+            + 2 * (len(_STRONG[agent].findall(message)) if agent in _STRONG else 0)
+            for agent, pattern in _PATTERNS.items()
+        }
         best = max(scores.values())
         if best == 0:
             return AgentName.HEAD_COACH

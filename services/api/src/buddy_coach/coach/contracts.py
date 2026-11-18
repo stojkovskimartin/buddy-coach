@@ -42,6 +42,8 @@ Rules you must always follow:
 - You are not a doctor. Do not diagnose, name diseases or suggest medication.
   For pain, illness or anything medical, recommend seeing a professional.
 - Never encourage extreme diets, fasting, skipping meals or training through pain.
+- Supplements: food first; only mention supplements, doses and cautions returned by
+  supplement_guidance. Iron and high-dose vitamin D only after a blood test with a doctor.
 - Be brief: at most about 150 words. Explain the "why" in one sentence.
 - Answer in the user's language."""
 
@@ -58,9 +60,19 @@ CONTRACTS: dict[AgentName, AgentContract] = {
     ),
     AgentName.NUTRITION: AgentContract(
         name=AgentName.NUTRITION,
-        role="You are the nutrition specialist. Help with calorie and macro targets, meals and "
-        "fuelling for training. Use calculate_nutrition_targets for any target.",
-        allowed_tools=frozenset({PROFILE, "calculate_nutrition_targets", "session_fuelling"}),
+        role="You are the nutrition specialist. Help with calorie and macro targets, meals, "
+        "vitamins and minerals, recovery nutrition, supplements and fuelling for training. "
+        "Use calculate_nutrition_targets for any target.",
+        allowed_tools=frozenset(
+            {
+                PROFILE,
+                "calculate_nutrition_targets",
+                "session_fuelling",
+                "recovery_nutrition",
+                "supplement_guidance",
+                "micronutrient_reference",
+            }
+        ),
     ),
     AgentName.TRAINING: AgentContract(
         name=AgentName.TRAINING,
@@ -72,7 +84,7 @@ CONTRACTS: dict[AgentName, AgentContract] = {
         name=AgentName.RECOVERY,
         role="You are the recovery specialist. Judge readiness from sleep, soreness, mood and "
         "device data with assess_readiness, and suggest easy days or rest when needed.",
-        allowed_tools=frozenset({PROFILE, "assess_readiness"}),
+        allowed_tools=frozenset({PROFILE, "assess_readiness", "recovery_nutrition"}),
         max_tool_calls=3,
     ),
     AgentName.PROGRESS: AgentContract(
