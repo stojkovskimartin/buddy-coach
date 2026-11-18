@@ -71,6 +71,176 @@
         "title": "ChatRequest",
         "type": "object"
       },
+      "CheckinIn": {
+        "description": "The morning check-in. Self-reports use 1 (bad) to 5 (great); device values are optional.",
+        "properties": {
+          "hrv_ms": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overnight HRV (RMSSD)",
+            "title": "Hrv Ms"
+          },
+          "mood": {
+            "description": "1 = very low, 5 = great",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Mood",
+            "type": "integer"
+          },
+          "pain": {
+            "default": false,
+            "description": "Pain (not normal muscle soreness) today",
+            "title": "Pain",
+            "type": "boolean"
+          },
+          "resting_hr": {
+            "anyOf": [
+              {
+                "maximum": 150.0,
+                "minimum": 25.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Beats per minute",
+            "title": "Resting Hr"
+          },
+          "sleep_hours": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Hours"
+          },
+          "sleep_quality": {
+            "description": "1 = very poor, 5 = excellent",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Sleep Quality",
+            "type": "integer"
+          },
+          "soreness": {
+            "description": "1 = very sore, 5 = not sore at all",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Soreness",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sleep_quality",
+          "soreness",
+          "mood"
+        ],
+        "title": "CheckinIn",
+        "type": "object"
+      },
+      "CheckinOut": {
+        "description": "A saved check-in with the readiness computed for that day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "hrv_ms": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overnight HRV (RMSSD)",
+            "title": "Hrv Ms"
+          },
+          "mood": {
+            "description": "1 = very low, 5 = great",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Mood",
+            "type": "integer"
+          },
+          "pain": {
+            "default": false,
+            "description": "Pain (not normal muscle soreness) today",
+            "title": "Pain",
+            "type": "boolean"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/ReadinessOut"
+          },
+          "resting_hr": {
+            "anyOf": [
+              {
+                "maximum": 150.0,
+                "minimum": 25.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Beats per minute",
+            "title": "Resting Hr"
+          },
+          "sleep_hours": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Hours"
+          },
+          "sleep_quality": {
+            "description": "1 = very poor, 5 = excellent",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Sleep Quality",
+            "type": "integer"
+          },
+          "soreness": {
+            "description": "1 = very sore, 5 = not sore at all",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Soreness",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sleep_quality",
+          "soreness",
+          "mood",
+          "day",
+          "readiness"
+        ],
+        "title": "CheckinOut",
+        "type": "object"
+      },
       "CoachStyle": {
         "description": "How the coach talks to the user.",
         "enum": [
@@ -478,6 +648,42 @@
         "title": "ProfileOut",
         "type": "object"
       },
+      "ReadinessLevel": {
+        "description": "Traffic light for today's training.",
+        "enum": [
+          "green",
+          "amber",
+          "red"
+        ],
+        "title": "ReadinessLevel",
+        "type": "string"
+      },
+      "ReadinessOut": {
+        "description": "Today's readiness: 0-100, a traffic light and what pulled it down.",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/ReadinessLevel"
+          },
+          "limiting_factors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limiting Factors",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "level",
+          "limiting_factors"
+        ],
+        "title": "ReadinessOut",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "Exchange a refresh token for a new token pair (the old one is revoked).",
         "properties": {
@@ -829,6 +1035,216 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/checkins": {
+      "get": {
+        "description": "Check-ins in a date range (default: the last 14 days), newest first. Max 92 days.",
+        "operationId": "list_checkins_api_v1_checkins_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckinOut"
+                  },
+                  "title": "Response List Checkins Api V1 Checkins Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Checkins",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/api/v1/checkins/today": {
+      "get": {
+        "description": "Today's check-in (in the athlete's time zone); 404 until it is entered.",
+        "operationId": "get_today_api_v1_checkins_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Today",
+        "tags": [
+          "checkins"
+        ]
+      }
+    },
+    "/api/v1/checkins/{day}": {
+      "get": {
+        "description": "The check-in of one day.",
+        "operationId": "get_checkin_api_v1_checkins__day__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Checkin",
+        "tags": [
+          "checkins"
+        ]
+      },
+      "put": {
+        "description": "Create or replace the check-in of a day (today or up to 7 days late).",
+        "operationId": "put_checkin_api_v1_checkins__day__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Checkin",
+        "tags": [
+          "checkins"
         ]
       }
     },
