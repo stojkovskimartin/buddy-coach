@@ -37,7 +37,8 @@ BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_te
 
 ## Done
 
-Numbers from #6 on are merge labels in the git history (merge commits), not GitHub pull request numbers.
+The numbers in this table are project labels used in the merge commits. They are not GitHub
+pull request numbers.
 
 | PR | What | Tests |
 | --- | --- | --- |
