@@ -34,13 +34,19 @@ Then open **http://localhost:8000/docs** (interactive API page) and try, in this
 1. `POST /api/v1/auth/register` – click *Try it out*, enter an email and a password (10+ characters).
 2. `POST /api/v1/auth/login` – copy the `access_token` from the response.
 3. Click **Authorize** (top right), paste the token, confirm.
-4. `PUT /api/v1/profile` – your body data, e.g. birth year, height, weight, experience.
+4. `PUT /api/v1/profile` – your body data, e.g. `{"birth_year": 1998, "sex": "male", "height_cm": 182, "weight_kg": 79, "experience": "intermediate", "available_days_per_week": 5, "minutes_per_session": 60}`.
 5. `POST /api/v1/goals` – e.g. `{"goal_type": "endurance_event", "title": "Half Ironman", "sport": "triathlon", "target_date": "2027-06-20"}`.
 6. `POST /api/v1/coach/chat` – `{"message": "How many calories should I eat?"}`.
 
 Without an API key the coach runs in **development mode**: it calls the real tools and engines
-and shows their raw results. For real AI answers, start with your key:
-`BUDDY_LLM_PROVIDER=anthropic BUDDY_ANTHROPIC_API_KEY=sk-... docker compose -f infra/docker-compose.yml up --build`.
+and shows their raw results. For real AI answers, create a file `infra/.env` (never committed) with:
+
+```
+BUDDY_LLM_PROVIDER=anthropic
+BUDDY_ANTHROPIC_API_KEY=sk-ant-...
+```
+
+and start the same command again. This works the same on Windows, macOS and Linux.
 
 Stop with `Ctrl+C`; `docker compose -f infra/docker-compose.yml down -v` also deletes the local data.
 

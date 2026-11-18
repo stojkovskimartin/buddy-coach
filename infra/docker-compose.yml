@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: buddy
       POSTGRES_DB: buddy
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432"  # localhost only; 5433 avoids clashing with a local Postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
