@@ -8,7 +8,7 @@ This is the short version.
 1. Branch from `main`: `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`.
 2. Small commits with [Conventional Commits](https://www.conventionalcommits.org) messages,
    pushed to GitHub after every finished step (nothing is lost if a session ends).
-3. Lint, types and all tests green locally.
+3. Lint, types and all tests green locally, and the CI run on GitHub green.
 4. An independent reviewer agent reviews the diff; findings are fixed or tracked in
    `docs/backlog.md`.
 5. Merge into `main` with `--no-ff`; the merge commit carries the summary and the review result.
@@ -41,11 +41,11 @@ uv run --env-file .env alembic upgrade head
 
 A test (`test_migrations_match_models`) fails if models and migrations drift apart.
 
-## Updating the API client after a backend change (once `feat/clients` is merged)
+## Updating the API client after a backend change
 
 ```bash
-cd services/api && uv run python scripts/export_openapi.py ../../packages/api-client/openapi.json
-cd ../.. && pnpm api:generate
+pnpm api:generate
 ```
 
-Commit both files; TypeScript compilation then shows every client that needs updating.
+This exports `openapi.json` and regenerates the typed client. Commit both; TypeScript then
+shows every app that needs updating, and CI fails if they were forgotten.
