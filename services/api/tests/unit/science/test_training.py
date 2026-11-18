@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from buddy_coach.science.nutrition import Sex
 from buddy_coach.science.training import (
     RampVerdict,
     ReadinessInputs,
@@ -33,21 +34,23 @@ def test_srpe_load_rejects_bad_input(minutes: float, rpe: float) -> None:
 def test_trimp_matches_formula() -> None:
     reserve = (150 - 50) / (190 - 50)
     expected = 60 * reserve * 0.64 * math.exp(1.92 * reserve)
-    assert trimp_banister(60, 150, 50, 190, "male") == pytest.approx(expected)
+    assert trimp_banister(60, 150, 50, 190, Sex.MALE) == pytest.approx(expected)
 
 
 def test_trimp_female_coefficients_differ() -> None:
-    assert trimp_banister(60, 150, 50, 190, "female") != trimp_banister(60, 150, 50, 190, "male")
+    assert trimp_banister(60, 150, 50, 190, Sex.FEMALE) != trimp_banister(
+        60, 150, 50, 190, Sex.MALE
+    )
 
 
 def test_trimp_clamps_heart_rate_reserve() -> None:
-    assert trimp_banister(60, 40, 50, 190, "male") == 0
-    assert trimp_banister(60, 250, 50, 190, "male") == trimp_banister(60, 190, 50, 190, "male")
+    assert trimp_banister(60, 40, 50, 190, Sex.MALE) == 0
+    assert trimp_banister(60, 250, 50, 190, Sex.MALE) == trimp_banister(60, 190, 50, 190, Sex.MALE)
 
 
 def test_trimp_rejects_bad_heart_rates() -> None:
     with pytest.raises(ValueError, match="rest_hr"):
-        trimp_banister(60, 150, 190, 180, "male")
+        trimp_banister(60, 150, 190, 180, Sex.MALE)
 
 
 def test_constant_load_converges_to_that_load() -> None:
@@ -78,11 +81,16 @@ def test_series_rejects_reversed_range() -> None:
 
 
 def test_acute_chronic_ratio() -> None:
-    series = fitness_series({START: 100.0}, START, START)
-    ratio = acute_chronic_ratio(series[0])
-    assert ratio == pytest.approx(6.0)
-    empty = fitness_series({}, START, START)[0]
-    assert acute_chronic_ratio(empty) is None
+    loads = {START + timedelta(days=i): 100.0 for i in range(300)}
+    steady = fitness_series(loads, START, START + timedelta(days=299))[-1]
+    ratio = acute_chronic_ratio(steady)
+    assert ratio is not None
+    assert ratio == pytest.approx(1.0, abs=0.01)
+
+
+def test_acute_chronic_ratio_needs_some_fitness() -> None:
+    first_day = fitness_series({START: 100.0}, START, START)[0]  # fitness ~2.4
+    assert acute_chronic_ratio(first_day) is None
 
 
 def test_weekly_ramp_limits() -> None:
@@ -100,6 +108,30 @@ def test_ramp_after_break_allows_restart() -> None:
 def test_ramp_rejects_negative() -> None:
     with pytest.raises(ValueError, match="negative"):
         check_weekly_ramp(-1, 100, "beginner")
+
+
+def test_ramp_rejects_unknown_experience_and_nan() -> None:
+    with pytest.raises(ValueError, match="unknown experience"):
+        check_weekly_ramp(100, 100, "wizard")
+    with pytest.raises(ValueError, match="finite"):
+        check_weekly_ramp(float("nan"), 100, "beginner")
+
+
+def test_ramp_restart_floor_is_configurable() -> None:
+    assert check_weekly_ramp(0, 150, "beginner", restart_floor=100).verdict is RampVerdict.TOO_STEEP
+
+
+def test_trimp_rejects_nan() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        trimp_banister(float("nan"), 150, 50, 190, Sex.MALE)
+
+
+def test_resting_hr_signal_used_even_with_zero_elevation() -> None:
+    with_rhr = readiness(
+        ReadinessInputs(sleep_quality=3, soreness=3, mood=3, resting_hr=50, resting_hr_baseline=50)
+    )
+    without = readiness(ReadinessInputs(sleep_quality=3, soreness=3, mood=3))
+    assert with_rhr.score > without.score
 
 
 def test_readiness_great_morning_is_green() -> None:

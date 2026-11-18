@@ -9,6 +9,7 @@ from buddy_coach.science.nutrition import (
     DailyIntake,
     EnergyGoal,
     Lifestyle,
+    Sex,
     WeightEntry,
     adaptive_maintenance_kcal,
     bmr_mifflin_st_jeor,
@@ -18,8 +19,8 @@ from buddy_coach.science.nutrition import (
     weight_trend_kg_per_day,
 )
 
-MARTIN = BodyData(weight_kg=79, height_cm=182, age_years=28, sex="male")
-SMALL_WOMAN = BodyData(weight_kg=50, height_cm=155, age_years=40, sex="female")
+MARTIN = BodyData(weight_kg=79, height_cm=182, age_years=28, sex=Sex.MALE)
+SMALL_WOMAN = BodyData(weight_kg=50, height_cm=155, age_years=40, sex=Sex.FEMALE)
 
 
 def test_bmr_matches_mifflin_st_jeor_by_hand() -> None:
@@ -29,11 +30,24 @@ def test_bmr_matches_mifflin_st_jeor_by_hand() -> None:
     assert bmr_mifflin_st_jeor(SMALL_WOMAN) == pytest.approx(1107.75)
 
 
-def test_body_data_validation() -> None:
-    with pytest.raises(ValueError, match="sex"):
-        BodyData(weight_kg=70, height_cm=170, age_years=30, sex="x")
-    with pytest.raises(ValueError, match="positive"):
-        BodyData(weight_kg=0, height_cm=170, age_years=30, sex="male")
+@pytest.mark.parametrize(
+    ("weight", "height", "age", "message"),
+    [
+        (0, 170, 30, "weight_kg"),
+        (float("nan"), 170, 30, "finite"),
+        (70, float("inf"), 30, "finite"),
+        (70, 170, 1, "age_years"),
+        (500, 170, 30, "weight_kg"),
+    ],
+)
+def test_body_data_validation(weight: float, height: float, age: int, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        BodyData(weight_kg=weight, height_cm=height, age_years=age, sex=Sex.MALE)
+
+
+def test_body_data_requires_sex_enum() -> None:
+    with pytest.raises(TypeError):
+        BodyData(weight_kg=70, height_cm=170, age_years=30, sex="male")  # type: ignore[arg-type]
 
 
 def test_maintenance_discounts_watch_energy() -> None:
@@ -43,9 +57,10 @@ def test_maintenance_discounts_watch_energy() -> None:
     assert with_training - rest == pytest.approx(600)
 
 
-def test_negative_training_energy_is_rejected() -> None:
-    with pytest.raises(ValueError, match="negative"):
-        maintenance_kcal(MARTIN, Lifestyle.LIGHT, -1)
+@pytest.mark.parametrize("value", [-1, float("nan"), float("inf"), 20_000])
+def test_bad_training_energy_is_rejected(value: float) -> None:
+    with pytest.raises(ValueError, match="training_kcal"):
+        maintenance_kcal(MARTIN, Lifestyle.LIGHT, value)
 
 
 def test_maintain_targets_sum_to_energy() -> None:
@@ -133,6 +148,87 @@ def test_adaptive_maintenance_with_weight_loss() -> None:
     assert estimate == pytest.approx(2200 + 0.05 * 7700)
 
 
+def _macro_kcal(t: object) -> int:
+    from buddy_coach.science.nutrition import NutritionTargets
+
+    assert isinstance(t, NutritionTargets)
+    return t.protein_g * 4 + t.carbs_g * 4 + t.fat_g * 9
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        BodyData(weight_kg=40, height_cm=150, age_years=25, sex=Sex.FEMALE),
+        BodyData(weight_kg=200, height_cm=175, age_years=45, sex=Sex.MALE),
+        BodyData(weight_kg=150, height_cm=170, age_years=60, sex=Sex.FEMALE),
+        SMALL_WOMAN,
+        MARTIN,
+    ],
+)
+@pytest.mark.parametrize("goal", list(EnergyGoal))
+def test_macros_always_add_up_and_stay_non_negative(body: BodyData, goal: EnergyGoal) -> None:
+    rate = None if goal is EnergyGoal.MAINTAIN else 1.0
+    t = daily_targets(body, Lifestyle.SEDENTARY, goal, rate_pct_per_week=rate)
+    assert abs(_macro_kcal(t) - t.kcal) <= 10
+    assert min(t.protein_g, t.carbs_g, t.fat_g) >= 0
+    assert t.protein_g * 4 <= 0.35 * t.kcal + 4
+
+
+def test_heavy_person_gets_protein_from_reference_weight() -> None:
+    heavy = BodyData(weight_kg=150, height_cm=180, age_years=40, sex=Sex.MALE)
+    t = daily_targets(heavy, Lifestyle.LIGHT, EnergyGoal.LOSE)
+    assert heavy.reference_weight_kg == pytest.approx(25 * 1.8 * 1.8)
+    assert t.protein_g <= round(2.0 * heavy.reference_weight_kg)
+    assert t.carbs_g > 0
+
+
+@pytest.mark.parametrize(("sex", "floor"), [(Sex.MALE, 1500), (Sex.FEMALE, 1200)])
+def test_sex_specific_floors(sex: Sex, floor: int) -> None:
+    tiny = BodyData(weight_kg=40, height_cm=150, age_years=80, sex=sex)
+    t = daily_targets(tiny, Lifestyle.SEDENTARY, EnergyGoal.LOSE, rate_pct_per_week=1)
+    assert t.floor_applied
+    assert t.kcal >= floor
+
+
+def test_rate_with_maintenance_is_rejected() -> None:
+    with pytest.raises(ValueError, match="maintenance"):
+        daily_targets(MARTIN, Lifestyle.LIGHT, EnergyGoal.MAINTAIN, rate_pct_per_week=0.5)
+
+
+def test_non_finite_override_is_rejected_and_extreme_override_clamped() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        daily_targets(
+            MARTIN, Lifestyle.LIGHT, EnergyGoal.MAINTAIN, maintenance_override_kcal=float("nan")
+        )
+    clamped = daily_targets(
+        MARTIN, Lifestyle.LIGHT, EnergyGoal.MAINTAIN, maintenance_override_kcal=50_000
+    )
+    assert clamped.maintenance_kcal == 6000
+
+
+def test_adaptive_ignores_intake_outside_weight_window() -> None:
+    days = _days(40)
+    intakes = [DailyIntake(d, 2500) for d in days[:20]]  # logged before weighing started
+    weights = [WeightEntry(d, 80.0) for d in days[20:]]
+    assert adaptive_maintenance_kcal(intakes, weights) is None
+
+
+def test_adaptive_requires_80_percent_coverage() -> None:
+    days = _days(21)
+    intakes = [DailyIntake(d, 2500) for d in days[::2]]  # every second day
+    weights = [WeightEntry(d, 80.0) for d in days]
+    assert adaptive_maintenance_kcal(intakes, weights) is None
+
+
+def test_adaptive_is_limited_relative_to_formula() -> None:
+    days = _days(28)
+    intakes = [DailyIntake(d, 4000) for d in days]
+    weights = [WeightEntry(d, 80.0) for d in days]
+    assert adaptive_maintenance_kcal(intakes, weights, formula_estimate_kcal=2600) == pytest.approx(
+        2600 * 1.25
+    )
+
+
 def test_adaptive_maintenance_needs_enough_data() -> None:
     days = _days(10)
     assert (
@@ -146,7 +242,7 @@ def test_adaptive_maintenance_needs_enough_data() -> None:
 def test_implausible_adaptive_result_is_discarded() -> None:
     days = _days(21)
     intakes = [DailyIntake(d, 300) for d in days]  # clearly incomplete logging
-    weights = [WeightEntry(d, 80.0) for d in days[:-1]] + [WeightEntry(days[-1], 80.1)]
+    weights = [WeightEntry(d, 80.0) for d in days]
     assert adaptive_maintenance_kcal(intakes, weights) is None
 
 
@@ -156,5 +252,5 @@ def test_session_carbs(minutes: int, grams: int) -> None:
 
 
 def test_session_carbs_rejects_negative() -> None:
-    with pytest.raises(ValueError, match="negative"):
+    with pytest.raises(ValueError, match="duration_min"):
         session_carbs_g_per_hour(-5)

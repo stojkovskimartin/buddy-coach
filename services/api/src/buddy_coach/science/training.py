@@ -8,9 +8,15 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
 
+from buddy_coach.science.nutrition import Sex
+
 CTL_DAYS = 42
 ATL_DAYS = 7
+# Thresholds come from rolling-average studies; on exponentially weighted values they are a
+# rough guide only, which is why the coach uses them as a warning, never as a hard rule.
 ACWR_HIGH_RISK = 1.5
+MIN_FITNESS_FOR_RATIO = 10.0
+DEFAULT_RESTART_FLOOR_SRPE = 300.0
 ACWR_SWEET_SPOT = (0.8, 1.3)
 MAX_WEEKLY_INCREASE = {"beginner": 0.10, "intermediate": 0.10, "advanced": 0.15, "elite": 0.15}
 
@@ -27,7 +33,7 @@ def srpe_load(duration_min: float, rpe: float) -> float:
 
 
 def trimp_banister(
-    duration_min: float, avg_hr: float, rest_hr: float, max_hr: float, sex: str
+    duration_min: float, avg_hr: float, rest_hr: float, max_hr: float, sex: Sex
 ) -> float:
     """Banister TRIMP from average heart rate."""
     if not rest_hr < max_hr:
@@ -37,7 +43,10 @@ def trimp_banister(
         msg = "duration cannot be negative"
         raise ValueError(msg)
     reserve = min(max((avg_hr - rest_hr) / (max_hr - rest_hr), 0.0), 1.0)
-    a, b = (0.64, 1.92) if sex == "male" else (0.86, 1.67)
+    if not all(math.isfinite(v) for v in (duration_min, avg_hr, rest_hr, max_hr)):
+        msg = "inputs must be finite numbers"
+        raise ValueError(msg)
+    a, b = (0.64, 1.92) if sex is Sex.MALE else (0.86, 1.67)
     return duration_min * reserve * a * math.exp(b * reserve)
 
 
@@ -82,8 +91,8 @@ def fitness_series(
 
 def acute_chronic_ratio(state: FitnessState) -> float | None:
     """Fatigue / fitness. Above 1.5 means load is rising faster than the body adapts."""
-    if state.fitness <= 0:
-        return None
+    if state.fitness < MIN_FITNESS_FOR_RATIO:
+        return None  # too little history for the ratio to mean anything
     return state.fatigue / state.fitness
 
 
@@ -103,15 +112,29 @@ class RampCheck:
 
 
 def check_weekly_ramp(
-    last_week_load: float, planned_week_load: float, experience: str
+    last_week_load: float,
+    planned_week_load: float,
+    experience: str,
+    *,
+    restart_floor: float = DEFAULT_RESTART_FLOOR_SRPE,
 ) -> RampCheck:
-    """Cap the week-on-week load increase by experience level."""
-    if last_week_load < 0 or planned_week_load < 0:
+    """Cap the week-on-week load increase by experience level.
+
+    ``restart_floor`` is the weekly load always allowed after a break, in the same unit as the
+    loads (the default suits session-RPE; pass a TRIMP-sized value for TRIMP loads).
+    """
+    if not all(math.isfinite(v) for v in (last_week_load, planned_week_load, restart_floor)):
+        msg = "loads must be finite numbers"
+        raise ValueError(msg)
+    if last_week_load < 0 or planned_week_load < 0 or restart_floor < 0:
         msg = "loads cannot be negative"
         raise ValueError(msg)
-    increase = MAX_WEEKLY_INCREASE.get(experience, MAX_WEEKLY_INCREASE["beginner"])
+    if experience not in MAX_WEEKLY_INCREASE:
+        msg = f"unknown experience level: {experience}"
+        raise ValueError(msg)
+    increase = MAX_WEEKLY_INCREASE[experience]
     # After a break there is no baseline; allow a modest restart instead of 10% of zero.
-    base = max(last_week_load, 300.0)
+    base = max(last_week_load, restart_floor)
     max_allowed = base * (1 + increase)
     verdict = RampVerdict.OK if planned_week_load <= max_allowed else RampVerdict.TOO_STEEP
     return RampCheck(verdict=verdict, max_allowed_load=round(max_allowed, 1))
@@ -169,7 +192,7 @@ def readiness(inputs: ReadinessInputs) -> Readiness:
     hrv_score = _hrv_score(inputs.hrv_ms, inputs.hrv_baseline)
     if hrv_score is not None:
         signals.append(("hrv", hrv_score, 0.25))
-    if inputs.resting_hr is not None and inputs.resting_hr_baseline:
+    if inputs.resting_hr is not None and inputs.resting_hr_baseline is not None:
         elevation = inputs.resting_hr - inputs.resting_hr_baseline
         signals.append(("resting_hr", _clamp(1 - elevation / 10), 0.1))
     if inputs.form is not None:
@@ -193,14 +216,19 @@ def readiness(inputs: ReadinessInputs) -> Readiness:
 
 
 def _hrv_score(hrv_ms: float | None, baseline: Sequence[float]) -> float | None:
-    """HRV vs the personal baseline as a z-score mapped to 0-1 (needs 7+ baseline days)."""
-    if hrv_ms is None or len(baseline) < 7:
+    """HRV vs the personal baseline as a z-score of ln(rMSSD), mapped to 0-1.
+
+    Needs 7+ positive baseline values; otherwise the signal is left out.
+    """
+    if hrv_ms is None or hrv_ms <= 0 or len(baseline) < 7 or min(baseline) <= 0:
         return None
-    mean = sum(baseline) / len(baseline)
-    sd = math.sqrt(sum((x - mean) ** 2 for x in baseline) / (len(baseline) - 1))
+    logs = [math.log(x) for x in baseline]
+    mean = sum(logs) / len(logs)
+    sd = math.sqrt(sum((x - mean) ** 2 for x in logs) / (len(logs) - 1))
+    today = math.log(hrv_ms)
     if sd == 0:
-        return 1.0 if hrv_ms >= mean else 0.0
-    return _clamp(0.5 + (hrv_ms - mean) / (4 * sd))
+        return 1.0 if today >= mean else 0.0
+    return _clamp(0.5 + (today - mean) / (4 * sd))
 
 
 def _clamp(value: float) -> float:
