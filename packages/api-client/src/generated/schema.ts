@@ -292,7 +292,7 @@ export interface components {
             event_distance_km?: number | null;
             goal_type: components["schemas"]["GoalType"];
             /** @default primary */
-            priority: components["schemas"]["GoalPriority"];
+            priority?: components["schemas"]["GoalPriority"];
             sport?: components["schemas"]["Sport"] | null;
             /** Target Date */
             target_date?: string | null;
@@ -382,7 +382,7 @@ export interface components {
             /** Birth Year */
             birth_year: number;
             /** @default friendly */
-            coach_style: components["schemas"]["CoachStyle"];
+            coach_style?: components["schemas"]["CoachStyle"];
             experience: components["schemas"]["ExperienceLevel"];
             /** Height Cm */
             height_cm: number;
@@ -390,7 +390,7 @@ export interface components {
              * Locale
              * @default en
              */
-            locale: string;
+            locale?: string;
             /** Minutes Per Session */
             minutes_per_session: number;
             sex: components["schemas"]["Sex"];
@@ -398,7 +398,7 @@ export interface components {
              * Timezone
              * @default Europe/Zurich
              */
-            timezone: string;
+            timezone?: string;
             /** Weight Kg */
             weight_kg: number;
         };
@@ -412,7 +412,7 @@ export interface components {
             /** Birth Year */
             birth_year: number;
             /** @default friendly */
-            coach_style: components["schemas"]["CoachStyle"];
+            coach_style?: components["schemas"]["CoachStyle"];
             experience: components["schemas"]["ExperienceLevel"];
             /** Height Cm */
             height_cm: number;
@@ -420,7 +420,7 @@ export interface components {
              * Locale
              * @default en
              */
-            locale: string;
+            locale?: string;
             /** Minutes Per Session */
             minutes_per_session: number;
             sex: components["schemas"]["Sex"];
@@ -428,7 +428,7 @@ export interface components {
              * Timezone
              * @default Europe/Zurich
              */
-            timezone: string;
+            timezone?: string;
             /**
              * Updated At
              * Format: date-time
@@ -499,7 +499,7 @@ export interface components {
              * Token Type
              * @default bearer
              */
-            token_type: string;
+            token_type?: string;
         };
         /**
          * UserOut

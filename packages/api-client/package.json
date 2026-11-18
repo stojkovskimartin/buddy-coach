@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "openapi-typescript openapi.json -o src/generated/schema.ts",
+    "generate": "openapi-typescript openapi.json --default-non-nullable false -o src/generated/schema.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "tsc --noEmit"
