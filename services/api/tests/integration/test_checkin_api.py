@@ -200,3 +200,12 @@ async def test_checkins_need_authentication(
 ) -> None:
     response = await client.request(method, path, json=GOOD)
     assert response.status_code == 401
+
+
+async def test_put_today_refuses_invalid_values(client: httpx.AsyncClient) -> None:
+    headers = await _athlete(client)
+    response = await client.put(
+        "/api/v1/checkins/today", json={**GOOD, "sleep_quality": 6}, headers=headers
+    )
+    assert response.status_code == 422
+    assert (await client.get("/api/v1/checkins/today", headers=headers)).status_code == 404
