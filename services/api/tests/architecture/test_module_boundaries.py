@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "buddy_coach"
-INFRASTRUCTURE = {"core", "health"}
+INFRASTRUCTURE = {"core", "health", "science"}
 # What a module may import from another module. Tables and repositories stay private.
 PUBLIC_SUBMODULES = {"service", "schemas", "deps", "events", "domain"}
 FRAMEWORK_PACKAGES = ("sqlalchemy", "fastapi", "starlette", "httpx", "asyncpg")
@@ -65,5 +65,19 @@ def test_domain_files_are_framework_free() -> None:
         for path in SRC.rglob("domain.py")
         for name in _imports(path)
         if name.startswith(FRAMEWORK_PACKAGES)
+    ]
+    assert violations == []
+
+
+def test_science_engines_are_pure() -> None:
+    """Engines are deterministic: no frameworks, no I/O, no clock, no other app modules."""
+    forbidden_exact = {"os", "random", "time", "pathlib", "socket"}
+    violations = [
+        f"{path.relative_to(SRC)} imports {name}"
+        for path in _files("science")
+        for name in _imports(path)
+        if name in forbidden_exact
+        or name.startswith(FRAMEWORK_PACKAGES)
+        or (name.startswith("buddy_coach.") and not name.startswith("buddy_coach.science"))
     ]
     assert violations == []
