@@ -12,7 +12,10 @@ router = APIRouter(prefix="/coach", tags=["coach"])
 
 @router.post("/chat", response_model=ChatReply)
 async def chat(body: ChatRequest, coach: HeadCoachDep, ctx: ToolContextDep) -> ChatReply:
-    """Send a message to the coach and get its answer."""
+    """Send a message to the coach and get its answer.
+
+    Single-turn for now: conversation history is not yet stored or sent (see docs/backlog.md).
+    """
     reply = await coach.reply(body.message, ctx)
     return ChatReply(
         reply=reply.text,

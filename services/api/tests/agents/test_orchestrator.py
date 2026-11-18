@@ -55,9 +55,17 @@ async def test_llm_outage_degrades_gracefully() -> None:
 
 
 async def test_coach_style_reaches_the_system_prompt() -> None:
-    profile = SimpleNamespace(coach_style=CoachStyle.STRICT)
+    profile = SimpleNamespace(coach_style=CoachStyle.STRICT, locale="en")
     llm = ScriptedLLMProvider.of([answer("Go.")])
     await HeadCoach(llm, build_default_registry()).reply(
         "hello", tool_context(FakeProfiles(profile=profile))
     )
     assert "direct and demanding" in llm.requests[0].system
+
+
+async def test_safety_message_uses_profile_language() -> None:
+    profile = SimpleNamespace(coach_style=CoachStyle.FRIENDLY, locale="de-CH")
+    reply = await HeadCoach(ScriptedLLMProvider.of([]), build_default_registry()).reply(
+        "Ich bin beim Laufen in Ohnmacht gefallen", tool_context(FakeProfiles(profile=profile))
+    )
+    assert "Notruf" in reply.text

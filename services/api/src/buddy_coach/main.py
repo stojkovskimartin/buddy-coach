@@ -9,7 +9,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from buddy_coach import __version__
-from buddy_coach.coach.deps import install_coach
+from buddy_coach.coach.deps import close_coach, install_coach
 from buddy_coach.coach.llm import LLMProvider
 from buddy_coach.coach.router import router as coach_router
 from buddy_coach.core.config import Settings, get_settings
@@ -39,6 +39,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
+        await close_coach(app)
         await app.state.db.dispose()
 
     app = FastAPI(

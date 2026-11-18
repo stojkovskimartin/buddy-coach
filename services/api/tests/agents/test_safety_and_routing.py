@@ -20,6 +20,8 @@ guard = SafetyGuard()
         ("should I just stop eating to make weight?", SafetyCategory.EATING_DISORDER),
         ("sharp pain in my knee when running downhill", SafetyCategory.INJURY),
         ("my ankle is swollen", SafetyCategory.INJURY),
+        ("I want to starve myself before the weigh-in", SafetyCategory.EATING_DISORDER),
+        ("Ich will gar nichts mehr essen", SafetyCategory.EATING_DISORDER),
     ],
 )
 def test_red_flags_are_escalated(message: str, category: SafetyCategory) -> None:
@@ -42,6 +44,19 @@ def test_normal_messages_pass(message: str) -> None:
     assert guard.check_input(message).allowed
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I want to stop eating junk food",
+        "I'm starving after my long run",
+        "Is a restaurant meal ok before the race?",
+        "Ich will kein Junkfood mehr essen",
+    ],
+)
+def test_common_phrases_are_not_false_alarms(message: str) -> None:
+    assert guard.check_input(message).allowed
+
+
 def test_mental_health_wins_over_other_categories() -> None:
     verdict = guard.check_input("chest pain and I want to end my life")
     assert verdict.category is SafetyCategory.MENTAL_HEALTH
@@ -53,6 +68,11 @@ def test_mental_health_wins_over_other_categories() -> None:
         "You probably have diabetes, so cut sugar.",
         "Aim for 800 kcal per day this week.",
         "Iss 900 Kalorien pro Tag.",
+        "Just eat 800 kcal.",
+        "Limit yourself to 1000 cal in total.",
+        "Du hast wahrscheinlich eine Essstörung.",
+        "Train through the pain, it will pass.",
+        "Try fasting for 3 days.",
     ],
 )
 def test_unsafe_outputs_are_blocked(text: str) -> None:
@@ -65,6 +85,8 @@ def test_unsafe_outputs_are_blocked(text: str) -> None:
         "A 300 kcal snack before the run works well.",
         "Your target is 2450 kcal per day.",
         "You have a great base for the marathon.",
+        "Take a 200 kcal gel every 45 minutes during the ride.",
+        "A 400 kcal shake after training helps recovery.",
     ],
 )
 def test_safe_outputs_pass(text: str) -> None:
@@ -89,6 +111,26 @@ router = IntentRouter()
 )
 def test_routing(message: str, agent: AgentName) -> None:
     assert router.route(message) is agent
+
+
+@pytest.mark.parametrize(
+    ("message", "agent"),
+    [
+        ("Which restaurant should I pick?", AgentName.HEAD_COACH),  # not "rest"
+        ("I feel fatigue in my legs", AgentName.RECOVERY),  # not "fat"
+        ("I ran 10 km yesterday", AgentName.TRAINING),
+        ("Ich gehe morgen joggen", AgentName.TRAINING),
+        ("I'm running too slowly", AgentName.TRAINING),
+    ],
+)
+def test_routing_word_boundaries(message: str, agent: AgentName) -> None:
+    assert router.route(message) is agent
+
+
+def test_german_escalation_message() -> None:
+    verdict = guard.check_input("Ich habe Brustschmerzen", language="de")
+    assert verdict.message is not None
+    assert "Notruf" in verdict.message
 
 
 def test_tie_goes_to_head_coach() -> None:

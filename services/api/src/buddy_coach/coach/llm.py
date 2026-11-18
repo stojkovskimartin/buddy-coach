@@ -6,6 +6,7 @@ API key uses ``DevLLMProvider``; production uses ``AnthropicProvider``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections import deque
@@ -56,6 +57,9 @@ class LLMRequest:
     messages: tuple[Message, ...]
     tools: tuple[ToolSpec, ...] = ()
     max_tokens: int = 800
+    # "none" keeps tool definitions (required while the history holds tool blocks) but tells
+    # the model it must answer in text now.
+    tool_choice: Literal["auto", "none"] = "auto"
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +70,7 @@ class LLMResponse:
     tool_calls: tuple[ToolCall, ...] = ()
     input_tokens: int = 0
     output_tokens: int = 0
+    truncated: bool = False  # the model hit max_tokens before finishing
 
 
 class LLMError(Exception):
@@ -110,7 +115,7 @@ class DevLLMProvider:
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Call one argument-free tool, then summarise."""
         tool_results = [m for m in request.messages if m.role == "tool"]
-        if not tool_results:
+        if not tool_results and request.tool_choice == "auto":
             for tool in request.tools:
                 if not tool.input_schema.get("required"):
                     return LLMResponse(
@@ -127,6 +132,7 @@ class AnthropicProvider:
 
     API_URL = "https://api.anthropic.com/v1/messages"
     API_VERSION = "2023-06-01"
+    RETRY_STATUSES = frozenset({429, 500, 502, 503, 529})
 
     def __init__(
         self,
@@ -135,10 +141,18 @@ class AnthropicProvider:
         *,
         client: httpx.AsyncClient | None = None,
         timeout_s: float = 30.0,
+        max_retries: int = 2,
+        backoff_s: float = 0.5,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
+        self._max_retries = max_retries
+        self._backoff_s = backoff_s
+
+    async def aclose(self) -> None:
+        """Close the HTTP client (called on app shutdown)."""
+        await self._client.aclose()
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Send one request; map tool use both ways."""
@@ -153,23 +167,36 @@ class AnthropicProvider:
                 {"name": t.name, "description": t.description, "input_schema": t.input_schema}
                 for t in request.tools
             ]
+            payload["tool_choice"] = {"type": request.tool_choice}
+        response = await self._post_with_retries(payload)
         try:
-            response = await self._client.post(
-                self.API_URL,
-                json=payload,
-                headers={
-                    "x-api-key": self._api_key,
-                    "anthropic-version": self.API_VERSION,
-                    "content-type": "application/json",
-                },
-            )
-        except httpx.HTTPError as exc:
-            raise LLMError("LLM provider unreachable") from exc
-        if response.status_code != httpx.codes.OK:
-            logger.warning("llm_error", extra={"status": response.status_code})
-            msg = f"LLM provider returned {response.status_code}"
-            raise LLMError(msg)
-        return _from_anthropic_response(response.json())
+            return _from_anthropic_response(response.json())
+        except (ValueError, KeyError, TypeError) as exc:
+            raise LLMError("LLM provider returned an unreadable response") from exc
+
+    async def _post_with_retries(self, payload: dict[str, Any]) -> httpx.Response:
+        headers = {
+            "x-api-key": self._api_key,
+            "anthropic-version": self.API_VERSION,
+            "content-type": "application/json",
+        }
+        for attempt in range(self._max_retries + 1):
+            last_try = attempt == self._max_retries
+            try:
+                response = await self._client.post(self.API_URL, json=payload, headers=headers)
+            except httpx.HTTPError as exc:
+                if last_try:
+                    raise LLMError("LLM provider unreachable") from exc
+            else:
+                if response.status_code == httpx.codes.OK:
+                    return response
+                logger.warning("llm_error", extra={"status": response.status_code})
+                if response.status_code not in self.RETRY_STATUSES or last_try:
+                    msg = f"LLM provider returned {response.status_code}"
+                    raise LLMError(msg)
+            await asyncio.sleep(self._backoff_s * 2**attempt)
+        msg = "unreachable"  # pragma: no cover
+        raise LLMError(msg)
 
 
 def _to_anthropic_messages(messages: Sequence[Message]) -> list[dict[str, Any]]:
@@ -219,4 +246,5 @@ def _from_anthropic_response(body: dict[str, Any]) -> LLMResponse:
         tool_calls=tuple(calls),
         input_tokens=int(usage.get("input_tokens", 0)),
         output_tokens=int(usage.get("output_tokens", 0)),
+        truncated=body.get("stop_reason") == "max_tokens",
     )

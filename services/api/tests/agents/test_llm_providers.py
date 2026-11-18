@@ -60,6 +60,7 @@ async def test_anthropic_request_mapping_and_tool_use_parsing() -> None:
     assert body["model"] == "model-x"
     assert body["system"] == "sys"
     assert body["tools"][0]["name"] == "get_profile_summary"
+    assert body["tool_choice"] == {"type": "auto"}
     assert body["messages"][1]["content"][0]["type"] == "tool_use"
     assert body["messages"][2] == {
         "role": "user",
@@ -73,8 +74,72 @@ async def test_anthropic_request_mapping_and_tool_use_parsing() -> None:
     assert (response.input_tokens, response.output_tokens) == (12, 5)
 
 
+async def test_tool_choice_none_is_sent_with_tools() -> None:
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "ok"}]})
+
+    await _provider(httpx.MockTransport(handler)).complete(
+        LLMRequest(system="s", messages=(Message("user", "x"),), tools=(TOOL,), tool_choice="none")
+    )
+    assert seen[0]["tool_choice"] == {"type": "none"}
+    assert seen[0]["tools"]
+
+
+async def test_retries_on_overload_then_succeeds() -> None:
+    statuses = iter([529, 429, 200])
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        status = next(statuses)
+        return httpx.Response(status, json={"content": [{"type": "text", "text": "ok"}]})
+
+    provider = AnthropicProvider(
+        "k", "m", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)), backoff_s=0
+    )
+    response = await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
+    assert response.text == "ok"
+
+
+async def test_client_error_is_not_retried() -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(400, json={})
+
+    provider = AnthropicProvider(
+        "k", "m", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)), backoff_s=0
+    )
+    with pytest.raises(LLMError, match="400"):
+        await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
+    assert calls == 1
+
+
+async def test_unreadable_response_raises_llm_error() -> None:
+    provider = _provider(httpx.MockTransport(lambda _: httpx.Response(200, content=b"not json")))
+    with pytest.raises(LLMError, match="unreadable"):
+        await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
+
+
+async def test_max_tokens_stop_reason_marks_truncation() -> None:
+    body = {"content": [{"type": "text", "text": "Half"}], "stop_reason": "max_tokens"}
+    provider = _provider(httpx.MockTransport(lambda _: httpx.Response(200, json=body)))
+    response = await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
+    assert response.truncated
+
+
 async def test_anthropic_http_error_raises_llm_error() -> None:
-    provider = _provider(httpx.MockTransport(lambda _: httpx.Response(529, json={})))
+    provider = AnthropicProvider(
+        "k",
+        "m",
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(529, json={}))
+        ),
+        backoff_s=0,
+    )
     with pytest.raises(LLMError, match="529"):
         await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
 
@@ -83,10 +148,11 @@ async def test_anthropic_network_error_raises_llm_error() -> None:
     def boom(_: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("no route")
 
+    provider = AnthropicProvider(
+        "k", "m", client=httpx.AsyncClient(transport=httpx.MockTransport(boom)), backoff_s=0
+    )
     with pytest.raises(LLMError, match="unreachable"):
-        await _provider(httpx.MockTransport(boom)).complete(
-            LLMRequest(system="s", messages=(Message("user", "x"),))
-        )
+        await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
 
 
 async def test_dev_provider_calls_argument_free_tool_then_summarises() -> None:

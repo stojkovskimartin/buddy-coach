@@ -26,7 +26,16 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
 
 def install_coach(app: FastAPI, settings: Settings, llm: LLMProvider | None = None) -> None:
     """Create the shared, stateless coach objects once per app."""
-    app.state.head_coach = HeadCoach(llm or build_llm_provider(settings), build_default_registry())
+    app.state.llm_provider = llm or build_llm_provider(settings)
+    app.state.head_coach = HeadCoach(app.state.llm_provider, build_default_registry())
+
+
+async def close_coach(app: FastAPI) -> None:
+    """Release resources held by the LLM provider (e.g. its HTTP client)."""
+    llm = getattr(app.state, "llm_provider", None)
+    close = getattr(llm, "aclose", None)
+    if close is not None:
+        await close()
 
 
 def get_head_coach(request: Request) -> HeadCoach:

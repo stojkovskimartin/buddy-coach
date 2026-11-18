@@ -54,20 +54,27 @@ class Agent:
 
         for _ in range(contract.max_steps):
             tools_left = len(tools_used) < contract.max_tool_calls
+            remaining = contract.token_budget - tokens
+            if remaining <= 0:
+                limits.append("token_budget")
+                break
             response = await self._llm.complete(
                 LLMRequest(
                     system=system,
                     messages=tuple(messages),
-                    tools=all_tools if tools_left else (),
-                    max_tokens=contract.max_output_tokens,
+                    tools=all_tools,
+                    max_tokens=min(contract.max_output_tokens, remaining),
+                    tool_choice="auto" if tools_left else "none",
                 )
             )
             tokens += response.input_tokens + response.output_tokens
+            if response.truncated:
+                limits.append("max_output_tokens")
+            if not response.tool_calls:
+                return self._result(response.text or LIMIT_FALLBACK, tools_used, limits, tokens)
             if tokens > contract.token_budget:
                 limits.append("token_budget")
                 break
-            if not response.tool_calls:
-                return self._result(response.text or LIMIT_FALLBACK, tools_used, limits, tokens)
 
             messages.append(
                 Message(role="assistant", content=response.text, tool_calls=response.tool_calls)

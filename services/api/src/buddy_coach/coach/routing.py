@@ -1,7 +1,9 @@
 """Intent routing: which specialist handles a message.
 
 Deterministic keyword scoring (English and German) keeps routing cheap, fast and testable.
-An LLM classifier can replace it behind ``route`` when needed.
+Keywords match whole words with common endings ("run", "runs", "running"); a trailing ``*``
+marks a stem that may continue ("motivat*" -> "motivation"). An LLM classifier can replace
+this behind ``route`` when needed.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ from buddy_coach.coach.contracts import AgentName
 _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
     AgentName.NUTRITION: (
         "eat",
+        "ate",
         "food",
         "meal",
         "calorie",
@@ -31,14 +34,17 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "macro",
         "essen",
         "mahlzeit",
-        "kalorien",
+        "kalorie*",
         "ernährung",
         "hunger",
         "frühstück",
+        "eiweiss",
     ),
     AgentName.TRAINING: (
         "run",
+        "ran",
         "ride",
+        "rode",
         "bike",
         "swim",
         "workout",
@@ -53,28 +59,30 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "ski",
         "strength",
         "gym",
-        "load",
         "plan",
-        "lauf",
+        "lauf*",
+        "laufe",
+        "jogg*",
         "rennen",
-        "rad",
-        "schwimm",
-        "wander",
+        "velo",
+        "schwimm*",
+        "wander*",
         "krafttraining",
         "training",
+        "intervall*",
     ),
     AgentName.RECOVERY: (
         "sleep",
+        "slept",
         "tired",
         "sore",
         "rest",
-        "recover",
+        "recover*",
         "hrv",
         "fatigue",
         "exhausted",
-        "ready",
         "müde",
-        "schlaf",
+        "schlaf*",
         "muskelkater",
         "erholung",
         "pause",
@@ -83,31 +91,38 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
         "progress",
         "trend",
         "review",
-        "results",
-        "improve",
+        "result",
+        "improve*",
         "how am i doing",
         "this week",
         "this month",
-        "fortschritt",
+        "fortschritt*",
         "entwicklung",
-        "verbessert",
+        "verbesser*",
     ),
     AgentName.MOTIVATION: (
-        "motivat",
+        "motivat*",
         "lazy",
         "give up",
         "can't be bothered",
-        "no energy to",
         "bored",
         "quit",
         "keine lust",
         "aufgeben",
-        "motivation",
     ),
 }
 
+_SUFFIXES = r"(?:s|es|ed|ing|ning|ming|er|en|e|n)?"
+
+
+def _pattern(keyword: str) -> str:
+    if keyword.endswith("*"):
+        return r"\b" + re.escape(keyword[:-1]) + r"\w*"
+    return r"\b" + re.escape(keyword) + _SUFFIXES + r"\b"
+
+
 _PATTERNS = {
-    agent: re.compile(r"\b(" + "|".join(re.escape(k) for k in keywords) + r")", re.IGNORECASE)
+    agent: re.compile("|".join(_pattern(k) for k in keywords), re.IGNORECASE)
     for agent, keywords in _KEYWORDS.items()
 }
 

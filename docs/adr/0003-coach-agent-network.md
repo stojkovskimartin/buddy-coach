@@ -21,3 +21,9 @@ LLMs are good at understanding, planning within constraints and explaining; they
 
 - Every agent run is reproducible in tests and auditable in logs (agent, tools called, limits hit).
 - Adding a specialist means: declare its contract, register its tools, add tests.
+
+## Data sent to the LLM provider
+
+Agents receive only what tools return: age, sex, height, weight, experience, availability and
+structured goal fields (type, sport, dates, targets). No names, emails, ids or user-written free
+text (goal titles) are sent. Processing needs the user's AI consent (see docs/backlog.md).

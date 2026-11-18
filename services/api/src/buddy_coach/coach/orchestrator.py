@@ -10,7 +10,7 @@ from buddy_coach.coach.agent import Agent
 from buddy_coach.coach.contracts import CONTRACTS, AgentName, system_prompt
 from buddy_coach.coach.llm import LLMError, LLMProvider, Message
 from buddy_coach.coach.routing import IntentRouter
-from buddy_coach.coach.safety import SafetyCategory, SafetyGuard
+from buddy_coach.coach.safety import SafetyCategory, SafetyGuard, safety_language
 from buddy_coach.coach.tools import ToolContext, ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,9 @@ class HeadCoach:
         self, message: str, ctx: ToolContext, history: Sequence[Message] = ()
     ) -> CoachReply:
         """Answer one user message."""
-        verdict = self._guard.check_input(message)
+        profile = await ctx.profiles.find_profile(ctx.user_id)
+        language = safety_language(profile.locale if profile else None)
+        verdict = self._guard.check_input(message, language)
         if not verdict.allowed:
             logger.info("coach_escalated_input", extra={"category": verdict.category})
             return CoachReply(
@@ -67,7 +69,6 @@ class HeadCoach:
 
         agent_name = self._router.route(message)
         contract = CONTRACTS[agent_name]
-        profile = await ctx.profiles.find_profile(ctx.user_id)
         style = profile.coach_style.value if profile else None
         try:
             result = await Agent(contract, self._llm, self._registry).run(
@@ -77,7 +78,7 @@ class HeadCoach:
             logger.exception("coach_llm_unavailable", extra={"agent": agent_name})
             return CoachReply(text=UNAVAILABLE_MESSAGE, agent=agent_name, degraded=True)
 
-        output_verdict = self._guard.check_output(result.text)
+        output_verdict = self._guard.check_output(result.text, language)
         logger.info(
             "coach_reply",
             extra={

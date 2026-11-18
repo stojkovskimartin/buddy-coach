@@ -22,6 +22,7 @@ def test_dev_llm_is_refused_in_production() -> None:
         make_settings(environment=Environment.PRODUCTION)
 
 
-def test_anthropic_requires_api_key() -> None:
+@pytest.mark.parametrize("key", [None, "", "   "])
+def test_anthropic_requires_api_key(key: str | None) -> None:
     with pytest.raises(ValidationError, match="anthropic_api_key is required"):
-        make_settings(llm_provider=LLMProviderName.ANTHROPIC)
+        make_settings(llm_provider=LLMProviderName.ANTHROPIC, anthropic_api_key=key)

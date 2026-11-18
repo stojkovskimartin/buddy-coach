@@ -75,7 +75,9 @@ async def test_tool_call_limit_stops_tools_and_forces_answer() -> None:
     )
     assert result.tools_used == ("double",)
     assert "max_tool_calls" in result.limits_hit
-    assert llm.requests[1].tools == ()  # no tools offered once the limit is reached
+    # Tools stay defined (the history holds tool blocks) but the model must answer in text.
+    assert llm.requests[1].tools != ()
+    assert llm.requests[1].tool_choice == "none"
     assert result.text == "done"
 
 
@@ -89,11 +91,39 @@ async def test_max_steps_returns_fallback() -> None:
 
 
 async def test_token_budget_stops_the_run() -> None:
-    llm = ScriptedLLMProvider.of([LLMResponse(text="", output_tokens=999, tool_calls=())])
+    llm = ScriptedLLMProvider.of([call("double", value=1)])
+    llm.responses[0] = LLMResponse(tool_calls=llm.responses[0].tool_calls, output_tokens=999)
     contract = _contract(token_budget=100)
     result = await Agent(contract, llm, _registry()).run("x", tool_context(), "sys")
     assert result.limits_hit == ("token_budget",)
     assert result.text == LIMIT_FALLBACK
+
+
+async def test_max_tokens_never_exceeds_remaining_budget() -> None:
+    llm = ScriptedLLMProvider.of(
+        [LLMResponse(tool_calls=call("double", value=1).tool_calls, input_tokens=950), answer("ok")]
+    )
+    await Agent(_contract(token_budget=1000), llm, _registry()).run("x", tool_context(), "sys")
+    assert llm.requests[1].max_tokens == 50
+
+
+async def test_truncated_answer_is_flagged() -> None:
+    llm = ScriptedLLMProvider.of([LLMResponse(text="Partial", truncated=True)])
+    result = await Agent(_contract(), llm, _registry()).run("x", tool_context(), "sys")
+    assert result.limits_hit == ("max_output_tokens",)
+
+
+async def test_tool_crash_returns_generic_error_to_model() -> None:
+    async def broken(_: ToolContext, __: EchoIn) -> EchoOut:
+        raise RuntimeError("database down")
+
+    registry = ToolRegistry()
+    registry.register(Tool("double", "d", EchoIn, broken))
+    llm = ScriptedLLMProvider.of([call("double", value=1), answer("sorry")])
+    result = await Agent(_contract(), llm, registry).run("x", tool_context(), "sys")
+    assert "temporarily unavailable" in llm.requests[1].messages[-1].content
+    assert "database down" not in llm.requests[1].messages[-1].content
+    assert result.text == "sorry"
 
 
 async def test_empty_answer_falls_back() -> None:

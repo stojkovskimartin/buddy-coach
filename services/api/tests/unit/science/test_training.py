@@ -190,3 +190,8 @@ def test_short_hrv_baseline_is_ignored() -> None:
 def test_readiness_rejects_out_of_range_inputs() -> None:
     with pytest.raises(ValueError, match="sleep_quality"):
         readiness(ReadinessInputs(sleep_quality=0, soreness=3, mood=3))
+
+
+def test_trimp_requires_sex_enum() -> None:
+    with pytest.raises(TypeError):
+        trimp_banister(60, 150, 50, 190, "male")  # type: ignore[arg-type]

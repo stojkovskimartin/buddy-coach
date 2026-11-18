@@ -102,6 +102,12 @@ class ToolRegistry:
             result = await tool.handler(ctx, arguments)
         except (DomainError, ValueError) as exc:
             return ToolOutcome(call.name, ok=False, content=_error(str(exc)))
+        except Exception:
+            # Infrastructure failures must not crash the chat; the model gets a generic error.
+            logger.exception("tool_failed", extra={"tool": call.name})
+            return ToolOutcome(
+                call.name, ok=False, content=_error("Tool is temporarily unavailable.")
+            )
         return ToolOutcome(call.name, ok=True, content=result.model_dump_json())
 
 

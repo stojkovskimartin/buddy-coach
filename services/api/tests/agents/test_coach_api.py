@@ -106,3 +106,4 @@ async def test_goal_days_to_target_are_computed(
     goals = json.loads(llm_provider.requests[1].messages[-1].content)["goals"]
     assert goals[0]["days_to_target"] == 100
     assert "id" not in goals[0]  # no identifiers are sent to the model
+    assert "title" not in goals[0]  # no user free text either

@@ -58,7 +58,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _llm_is_configured(self) -> Settings:
-        if self.llm_provider is LLMProviderName.ANTHROPIC and self.anthropic_api_key is None:
+        key = self.anthropic_api_key.get_secret_value().strip() if self.anthropic_api_key else ""
+        if self.llm_provider is LLMProviderName.ANTHROPIC and not key:
             msg = "anthropic_api_key is required when llm_provider is 'anthropic'"
             raise ValueError(msg)
         if self.is_production and self.llm_provider is LLMProviderName.DEV:

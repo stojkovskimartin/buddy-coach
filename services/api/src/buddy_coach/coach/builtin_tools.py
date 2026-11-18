@@ -34,10 +34,10 @@ class NoArguments(BaseModel):
 
 
 class GoalSummary(BaseModel):
-    """A goal without identifiers."""
+    """A goal without identifiers or free text (the user-written title can carry prompt
+    injection and personal details, so the model only sees structured fields)."""
 
     goal_type: str
-    title: str
     sport: str | None
     target_date: date | None
     days_to_target: int | None
@@ -71,7 +71,6 @@ async def _active_goals(ctx: ToolContext) -> list[GoalSummary]:
     return [
         GoalSummary(
             goal_type=g.goal_type.value,
-            title=g.title,
             sport=g.sport.value if g.sport else None,
             target_date=g.target_date,
             days_to_target=(g.target_date - ctx.today).days if g.target_date else None,
