@@ -1,10 +1,11 @@
-import type { ChatReply, Goal, Profile, ProfileIn } from "@buddy/api-client";
+import type { ChatReply, Checkin, CheckinIn, Goal, Profile, ProfileIn } from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
+import { isoDate } from "./lib/rules";
 import type { CoachApi } from "./lib/session";
 
 const PROFILE: Profile = {
@@ -35,6 +36,20 @@ const GOAL: Goal = {
   created_at: "2026-11-18T10:00:00Z",
 };
 
+function checkinFor(day: string, c: CheckinIn, readiness?: Checkin["readiness"]): Checkin {
+  return {
+    day,
+    sleep_quality: c.sleep_quality,
+    soreness: c.soreness,
+    mood: c.mood,
+    sleep_hours: c.sleep_hours ?? null,
+    hrv_ms: null,
+    resting_hr: null,
+    pain: c.pain ?? false,
+    readiness: readiness ?? { score: 81, level: "green", limiting_factors: [] },
+  };
+}
+
 function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
   return {
     register: vi.fn(async () => ({})),
@@ -54,6 +69,8 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
         degraded: false,
       }),
     ),
+    getTodayCheckin: vi.fn(async () => null),
+    saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
   };
 }
@@ -250,5 +267,61 @@ describe("web app", () => {
     await screen.findByText("Half Ironman");
     await userEvent.click(screen.getByRole("button", { name: "Log out" }));
     expect(await screen.findByRole("form", { name: "Log in" })).toBeInTheDocument();
+  });
+
+  describe("morning check-in", () => {
+    it("takes three answers and shows today's readiness", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      const save = within(form).getByRole("button", { name: "Save check-in" });
+      expect(save).toBeDisabled();
+
+      const sleep = within(form).getByRole("group", { name: "How did you sleep?" });
+      await userEvent.click(within(sleep).getByRole("radio", { name: "4 of 5" }));
+      const sore = within(form).getByRole("group", { name: "How do your muscles feel?" });
+      await userEvent.click(within(sore).getByRole("radio", { name: "2 of 5" }));
+      const mood = within(form).getByRole("group", { name: "How do you feel?" });
+      await userEvent.click(within(mood).getByRole("radio", { name: "5 of 5 (Great)" }));
+      await userEvent.type(within(form).getByLabelText("Hours of sleep (optional)"), "7.5");
+      await userEvent.click(save);
+
+      expect(api.saveCheckin).toHaveBeenCalledWith(isoDate(new Date()), {
+        sleep_quality: 4,
+        soreness: 2,
+        mood: 5,
+        pain: false,
+        sleep_hours: 7.5,
+      });
+      expect(await screen.findByRole("status")).toHaveTextContent("Readiness 81/100");
+    });
+
+    it("shows what holds readiness back and allows changing the answers", async () => {
+      const today = checkinFor(
+        isoDate(new Date()),
+        { sleep_quality: 1, soreness: 2, mood: 3, pain: true },
+        { score: 20, level: "red", limiting_factors: ["sleep", "pain"] },
+      );
+      renderAt("/", fakeApi({ getTodayCheckin: vi.fn(async () => today) }), true);
+
+      expect(await screen.findByRole("status")).toHaveTextContent("Rest or recovery only today.");
+      expect(screen.getByText("Held back by: sleep, pain.")).toBeInTheDocument();
+      expect(screen.getByText(/You reported pain/)).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Change today's answers" }));
+      const sleep = screen.getByRole("group", { name: "How did you sleep?" });
+      expect(within(sleep).getByRole("radio", { name: "1 of 5 (Very badly)" })).toBeChecked();
+    });
+
+    it("shows the error when saving fails", async () => {
+      const api = fakeApi({ saveCheckin: vi.fn(async () => Promise.reject(new Error("Server down"))) });
+      renderAt("/", api, true);
+      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      for (const group of within(form).getAllByRole("group")) {
+        await userEvent.click(within(group).getByRole("radio", { name: /^3 of 5/ }));
+      }
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Server down");
+    });
   });
 });

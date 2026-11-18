@@ -1,4 +1,11 @@
-import { memoryTokenStore, type ChatReply, type Goal, type Profile } from "@buddy/api-client";
+import {
+  memoryTokenStore,
+  type ChatReply,
+  type Checkin,
+  type CheckinIn,
+  type Goal,
+  type Profile,
+} from "@buddy/api-client";
 
 import type { CoachApi } from "../src/lib/session";
 
@@ -12,6 +19,24 @@ export function reply(overrides: Partial<ChatReply> = {}): ChatReply {
     tools_used: [],
     ...overrides,
   } as ChatReply;
+}
+
+export function checkin(
+  day: string,
+  c: CheckinIn,
+  readiness: Checkin["readiness"] = { score: 81, level: "green", limiting_factors: [] },
+): Checkin {
+  return {
+    day,
+    sleep_quality: c.sleep_quality,
+    soreness: c.soreness,
+    mood: c.mood,
+    sleep_hours: c.sleep_hours ?? null,
+    hrv_ms: null,
+    resting_hr: null,
+    pain: c.pain ?? false,
+    readiness,
+  };
 }
 
 export function goal(overrides: Partial<Goal> = {}): Goal {
@@ -40,6 +65,8 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     listGoals: jest.fn().mockResolvedValue([]),
     createGoal: jest.fn(),
     chat: jest.fn().mockResolvedValue(reply()),
+    getTodayCheckin: jest.fn().mockResolvedValue(null),
+    saveCheckin: jest.fn(async (day: string, c: CheckinIn) => checkin(day, c)),
     ...overrides,
   };
   return api satisfies Record<keyof CoachApi, jest.Mock>;

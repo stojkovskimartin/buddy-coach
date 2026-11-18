@@ -18,6 +18,9 @@ export type Profile = Schemas["ProfileOut"];
 export type GoalIn = Schemas["GoalIn"];
 export type Goal = Schemas["GoalOut"];
 export type ChatReply = Schemas["ChatReply"];
+export type CheckinIn = Schemas["CheckinIn"];
+export type Checkin = Schemas["CheckinOut"];
+export type Readiness = Schemas["ReadinessOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain on mobile/desktop. */
 export interface TokenStore {
@@ -115,6 +118,25 @@ export class BuddyClient {
 
   async createGoal(goal: GoalIn): Promise<Goal> {
     return unwrap(await this.raw.POST("/api/v1/goals", { body: goal }));
+  }
+
+  /** Today's check-in in the athlete's time zone, or null when it has not been entered yet. */
+  async getTodayCheckin(): Promise<Checkin | null> {
+    const result = await this.raw.GET("/api/v1/checkins/today");
+    if (result.response.status === 404) return null;
+    return unwrap(result);
+  }
+
+  /** Create or replace the check-in of a day (ISO date, today or up to 7 days late). */
+  async saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin> {
+    return unwrap(
+      await this.raw.PUT("/api/v1/checkins/{day}", { params: { path: { day } }, body: checkin }),
+    );
+  }
+
+  /** Check-ins between two ISO dates (default: the last 14 days), newest first. */
+  async listCheckins(range: { from?: string; to?: string } = {}): Promise<Checkin[]> {
+    return unwrap(await this.raw.GET("/api/v1/checkins", { params: { query: range } }));
   }
 
   async chat(message: string): Promise<ChatReply> {

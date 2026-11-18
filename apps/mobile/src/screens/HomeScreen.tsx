@@ -2,6 +2,7 @@ import type { Goal, Profile } from "@buddy/api-client";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { CheckinCard } from "../components/CheckinCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
@@ -31,9 +32,11 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloads, setReloads] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setReloads((n) => n + 1);
     setError(null);
     try {
       const [p, g] = await Promise.all([api.getProfile(), api.listGoals("active")]);
@@ -61,6 +64,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
         Today
       </Text>
       <ErrorBanner message={error} />
+      <CheckinCard reloadKey={reloads} />
       {!loading && !error && !profile && (
         <Card>
           <Text style={styles.heading}>Set up your profile</Text>

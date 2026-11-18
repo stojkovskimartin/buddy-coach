@@ -6,6 +6,8 @@
 import {
   BuddyClient,
   type ChatReply,
+  type Checkin,
+  type CheckinIn,
   type Goal,
   type GoalIn,
   type Profile,
@@ -34,6 +36,8 @@ export interface CoachApi {
   listGoals(status?: Goal["status"]): Promise<Goal[]>;
   createGoal(goal: GoalIn): Promise<Goal>;
   chat(message: string): Promise<ChatReply>;
+  getTodayCheckin(): Promise<Checkin | null>;
+  saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }
 
 /** "loading" while the stored session is checked on start. */
