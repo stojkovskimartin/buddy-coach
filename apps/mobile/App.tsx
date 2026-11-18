@@ -58,7 +58,7 @@ function LoggedIn() {
   return (
     <SafeAreaView style={styles.fill} edges={["top", "left", "right", "bottom"]}>
       <View style={[styles.fill, tab !== "home" && styles.hidden]}>
-        <HomeScreen onOpenCoach={() => setTab("coach")} />
+        <HomeScreen active={tab === "home"} onOpenCoach={() => setTab("coach")} />
       </View>
       <View style={[styles.fill, tab !== "coach" && styles.hidden]}>
         <CoachScreen />

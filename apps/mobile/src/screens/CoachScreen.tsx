@@ -78,8 +78,9 @@ export function CoachScreen() {
           degraded: reply.degraded,
         },
       ]);
-      AccessibilityInfo.announceForAccessibility(reply.reply);
+      announce(reply.reply);
     } catch (e) {
+      announce(errorMessage(e));
       setTurns((t) => [
         ...t,
         { id: nextId.current++, from: "coach", text: errorMessage(e), failed: true },
@@ -92,7 +93,7 @@ export function CoachScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
       keyboardVerticalOffset={insets.top}
       style={styles.screen}
     >
@@ -145,6 +146,11 @@ export function CoachScreen() {
       </Text>
     </KeyboardAvoidingView>
   );
+}
+
+/** Android reads new bubbles through their live region; iOS needs an explicit announcement. */
+function announce(text: string) {
+  if (Platform.OS === "ios") AccessibilityInfo.announceForAccessibility(text);
 }
 
 function Bubble({ turn }: { turn: Turn }) {

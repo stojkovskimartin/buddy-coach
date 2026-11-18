@@ -24,7 +24,8 @@ export function daysUntil(isoDate: string, today: Date = new Date()): number {
   return Math.round((Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1) - start) / 86_400_000);
 }
 
-export function HomeScreen({ onOpenCoach }: { onOpenCoach: () => void }) {
+/** `active` is true while the Today tab is shown; data reloads each time it becomes active. */
+export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => void; active?: boolean }) {
   const { api, logout } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -46,8 +47,8 @@ export function HomeScreen({ onOpenCoach }: { onOpenCoach: () => void }) {
   }, [api]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (active) void load();
+  }, [active, load]);
 
   const primary = goals.find((g) => g.priority === "primary");
 

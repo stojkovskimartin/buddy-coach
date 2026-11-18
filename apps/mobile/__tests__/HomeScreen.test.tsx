@@ -70,6 +70,16 @@ describe("HomeScreen", () => {
   });
 });
 
+it("reloads the goals when the Today tab is opened again", async () => {
+  const api = fakeApi();
+  await render(<App {...appProps(api, true)} />);
+  await screen.findByRole("button", { name: "Ask your coach" });
+  await fireEvent.press(screen.getByRole("tab", { name: "Coach" }));
+  await fireEvent.press(screen.getByRole("tab", { name: "Today" }));
+  await screen.findByRole("button", { name: "Ask your coach" });
+  expect(api.listGoals).toHaveBeenCalledTimes(2);
+});
+
 describe("daysUntil", () => {
   const today = new Date(2026, 10, 18);
   it.each([

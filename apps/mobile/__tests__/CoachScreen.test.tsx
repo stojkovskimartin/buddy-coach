@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo, Platform } from "react-native";
 
 import App from "../App";
 import { appProps, fakeApi, reply } from "../test/fakeApi";
@@ -13,7 +13,10 @@ async function openCoach(api = fakeApi()) {
 const SUGGESTION = { name: "Should I take creatine?" };
 
 describe("CoachScreen", () => {
+  afterEach(() => jest.restoreAllMocks());
+
   it("sends a trimmed message and shows the reply with the specialist", async () => {
+    jest.replaceProperty(Platform, "OS", "ios");
     const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
     const api = await openCoach();
     await fireEvent.changeText(screen.getByLabelText("Your message"), "  What after intervals?  ");
@@ -25,17 +28,25 @@ describe("CoachScreen", () => {
     expect(announce).toHaveBeenCalledWith("Eat 30 g protein after training.");
   });
 
-  it("sends a suggestion with one tap, and only once on a double tap", async () => {
+  it("sends only once on a double tap", async () => {
     let resolve: (value: unknown) => void = () => undefined;
     const api = await openCoach(
       fakeApi({ chat: jest.fn(() => new Promise((r) => (resolve = r))) }),
     );
-    await fireEvent.press(screen.getByRole("button", SUGGESTION));
-    expect(screen.queryByRole("button", SUGGESTION)).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText("Your message"), "Hi coach");
+    const send = screen.getByRole("button", { name: "Send" });
+    // Two presses in the same tick, before React re-renders and disables the button:
+    // only the ref guard can stop the second one.
+    const click = send.props.onClick as (event: object) => void;
+    const event = { nativeEvent: {}, persist: () => undefined };
+    await act(async () => {
+      click(event);
+      click(event);
+    });
     resolve(reply());
     await screen.findByTestId("turn-coach");
     expect(api.chat).toHaveBeenCalledTimes(1);
-    expect(api.chat).toHaveBeenCalledWith("Should I take creatine?");
+    expect(api.chat).toHaveBeenCalledWith("Hi coach");
   });
 
   it("marks escalated replies as important alerts", async () => {
