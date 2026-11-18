@@ -59,9 +59,13 @@ export interface BuddyClientOptions {
 const AUTH_FREE = ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh"];
 
 /** The raw typed client plus convenience methods for the main flows. */
+type RefreshOutcome = "refreshed" | "expired" | "unavailable";
+
 export class BuddyClient {
   readonly raw: Client<paths>;
-  private refreshing: Promise<boolean> | null = null;
+  private refreshing: Promise<RefreshOutcome> | null = null;
+  /** Unread copies of outgoing requests, so a request with a body can be retried after 401. */
+  private readonly retryCopies = new WeakMap<Request, Request>();
 
   constructor(private readonly options: BuddyClientOptions) {
     this.raw = createClient<paths>({
@@ -124,42 +128,56 @@ export class BuddyClient {
         if (AUTH_FREE.includes(schemaPath)) return request;
         const tokens = await this.options.tokens.get();
         if (tokens) request.headers.set("Authorization", `Bearer ${tokens.access_token}`);
+        this.retryCopies.set(request, request.clone());
         return request;
       },
       onResponse: async ({ request, response, schemaPath }) => {
         if (response.status !== 401 || AUTH_FREE.includes(schemaPath)) return response;
-        if (!(await this.refreshOnce())) {
-          this.options.onSessionExpired?.();
-          return response;
-        }
+        const copy = this.retryCopies.get(request);
+        this.retryCopies.delete(request);
+        const outcome = await this.refreshOnce();
+        if (outcome === "expired") this.options.onSessionExpired?.();
+        if (outcome !== "refreshed" || !copy) return response;
         const tokens = await this.options.tokens.get();
-        const retry = new Request(request);
-        retry.headers.set("Authorization", `Bearer ${tokens?.access_token ?? ""}`);
-        return (this.options.fetch ?? globalThis.fetch)(retry);
+        copy.headers.set("Authorization", `Bearer ${tokens?.access_token ?? ""}`);
+        // Sent directly, not through this middleware: a second 401 is returned, never looped.
+        return (this.options.fetch ?? globalThis.fetch)(copy);
       },
     };
   }
 
   /** Parallel 401s share one refresh call. */
-  private refreshOnce(): Promise<boolean> {
+  private refreshOnce(): Promise<RefreshOutcome> {
     this.refreshing ??= this.refresh().finally(() => {
       this.refreshing = null;
     });
     return this.refreshing;
   }
 
-  private async refresh(): Promise<boolean> {
+  /**
+   * Only a rejected refresh token ends the session. Network errors, rate limits and server
+   * errors keep the tokens, so a short outage never logs the user out.
+   */
+  private async refresh(): Promise<RefreshOutcome> {
     const tokens = await this.options.tokens.get();
-    if (!tokens) return false;
-    const result = await this.raw.POST("/api/v1/auth/refresh", {
-      body: { refresh_token: tokens.refresh_token },
-    });
-    if (!result.data) {
-      await this.options.tokens.set(null);
-      return false;
+    if (!tokens) return "expired";
+    let result;
+    try {
+      result = await this.raw.POST("/api/v1/auth/refresh", {
+        body: { refresh_token: tokens.refresh_token },
+      });
+    } catch {
+      return "unavailable";
     }
-    await this.options.tokens.set(result.data);
-    return true;
+    if (result.data) {
+      await this.options.tokens.set(result.data);
+      return "refreshed";
+    }
+    if (result.response.status === 400 || result.response.status === 401) {
+      await this.options.tokens.set(null);
+      return "expired";
+    }
+    return "unavailable";
   }
 }
 

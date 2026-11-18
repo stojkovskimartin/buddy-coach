@@ -2,6 +2,7 @@ import type { Goal, GoalIn } from "@buddy/api-client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { daysUntil, goalDateBounds } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
 
 const GOAL_LABELS: Record<Goal["goal_type"], string> = {
@@ -15,10 +16,6 @@ const GOAL_LABELS: Record<Goal["goal_type"], string> = {
   general_fitness: "General fitness",
 };
 
-function daysUntil(date: string): number {
-  return Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
-}
-
 export function DashboardPage() {
   const { api } = useSession();
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -27,6 +24,7 @@ export function DashboardPage() {
   const load = useCallback(async () => {
     try {
       setGoals(await api.listGoals("active"));
+      setError(null);
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -35,6 +33,8 @@ export function DashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const hasPrimary = goals.some((g) => g.priority === "primary");
 
   return (
     <main className="stack">
@@ -65,33 +65,56 @@ export function DashboardPage() {
           Ask your coach
         </Link>
       </section>
-      <NewGoalForm onCreated={load} />
+      <NewGoalForm onCreated={load} hasPrimary={hasPrimary} />
     </main>
   );
 }
 
-function NewGoalForm({ onCreated }: { onCreated: () => Promise<void> }) {
+function NewGoalForm({
+  onCreated,
+  hasPrimary,
+}: {
+  onCreated: () => Promise<void>;
+  hasPrimary: boolean;
+}) {
   const { api } = useSession();
   const [goalType, setGoalType] = useState<GoalIn["goal_type"]>("general_fitness");
   const [title, setTitle] = useState("");
   const [sport, setSport] = useState<NonNullable<GoalIn["sport"]>>("running");
   const [targetDate, setTargetDate] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
+  const [distance, setDistance] = useState("");
+  const [makeMain, setMakeMain] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const needsSport = goalType === "endurance_event" || goalType === "mountain_sport";
+  const isEndurance = goalType === "endurance_event";
+  const needsSport = isEndurance || goalType === "mountain_sport";
   const needsWeight = goalType === "lose_weight" || goalType === "gain_weight";
+  const allowsWeight = needsWeight || goalType === "recomposition";
+  // The first goal is the main goal; later ones only replace it when the user says so.
+  const main = makeMain ?? !hasPrimary;
+  const bounds = goalDateBounds();
+
+  function chooseType(next: GoalIn["goal_type"]) {
+    setGoalType(next);
+    setSport(next === "mountain_sport" ? "hiking" : "running");
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    const goal: GoalIn = { goal_type: goalType, title };
+    const goal: GoalIn = { goal_type: goalType, title, priority: main ? "primary" : "secondary" };
     if (needsSport) goal.sport = sport;
     if (targetDate) goal.target_date = targetDate;
-    if (needsWeight && targetWeight) goal.target_weight_kg = Number(targetWeight);
+    if (allowsWeight && targetWeight) goal.target_weight_kg = Number(targetWeight);
+    if (isEndurance && distance) goal.event_distance_km = Number(distance);
     try {
       await api.createGoal(goal);
       setTitle("");
+      setTargetWeight("");
+      setDistance("");
+      setTargetDate("");
+      setMakeMain(null);
       await onCreated();
     } catch (e) {
       setError(errorMessage(e));
@@ -104,10 +127,7 @@ function NewGoalForm({ onCreated }: { onCreated: () => Promise<void> }) {
       <form onSubmit={submit} aria-label="New goal" className="grid">
         <label>
           Type
-          <select
-            value={goalType}
-            onChange={(e) => setGoalType(e.target.value as GoalIn["goal_type"])}
-          >
+          <select value={goalType} onChange={(e) => chooseType(e.target.value as GoalIn["goal_type"])}>
             {Object.entries(GOAL_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -126,7 +146,7 @@ function NewGoalForm({ onCreated }: { onCreated: () => Promise<void> }) {
               value={sport}
               onChange={(e) => setSport(e.target.value as NonNullable<GoalIn["sport"]>)}
             >
-              {goalType === "endurance_event" ? (
+              {isEndurance ? (
                 <>
                   <option value="running">Running</option>
                   <option value="cycling">Cycling</option>
@@ -144,23 +164,48 @@ function NewGoalForm({ onCreated }: { onCreated: () => Promise<void> }) {
             </select>
           </label>
         )}
-        {needsWeight && (
+        {isEndurance && (
           <label>
-            Target weight (kg)
+            Distance (km)
+            <input
+              type="number"
+              min={0.1}
+              max={10000}
+              step={0.1}
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+            />
+          </label>
+        )}
+        {allowsWeight && (
+          <label>
+            Target weight (kg){needsWeight ? "" : " – optional"}
             <input
               type="number"
               min={30}
               max={300}
               step={0.1}
-              required
+              required={needsWeight}
               value={targetWeight}
               onChange={(e) => setTargetWeight(e.target.value)}
             />
           </label>
         )}
         <label>
-          Target date
-          <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          Target date{isEndurance ? "" : " – optional"}
+          <input
+            type="date"
+            min={bounds.min}
+            max={bounds.max}
+            required={isEndurance}
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+          />
+        </label>
+        <label className="checkbox span">
+          <input type="checkbox" checked={main} onChange={(e) => setMakeMain(e.target.checked)} />
+          Make this my main goal
+          {hasPrimary && main && <span className="muted"> (your current main goal becomes secondary)</span>}
         </label>
         {error && (
           <p role="alert" className="error span">

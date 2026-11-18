@@ -16,7 +16,14 @@ function RequireProfile({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loggedIn) return;
-    api.getProfile().then(setProfile, (e: unknown) => setError(errorMessage(e)));
+    let active = true;
+    api.getProfile().then(
+      (p) => active && setProfile(p),
+      (e: unknown) => active && setError(errorMessage(e)),
+    );
+    return () => {
+      active = false;
+    };
   }, [api, loggedIn]);
 
   if (!loggedIn) return <Navigate to="/login" replace />;
@@ -55,10 +62,26 @@ function Header() {
 function ProfileEditor() {
   const { api, loggedIn } = useSession();
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    if (loggedIn) void api.getProfile().then(setProfile, () => setProfile(null));
+    if (!loggedIn) return;
+    let active = true;
+    api.getProfile().then(
+      (p) => active && setProfile(p),
+      // Never fall back to an empty form: saving it would overwrite the real profile.
+      (e: unknown) => active && setError(errorMessage(e)),
+    );
+    return () => {
+      active = false;
+    };
   }, [api, loggedIn]);
   if (!loggedIn) return <Navigate to="/login" replace />;
+  if (error)
+    return (
+      <p role="alert" className="error">
+        {error}
+      </p>
+    );
   if (profile === undefined) return <p className="muted">Loading…</p>;
   return <OnboardingPage initial={profile} />;
 }

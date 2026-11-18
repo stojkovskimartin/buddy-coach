@@ -11,3 +11,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | AI-processing consent flag checked before any LLM call; document data sent to the LLM provider (age, sex, height, weight, goal type) in the privacy notice | PR #4 review | Before beta |
 | LLM-based safety classifier in addition to the pattern floor; more languages (FR, IT) | PR #4 review | Milestone 3 |
 | Low-kcal output check: snack words after the number can mask daily limits ("eat only 800 kcal, drink water") | PR #4 re-review | Next coach PR |
+| Web: move tokens from localStorage to httpOnly, SameSite cookies (needs a backend cookie auth mode); CSP mitigates meanwhile | feat/clients review | Before public launch |

@@ -63,8 +63,11 @@ button.link { background: none; color: var(--accent); padding: 0; font-weight: 5
 .bubble.you { align-self: flex-end; background: var(--accent); color: #fff; }
 .bubble.coach { align-self: flex-start; background: var(--accent-soft); }
 .bubble.escalated { background: var(--danger-soft); border: 1px solid var(--danger); }
+.bubble.failed { background: #fff; border: 1px dashed var(--muted); }
+.flag { display: block; font-size: 0.75rem; font-weight: 700; color: var(--danger); text-transform: uppercase; letter-spacing: 0.04em; }
 .agent { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .chip { background: var(--accent-soft); color: var(--accent); font-weight: 500; border-radius: 999px; }
 .composer { flex-direction: row; }
 .composer input { flex: 1; }
+.checkbox { flex-direction: row; align-items: center; gap: 0.5rem; font-weight: 400; }

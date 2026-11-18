@@ -9,6 +9,7 @@ interface Turn {
   text: string;
   agent?: ChatReply["agent"];
   escalated?: boolean;
+  failed?: boolean;
 }
 
 const AGENT_LABELS: Record<ChatReply["agent"], string> = {
@@ -58,7 +59,10 @@ export function CoachPage() {
         },
       ]);
     } catch (e) {
-      setTurns((t) => [...t, { id: nextId.current++, from: "coach", text: errorMessage(e) }]);
+      setTurns((t) => [
+        ...t,
+        { id: nextId.current++, from: "coach", text: errorMessage(e), failed: true },
+      ]);
     } finally {
       setBusy(false);
     }
@@ -85,10 +89,15 @@ export function CoachPage() {
         {turns.map((turn) => (
           <div
             key={turn.id}
-            className={`bubble ${turn.from}${turn.escalated ? " escalated" : ""}`}
+            className={`bubble ${turn.from}${turn.escalated ? " escalated" : ""}${turn.failed ? " failed" : ""}`}
             data-testid={`turn-${turn.from}`}
+            {...(turn.escalated || turn.failed ? { role: "alert" } : {})}
           >
-            {turn.agent && <span className="agent">{AGENT_LABELS[turn.agent]}</span>}
+            {turn.escalated && <span className="flag">Important</span>}
+            {turn.failed && <span className="flag">Could not reach your coach</span>}
+            {turn.agent && !turn.escalated && (
+              <span className="agent">{AGENT_LABELS[turn.agent]}</span>
+            )}
             <p>{turn.text}</p>
           </div>
         ))}

@@ -142,6 +142,74 @@ describe("BuddyClient", () => {
     expect(error).toMatchObject({ status: 409, code: "conflict" });
   });
 
+  it("retries a POST with its body after refreshing", async () => {
+    const bodies: unknown[] = [];
+    const api = fakeApi({
+      "POST /api/v1/coach/chat": async (req) => {
+        bodies.push(await req.json());
+        return req.headers.get("Authorization") === "Bearer access-2"
+          ? json(200, { reply: "ok" })
+          : json(401, { code: "unauthenticated", detail: "expired" });
+      },
+      "POST /api/v1/auth/refresh": () => json(200, tokens(2)),
+    });
+    const client = new BuddyClient({
+      baseUrl: BASE,
+      tokens: memoryTokenStore(tokens(1)),
+      fetch: api.fetch,
+    });
+
+    await expect(client.chat("hello")).resolves.toMatchObject({ reply: "ok" });
+    expect(bodies).toEqual([{ message: "hello" }, { message: "hello" }]);
+  });
+
+  it("does not loop when the retried request is also rejected", async () => {
+    let chatCalls = 0;
+    const api = fakeApi({
+      "POST /api/v1/coach/chat": () => {
+        chatCalls += 1;
+        return json(401, { code: "unauthenticated", detail: "still no" });
+      },
+      "POST /api/v1/auth/refresh": () => json(200, tokens(2)),
+    });
+    const client = new BuddyClient({
+      baseUrl: BASE,
+      tokens: memoryTokenStore(tokens(1)),
+      fetch: api.fetch,
+    });
+
+    await expect(client.chat("hello")).rejects.toBeInstanceOf(ApiError);
+    expect(chatCalls).toBe(2);
+  });
+
+  it.each([429, 500, 503])("keeps the session when refresh answers %i", async (status) => {
+    const api = fakeApi({
+      "GET /api/v1/users/me": () => json(401, { code: "unauthenticated", detail: "expired" }),
+      "POST /api/v1/auth/refresh": () => json(status, { code: "x", detail: "busy" }),
+    });
+    const store = memoryTokenStore(tokens(1));
+    const onSessionExpired = vi.fn();
+    const client = new BuddyClient({ baseUrl: BASE, tokens: store, fetch: api.fetch, onSessionExpired });
+
+    await expect(client.me()).rejects.toBeInstanceOf(ApiError);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(await store.get()).toEqual(tokens(1));
+  });
+
+  it("keeps the session when the network fails during refresh", async () => {
+    const api = fakeApi({
+      "GET /api/v1/users/me": () => json(401, { code: "unauthenticated", detail: "expired" }),
+      "POST /api/v1/auth/refresh": () => {
+        throw new TypeError("network down");
+      },
+    });
+    const store = memoryTokenStore(tokens(1));
+    const client = new BuddyClient({ baseUrl: BASE, tokens: store, fetch: api.fetch });
+
+    await expect(client.me()).rejects.toBeInstanceOf(ApiError);
+    expect(await store.get()).toEqual(tokens(1));
+  });
+
   it("logout clears tokens and revokes the refresh token", async () => {
     const api = fakeApi({ "POST /api/v1/auth/logout": () => new Response(null, { status: 204 }) });
     const store = memoryTokenStore(tokens(1));

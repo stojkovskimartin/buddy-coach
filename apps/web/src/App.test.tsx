@@ -78,7 +78,7 @@ describe("web app", () => {
 
     expect(api.login).toHaveBeenCalledWith("martin@example.com", "long-password-1");
     expect(await screen.findByText("Half Ironman")).toBeInTheDocument();
-    expect(screen.getByText(/main goal/)).toBeInTheDocument();
+    expect(screen.getByText(/· main goal/)).toBeInTheDocument();
   });
 
   it("shows the server's error on failed login", async () => {
@@ -113,13 +113,32 @@ describe("web app", () => {
 
     const form = await screen.findByRole("form", { name: "Profile" });
     expect(form).toBeInTheDocument();
-    const weight = screen.getByLabelText("Weight (kg)");
-    await userEvent.clear(weight);
-    await userEvent.type(weight, "79");
+    // Body data starts empty: nothing is submitted unless the user enters it.
+    expect(screen.getByLabelText("Weight (kg)")).toHaveValue(null);
+    await userEvent.type(screen.getByLabelText("Birth year"), "1998");
+    await userEvent.selectOptions(screen.getByLabelText("Sex"), "male");
+    await userEvent.type(screen.getByLabelText("Height (cm)"), "182");
+    await userEvent.type(screen.getByLabelText("Weight (kg)"), "79");
     await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
 
     await waitFor(() => expect(api.saveProfile).toHaveBeenCalled());
-    expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0]).toMatchObject({ weight_kg: 79 });
+    expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0]).toMatchObject({
+      birth_year: 1998,
+      sex: "male",
+      height_cm: 182,
+      weight_kg: 79,
+    });
+  });
+
+  it("shows an error instead of an empty profile form when loading fails", async () => {
+    const api = fakeApi({
+      getProfile: vi.fn(async () => {
+        throw new ApiError(500, "internal_error", "Something went wrong on our side.");
+      }),
+    });
+    renderAt("/onboarding", api, true);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");
+    expect(screen.queryByRole("form", { name: "Profile" })).not.toBeInTheDocument();
   });
 
   it("creates a weight goal with a target weight", async () => {
@@ -133,10 +152,46 @@ describe("web app", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add goal" }));
 
     await waitFor(() => expect(api.createGoal).toHaveBeenCalled());
+    // A main goal already exists, so a new goal is secondary unless the user says otherwise.
     expect(vi.mocked(api.createGoal).mock.calls[0]?.[0]).toEqual({
       goal_type: "lose_weight",
       title: "Race weight",
       target_weight_kg: 75,
+      priority: "secondary",
+    });
+  });
+
+  it("first goal becomes the main goal", async () => {
+    const api = fakeApi({ listGoals: vi.fn(async () => []) });
+    renderAt("/", api, true);
+    await screen.findByText(/No active goal yet/);
+
+    await userEvent.type(screen.getByLabelText("Title"), "Get fitter");
+    await userEvent.click(screen.getByRole("button", { name: "Add goal" }));
+
+    await waitFor(() => expect(api.createGoal).toHaveBeenCalled());
+    expect(vi.mocked(api.createGoal).mock.calls[0]?.[0]).toMatchObject({ priority: "primary" });
+  });
+
+  it("endurance goals require a date and send the distance", async () => {
+    const api = fakeApi();
+    renderAt("/", api, true);
+    await screen.findByText("Half Ironman");
+
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "endurance_event");
+    expect(screen.getByLabelText("Target date")).toBeRequired();
+    await userEvent.type(screen.getByLabelText("Title"), "Zurich Marathon");
+    await userEvent.type(screen.getByLabelText("Distance (km)"), "42.2");
+    const date = screen.getByLabelText("Target date");
+    await userEvent.type(date, "2027-04-18");
+    await userEvent.click(screen.getByRole("button", { name: "Add goal" }));
+
+    await waitFor(() => expect(api.createGoal).toHaveBeenCalled());
+    expect(vi.mocked(api.createGoal).mock.calls[0]?.[0]).toMatchObject({
+      goal_type: "endurance_event",
+      sport: "running",
+      event_distance_km: 42.2,
+      target_date: "2027-04-18",
     });
   });
 
@@ -167,6 +222,33 @@ describe("web app", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Should I take creatine/ }));
 
     const bubble = await screen.findByText(/This could be serious/);
-    expect(bubble.closest(".bubble")).toHaveClass("escalated");
+    const container = bubble.closest(".bubble");
+    expect(container).toHaveClass("escalated");
+    expect(container).toHaveAttribute("role", "alert");
+    expect(screen.getByText("Important")).toBeInTheDocument();
+  });
+
+  it("marks failed coach calls clearly", async () => {
+    const api = fakeApi({
+      chat: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    });
+    renderAt("/coach", api, true);
+    await userEvent.type(await screen.findByLabelText("Your message"), "hi");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Could not reach your coach")).toBeInTheDocument();
+  });
+
+  it("logs out even if the server cannot be reached", async () => {
+    const api = fakeApi({
+      logout: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    });
+    renderAt("/", api, true);
+    await screen.findByText("Half Ironman");
+    await userEvent.click(screen.getByRole("button", { name: "Log out" }));
+    expect(await screen.findByRole("form", { name: "Log in" })).toBeInTheDocument();
   });
 });

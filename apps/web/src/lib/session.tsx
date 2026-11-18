@@ -29,8 +29,9 @@ export interface CoachApi {
 const STORAGE_KEY = "buddy-coach.tokens";
 
 /**
- * Tokens in localStorage. Acceptable for the web MVP behind a strict CSP; the desktop and mobile
- * apps use the OS keychain. Tracked in docs/backlog.md (move to httpOnly cookies for web).
+ * Tokens in localStorage: a trade-off for the web MVP, mitigated by a strict Content Security
+ * Policy on production builds (see vite.config.ts). Mobile and desktop use the OS keychain.
+ * Moving web sessions to httpOnly cookies is tracked in docs/backlog.md.
  */
 export function localTokenStore(storage: Storage = window.localStorage): TokenStore {
   return {
@@ -97,8 +98,13 @@ export function SessionProvider({
     [client, login],
   );
   const logout = useCallback(async () => {
-    await client.logout();
-    setLoggedIn(false);
+    try {
+      await client.logout();
+    } catch {
+      // Tokens are already cleared locally; a failed server-side revoke must not keep the user in.
+    } finally {
+      setLoggedIn(false);
+    }
   }, [client]);
 
   const value = useMemo(
