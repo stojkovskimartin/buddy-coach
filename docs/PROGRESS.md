@@ -59,7 +59,7 @@ pull request numbers.
 | #15 | Daily check-in API: sleep, soreness, mood, optional sleep hours, HRV, resting HR, pain; readiness 0-100 with personal baselines, in the athlete's time zone | +42 |
 | #16 | Morning check-in on web and mobile (three taps, readiness traffic light), shared wording package `@buddy/shared` | +32 frontend |
 
-Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobile 45); CI runs all of them.
+Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobile 45); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
