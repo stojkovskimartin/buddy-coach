@@ -1,0 +1,40 @@
+# Local development stack: PostgreSQL + Buddy Coach API.
+# Start:  docker compose -f infra/docker-compose.yml up --build
+# Open:   http://localhost:8000/docs
+name: buddy-coach
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: buddy
+      POSTGRES_PASSWORD: buddy
+      POSTGRES_DB: buddy
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buddy -d buddy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ../services/api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BUDDY_ENVIRONMENT: development
+      BUDDY_DATABASE_URL: postgresql+asyncpg://buddy:buddy@db:5432/buddy
+      # Local-only secret; real deployments inject their own.
+      BUDDY_JWT_SECRET: local-development-secret-change-me-0123456789
+      BUDDY_CORS_ORIGINS: '["http://localhost:5173","tauri://localhost"]'
+      BUDDY_LLM_PROVIDER: ${BUDDY_LLM_PROVIDER:-dev}
+      BUDDY_ANTHROPIC_API_KEY: ${BUDDY_ANTHROPIC_API_KEY:-}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
