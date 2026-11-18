@@ -9,6 +9,9 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from buddy_coach import __version__
+from buddy_coach.coach.deps import close_coach, install_coach
+from buddy_coach.coach.llm import LLMProvider
+from buddy_coach.coach.router import router as coach_router
 from buddy_coach.core.config import Settings, get_settings
 from buddy_coach.core.db import Database
 from buddy_coach.core.errors import register_error_handlers
@@ -27,14 +30,16 @@ def create_app(
     *,
     database: Database | None = None,
     event_bus: EventBus | None = None,
+    llm_provider: LLMProvider | None = None,
 ) -> FastAPI:
-    """Build the FastAPI app. Tests pass their own settings, database and event bus."""
+    """Build the FastAPI app. Tests pass their own settings, database, event bus and LLM."""
     settings = settings or get_settings()
     configure_logging(settings.log_level)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
+        await close_coach(app)
         await app.state.db.dispose()
 
     app = FastAPI(
@@ -50,6 +55,7 @@ def create_app(
         settings.database_url, pool_size=settings.database_pool_size
     )
     app.state.event_bus = event_bus or InProcessEventBus()
+    install_coach(app, settings, llm_provider)
 
     app.add_middleware(
         CORSMiddleware,
@@ -65,6 +71,7 @@ def create_app(
     api = APIRouter(prefix=API_PREFIX)
     api.include_router(identity_router)
     api.include_router(profile_router)
+    api.include_router(coach_router)
     app.include_router(health_router)
     app.include_router(api)
     return app

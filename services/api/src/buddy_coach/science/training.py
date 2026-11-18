@@ -43,6 +43,9 @@ def trimp_banister(
         msg = "duration cannot be negative"
         raise ValueError(msg)
     reserve = min(max((avg_hr - rest_hr) / (max_hr - rest_hr), 0.0), 1.0)
+    if not isinstance(sex, Sex):
+        msg = "sex must be a Sex value"
+        raise TypeError(msg)
     if not all(math.isfinite(v) for v in (duration_min, avg_hr, rest_hr, max_hr)):
         msg = "inputs must be finite numbers"
         raise ValueError(msg)

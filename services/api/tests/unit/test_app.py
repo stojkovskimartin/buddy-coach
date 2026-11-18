@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from buddy_coach.core.db import Database
 from buddy_coach.core.errors import ConflictError, NotFoundError
 from buddy_coach.main import create_app
-from tests.support import UNREACHABLE_DB_URL, make_settings
+from tests.support import UNREACHABLE_DB_URL, make_settings, production_settings
 
 
 class Payload(BaseModel):
@@ -112,10 +112,8 @@ async def test_protected_route_without_token_is_401(unit_client: httpx.AsyncClie
 
 
 def test_docs_are_disabled_in_production() -> None:
-    from buddy_coach.core.config import Environment
-
     app = create_app(
-        make_settings(environment=Environment.PRODUCTION),
+        production_settings(),
         database=Database(UNREACHABLE_DB_URL, use_null_pool=True),
     )
     assert app.openapi_url is None

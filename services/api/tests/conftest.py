@@ -20,6 +20,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
+from buddy_coach.coach.llm import DevLLMProvider, LLMProvider
 from buddy_coach.core.db import Database
 from buddy_coach.main import create_app
 from buddy_coach.models_registry import Base
@@ -74,11 +75,22 @@ def event_bus() -> RecordingEventBus:
 
 
 @pytest.fixture
-async def app(database_url: str, event_bus: RecordingEventBus) -> AsyncIterator[FastAPI]:
+def llm_provider() -> LLMProvider:
+    """LLM used by the coach in API tests. Override in a test module to script it."""
+    return DevLLMProvider()
+
+
+@pytest.fixture
+async def app(
+    database_url: str, event_bus: RecordingEventBus, llm_provider: LLMProvider
+) -> AsyncIterator[FastAPI]:
     """App wired to the test database; all tables are emptied afterwards."""
     database = Database(database_url, use_null_pool=True)
     application = create_app(
-        make_settings(database_url=database_url), database=database, event_bus=event_bus
+        make_settings(database_url=database_url),
+        database=database,
+        event_bus=event_bus,
+        llm_provider=llm_provider,
     )
     yield application
     tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
