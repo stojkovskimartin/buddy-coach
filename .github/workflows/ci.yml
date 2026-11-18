@@ -1,0 +1,70 @@
+# Runs on every push and pull request: backend lint, types and tests against a real Postgres,
+# frontend type checks and tests, and API contract drift (generated client must be committed).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: buddy
+          POSTGRES_PASSWORD: buddy
+          POSTGRES_DB: buddy_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U buddy"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/api
+    env:
+      BUDDY_TEST_DATABASE_URL: postgresql+asyncpg://buddy:buddy@localhost:5432/buddy_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest -q
+
+  frontend:
+    name: Frontend (types, tests, contract drift)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: API contract drift
+        run: |
+          (cd services/api && uv python install 3.13 && uv sync --locked)
+          pnpm api:generate
+          git diff --exit-code -- packages/api-client \
+            || (echo "::error::Generated API client is out of date. Run 'pnpm api:generate' and commit." && exit 1)
