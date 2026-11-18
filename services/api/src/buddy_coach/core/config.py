@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MIN_SECRET_LENGTH = 32
@@ -18,6 +18,13 @@ class Environment(StrEnum):
     TEST = "test"
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+class LLMProviderName(StrEnum):
+    """Which LLM backs the coach agents."""
+
+    DEV = "dev"  # deterministic stand-in, no API key, never in production
+    ANTHROPIC = "anthropic"
 
 
 class Settings(BaseSettings):
@@ -36,6 +43,9 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = Field(default=30, ge=1, le=90)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     log_level: str = "INFO"
+    llm_provider: LLMProviderName = LLMProviderName.DEV
+    llm_model: str = "claude-sonnet-5-5"
+    anthropic_api_key: SecretStr | None = None
 
     @field_validator("jwt_secret")
     @classmethod
@@ -45,6 +55,16 @@ class Settings(BaseSettings):
             msg = f"jwt_secret must be at least {MIN_SECRET_LENGTH} characters"
             raise ValueError(msg)
         return value
+
+    @model_validator(mode="after")
+    def _llm_is_configured(self) -> Settings:
+        if self.llm_provider is LLMProviderName.ANTHROPIC and self.anthropic_api_key is None:
+            msg = "anthropic_api_key is required when llm_provider is 'anthropic'"
+            raise ValueError(msg)
+        if self.is_production and self.llm_provider is LLMProviderName.DEV:
+            msg = "the dev LLM provider must not run in production"
+            raise ValueError(msg)
+        return self
 
     @property
     def is_production(self) -> bool:

@@ -26,6 +26,16 @@ def make_settings(**overrides: Any) -> Settings:
     return Settings(**values)
 
 
+def production_settings(**overrides: Any) -> Settings:
+    """Valid production settings (real LLM provider configured)."""
+    return make_settings(
+        environment=Environment.PRODUCTION,
+        llm_provider="anthropic",
+        anthropic_api_key="test-key",
+        **overrides,
+    )
+
+
 class RecordingEventBus(InProcessEventBus):
     """In-process bus that also remembers every published event."""
 
