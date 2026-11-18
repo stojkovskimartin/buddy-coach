@@ -116,7 +116,12 @@ export interface paths {
          * @description Today's check-in (in the athlete's time zone); 404 until it is entered.
          */
         get: operations["get_today_api_v1_checkins_today_get"];
-        put?: never;
+        /**
+         * Put Today
+         * @description Create (201) or replace (200) today's check-in. The server decides which day "today" is
+         *     (the athlete's time zone), so a phone in another time zone cannot pick the wrong day.
+         */
+        put: operations["put_today_api_v1_checkins_today_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -894,6 +899,55 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinOut"];
                 };
             };
+            /** @description No check-in for this day yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_today_api_v1_checkins_today_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_checkin_api_v1_checkins__day__get: {
@@ -915,6 +969,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CheckinOut"];
                 };
+            };
+            /** @description No check-in for this day yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

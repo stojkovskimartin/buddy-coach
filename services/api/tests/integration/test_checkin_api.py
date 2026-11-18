@@ -62,6 +62,19 @@ async def test_save_and_read_todays_checkin_in_the_athletes_time_zone(
     assert [e.day for e in event_bus.published if isinstance(e, CheckinSaved)] == [ZURICH_TODAY]
 
 
+async def test_put_today_uses_the_athletes_day(client: httpx.AsyncClient) -> None:
+    zurich = await _athlete(client, "zurich@example.com")
+    created = await client.put("/api/v1/checkins/today", json=GOOD, headers=zurich)
+    assert created.status_code == 201
+    assert created.json()["day"] == "2026-11-19"
+    again = await client.put("/api/v1/checkins/today", json=GOOD, headers=zurich)
+    assert again.status_code == 200
+
+    no_profile = await register_and_login(client, "new@example.com")
+    utc = await client.put("/api/v1/checkins/today", json=GOOD, headers=no_profile)
+    assert utc.json()["day"] == "2026-11-18"
+
+
 async def test_saving_again_replaces_the_day(client: httpx.AsyncClient) -> None:
     headers = await _athlete(client)
     assert (await client.put(_url(ZURICH_TODAY), json=GOOD, headers=headers)).status_code == 201
@@ -179,6 +192,7 @@ async def test_users_only_see_their_own_checkins(client: httpx.AsyncClient) -> N
         ("GET", "/api/v1/checkins/today"),
         ("GET", "/api/v1/checkins/2026-11-19"),
         ("PUT", "/api/v1/checkins/2026-11-19"),
+        ("PUT", "/api/v1/checkins/today"),
     ],
 )
 async def test_checkins_need_authentication(

@@ -61,9 +61,9 @@ def _baseline(values: Sequence[float | None], minimum: int) -> list[float]:
 
 
 def readiness_for(
-    day: date, today: CheckinValues, previous: Sequence[tuple[date, CheckinValues]]
+    day: date, values: CheckinValues, previous: Sequence[tuple[date, CheckinValues]]
 ) -> Readiness:
-    """Readiness of ``day`` from its check-in and earlier check-ins (any order).
+    """Readiness of ``day`` from its ``values`` and earlier check-ins (any order).
 
     Only the ``BASELINE_DAYS`` days before ``day`` form the device baselines; HRV and resting
     heart rate only count when such a baseline exists. Readiness is computed when read, so a
@@ -79,13 +79,13 @@ def readiness_for(
     rhr_baseline = _baseline([c.resting_hr for c in earlier], MIN_RESTING_HR_VALUES)
     return readiness(
         ReadinessInputs(
-            sleep_quality=today.sleep_quality,
-            soreness=today.soreness,
-            mood=today.mood,
-            hrv_ms=today.hrv_ms if hrv_baseline else None,
+            sleep_quality=values.sleep_quality,
+            soreness=values.soreness,
+            mood=values.mood,
+            hrv_ms=values.hrv_ms if hrv_baseline else None,
             hrv_baseline=tuple(hrv_baseline),
-            resting_hr=today.resting_hr if rhr_baseline else None,
+            resting_hr=values.resting_hr if rhr_baseline else None,
             resting_hr_baseline=fmean(rhr_baseline) if rhr_baseline else None,
-            pain_reported=today.pain,
+            pain_reported=values.pain,
         )
     )

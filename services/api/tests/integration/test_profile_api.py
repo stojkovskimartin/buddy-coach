@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import date, timedelta
 from typing import Any
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
 from buddy_coach.profile.events import GoalChanged, ProfileUpdated
+from buddy_coach.profile.service import ProfileService
 from tests.support import VALID_PROFILE, RecordingEventBus, register_and_login
 
 pytestmark = pytest.mark.integration
@@ -174,3 +177,19 @@ async def test_concurrent_primary_goals_keep_exactly_one_primary(
     assert [r.status_code for r in responses] == [201] * 5
     goals = (await client.get("/api/v1/goals", params={"status": "active"}, headers=headers)).json()
     assert sum(g["priority"] == "primary" for g in goals) == 1
+
+
+async def test_timezone_for_other_modules(
+    client: httpx.AsyncClient, app: FastAPI, event_bus: RecordingEventBus
+) -> None:
+    headers = await register_and_login(client)
+    user_id = uuid.UUID((await client.get("/api/v1/users/me", headers=headers)).json()["id"])
+    async with app.state.db.session_factory() as session:
+        service = ProfileService(session, event_bus)
+        assert await service.timezone_for(user_id) is None
+    await client.put(
+        "/api/v1/profile", json={**VALID_PROFILE, "timezone": "America/New_York"}, headers=headers
+    )
+    async with app.state.db.session_factory() as session:
+        service = ProfileService(session, event_bus)
+        assert await service.timezone_for(user_id) == "America/New_York"

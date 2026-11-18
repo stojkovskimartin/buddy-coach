@@ -1129,6 +1129,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No check-in for this day yet"
           }
         },
         "security": [
@@ -1137,6 +1140,61 @@
           }
         ],
         "summary": "Get Today",
+        "tags": [
+          "checkins"
+        ]
+      },
+      "put": {
+        "description": "Create (201) or replace (200) today's check-in. The server decides which day \"today\" is\n(the athlete's time zone), so a phone in another time zone cannot pick the wrong day.",
+        "operationId": "put_today_api_v1_checkins_today_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Today",
         "tags": [
           "checkins"
         ]
@@ -1168,6 +1226,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "No check-in for this day yet"
           },
           "422": {
             "content": {
