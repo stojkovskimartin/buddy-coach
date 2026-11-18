@@ -84,6 +84,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Checkins
+         * @description Check-ins in a date range (default: the last 14 days), newest first. Max 92 days.
+         */
+        get: operations["list_checkins_api_v1_checkins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/checkins/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Today
+         * @description Today's check-in (in the athlete's time zone); 404 until it is entered.
+         */
+        get: operations["get_today_api_v1_checkins_today_get"];
+        /**
+         * Put Today
+         * @description Create (201) or replace (200) today's check-in. The server decides which day "today" is
+         *     (the athlete's time zone), so a phone in another time zone cannot pick the wrong day.
+         */
+        put: operations["put_today_api_v1_checkins_today_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/checkins/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Checkin
+         * @description The check-in of one day.
+         */
+        get: operations["get_checkin_api_v1_checkins__day__get"];
+        /**
+         * Put Checkin
+         * @description Create (201) or replace (200) the check-in of a day (today or up to 7 days late).
+         */
+        put: operations["put_checkin_api_v1_checkins__day__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/coach/chat": {
         parameters: {
             query?: never;
@@ -272,6 +341,93 @@ export interface components {
             message: string;
         };
         /**
+         * CheckinIn
+         * @description The morning check-in. Self-reports use 1 (bad) to 5 (great); device values are optional.
+         */
+        CheckinIn: {
+            /**
+             * Hrv Ms
+             * @description Overnight HRV (RMSSD)
+             */
+            hrv_ms?: number | null;
+            /**
+             * Mood
+             * @description 1 = very low, 5 = great
+             */
+            mood: number;
+            /**
+             * Pain
+             * @description Pain (not normal muscle soreness) today
+             * @default false
+             */
+            pain?: boolean;
+            /**
+             * Resting Hr
+             * @description Beats per minute
+             */
+            resting_hr?: number | null;
+            /** Sleep Hours */
+            sleep_hours?: number | null;
+            /**
+             * Sleep Quality
+             * @description 1 = very poor, 5 = excellent
+             */
+            sleep_quality: number;
+            /**
+             * Soreness
+             * @description 1 = very sore, 5 = not sore at all
+             */
+            soreness: number;
+        };
+        /**
+         * CheckinOut
+         * @description A saved check-in with the readiness for that day.
+         *
+         *     Readiness is computed when read, not stored: a late check-in for an earlier day can change
+         *     the baselines, and so the readiness, of the days after it.
+         */
+        CheckinOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Hrv Ms
+             * @description Overnight HRV (RMSSD)
+             */
+            hrv_ms?: number | null;
+            /**
+             * Mood
+             * @description 1 = very low, 5 = great
+             */
+            mood: number;
+            /**
+             * Pain
+             * @description Pain (not normal muscle soreness) today
+             * @default false
+             */
+            pain?: boolean;
+            readiness: components["schemas"]["ReadinessOut"];
+            /**
+             * Resting Hr
+             * @description Beats per minute
+             */
+            resting_hr?: number | null;
+            /** Sleep Hours */
+            sleep_hours?: number | null;
+            /**
+             * Sleep Quality
+             * @description 1 = very poor, 5 = excellent
+             */
+            sleep_quality: number;
+            /**
+             * Soreness
+             * @description 1 = very sore, 5 = not sore at all
+             */
+            soreness: number;
+        };
+        /**
          * CoachStyle
          * @description How the coach talks to the user.
          * @enum {string}
@@ -441,6 +597,23 @@ export interface components {
             user_id: string;
             /** Weight Kg */
             weight_kg: number;
+        };
+        /**
+         * ReadinessLevel
+         * @description Traffic light for today's training.
+         * @enum {string}
+         */
+        ReadinessLevel: "green" | "amber" | "red";
+        /**
+         * ReadinessOut
+         * @description Today's readiness: 0-100, a traffic light and what pulled it down.
+         */
+        ReadinessOut: {
+            level: components["schemas"]["ReadinessLevel"];
+            /** Limiting Factors */
+            limiting_factors: string[];
+            /** Score */
+            score: number;
         };
         /**
          * RefreshRequest
@@ -663,6 +836,189 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checkins_api_v1_checkins_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_today_api_v1_checkins_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description No check-in for this day yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_today_api_v1_checkins_today_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checkin_api_v1_checkins__day__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description No check-in for this day yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_checkin_api_v1_checkins__day__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
                 };
             };
             /** @description Validation Error */

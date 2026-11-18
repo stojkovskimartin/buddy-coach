@@ -48,6 +48,11 @@ class ProfileService:
             raise NotFoundError("Profile not found. Complete onboarding first.")
         return profile
 
+    async def timezone_for(self, user_id: uuid.UUID) -> str | None:
+        """The user's IANA time zone, or None before onboarding. For other modules."""
+        profile = await self._repo.get_profile(user_id)
+        return profile.timezone if profile else None
+
     async def find_profile(self, user_id: uuid.UUID) -> Profile | None:
         """The user's profile or None. Used by other modules that can work without it."""
         return await self._repo.get_profile(user_id)
