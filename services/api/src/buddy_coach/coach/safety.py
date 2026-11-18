@@ -198,16 +198,28 @@ MIN_SAFE_DAILY_KCAL = 1200
 _THOUSANDS = re.compile(r"(?<=\d)[,' \u00a0\u202f](?=\d{3}\b)")
 _DECIMAL_COMMA = re.compile(r"(?<=\d),(?=\d{1,2}\b)")
 _AMOUNT = r"(\d+(?:\.\d+)?)\s*(iu|ie|µg|mcg|ug|mg|g)\b"
-_VITAMIN_D = r"vitamin\s*d\s*3?|vitamin\s*d3|cholecalciferol"
+_VITAMIN_D = r"\bvitamin[\s-]*d(?:\s*3)?\b|\bd3\b|cholecalciferol"
+# Up to 25 characters between nutrient and number ("Vitamin D, about 5000 IU", "For vitamin D I
+# suggest 10000 IU"), but never across a sentence end, another number or another nutrient,
+# so "vitamin D and magnesium 400 mg" does not tie the magnesium amount to vitamin D.
+_GAP = (
+    r"(?:(?!\b(?:and|und|plus|or|oder|magnesium|calcium|kalzium|zinc|zink|iron|eisen|caffeine"
+    r"|koffein|creatine|kreatin|omega|vitamin|folate|folsäure|b12|protein)\b)[^.;\d]){0,25}?"
+)
 _VITAMIN_D_DOSE = re.compile(
-    rf"(?:{_VITAMIN_D})\s*[:(]?\s*(?:of\s+|about\s+|~\s*)?{_AMOUNT}"
-    rf"|{_AMOUNT}\s*(?:of\s+)?(?:{_VITAMIN_D})",
+    rf"(?:{_VITAMIN_D}){_GAP}{_AMOUNT}|{_AMOUNT}\s*(?:of\s+)?(?:{_VITAMIN_D})",
     re.IGNORECASE,
 )
 _CAFFEINE = r"caffeine|koffein"
 _CAFFEINE_DOSE = re.compile(
     rf"(?:{_CAFFEINE})\s*[:(]?\s*(?:of\s+|about\s+|~\s*)?{_AMOUNT}"
     rf"|{_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})",
+    re.IGNORECASE,
+)
+# "two 300 mg caffeine pills" - the per-dose amount is multiplied by the count.
+_COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "zwei": 2, "drei": 3, "vier": 4}
+_CAFFEINE_COUNT = re.compile(
+    rf"\b(\d+|{'|'.join(_COUNTS)})\s*(?:[x\u00d7]\s*)?{_AMOUNT}\s*(?:of\s+)?(?:{_CAFFEINE})",
     re.IGNORECASE,
 )
 # "Caffeine: 6 mg per kg, so 540 mg" - the total after "so" is checked on its own.
@@ -220,15 +232,26 @@ _CAFFEINE_PER_KG = re.compile(
 # Iron is only flagged as a supplement instruction, never as a food fact ("lentils give 3 mg iron").
 _IRON_DOSE = re.compile(
     r"\b(take|taking|supplement\w*|tablet|pill|capsule|nimm|einnehmen|tablette)\b[^.]{0,30}"
-    r"\d+\s*mg\s*(of\s+)?(iron|eisen)\b"
+    r"\d+\s*mg\s*(of\s+)?(elemental\s+)?(iron|eisen)\b"
     r"|\b(take|taking|nimm)\b[^.]{0,15}\b(iron|eisen)\b[^.]{0,15}\d+\s*mg"
     r"|ferrous\s+(sulfate|sulphate|gluconate|fumarate)|eisen(ii)?[- ]?(sulfat|gluconat)",
     re.IGNORECASE,
 )
-_OUT_OF_SCOPE = re.compile(
-    r"\b(melatonin|sarms?|testosterone|ephedrine|dnp|clenbuterol|anabolic steroids?)\b",
+# Out-of-scope substances are blocked when recommended or dosed, not when merely mentioned
+# ("Avoid SARMs: they are banned", "Strength training raises testosterone a little").
+_OUT_OF_SCOPE_SUBSTANCE = (
+    r"\b(?:melatonin|sarms?|testosterone|ephedrine|dnp|clenbuterol|anabolic steroids?)\b"
+)
+_OUT_OF_SCOPE_ADVICE = re.compile(
+    r"\b(?P<verb>take|taking|try|use|using|start|dose|dosing|recommend\w*|suggest\w*|consider"
+    r"|stack|cycle|run|nimm|nehmen|einnehmen|empfehle\w*|probier\w*)\b"
+    rf"[^.;]{{0,30}}?{_OUT_OF_SCOPE_SUBSTANCE}"
+    rf"|{_OUT_OF_SCOPE_SUBSTANCE}[^.;\d]{{0,20}}\d+(?:\.\d+)?\s*(?:mg|µg|mcg|ug|g|iu|ie)\b",
     re.IGNORECASE,
 )
+# Only a negation directly before the verb counts ("never take"), so "if sleep is not great,
+# take melatonin" is still blocked.
+_NEGATION = re.compile(r"\b(?:don'?t|do not|never|nie|nicht)\s+$", re.IGNORECASE)
 MAX_VITAMIN_D_UG = 100.0  # = 4000 IU
 IU_PER_UG_VITAMIN_D = 40.0
 MAX_CAFFEINE_MG = 400.0
@@ -258,10 +281,23 @@ def _caffeine_mg(amount: float, unit: str) -> float:
     return amount * 1000 if unit == "g" else amount
 
 
+def _recommends_out_of_scope(text: str) -> bool:
+    for m in _OUT_OF_SCOPE_ADVICE.finditer(text):
+        # "Don't take melatonin" is a warning, not a recommendation; a dose is never fine.
+        if m.group("verb") is None or not _NEGATION.search(text[: m.start()]):
+            return True
+    return False
+
+
 def _unsafe_supplement_dose(text: str) -> bool:
     text = _normalise_numbers(text)
-    if _OUT_OF_SCOPE.search(text) or _IRON_DOSE.search(text):
+    if _recommends_out_of_scope(text) or _IRON_DOSE.search(text):
         return True
+    for m in _CAFFEINE_COUNT.finditer(text):
+        count = _COUNTS.get(m.group(1).lower()) or float(m.group(1))
+        amount, unit = float(m.group(2)), m.group(3).lower()
+        if unit in {"mg", "g"} and count * _caffeine_mg(amount, unit) > MAX_CAFFEINE_MG:
+            return True
     for m in _VITAMIN_D_DOSE.finditer(text):
         if _vitamin_d_ug(*_first_amount(m)) > MAX_VITAMIN_D_UG:
             return True

@@ -193,6 +193,17 @@ def test_supplement_questions_go_to_nutrition(message: str) -> None:
         "ferrous sulfate 325 mg each morning",
         "Try 5 mg melatonin before bed",
         "Eat only 800 kcal per day and drink water",
+        # Second review round
+        "Vitamin-D 5000 IE täglich",
+        "Take 5000 IU of D3 daily",
+        "Take vitamin D, about 5000 IU a day",
+        "For vitamin D I suggest 10000 IU",
+        "Take 65 mg of elemental iron daily",
+        "Have two 300 mg caffeine pills before the start",
+        "2x 250 mg caffeine before the race",
+        "If sleep is not great, take melatonin",
+        "Melatonin 3 mg helps you sleep",
+        "I recommend a short testosterone cycle",
     ],
 )
 def test_review_cases_are_blocked(text: str) -> None:
@@ -210,6 +221,13 @@ def test_review_cases_are_blocked(text: str) -> None:
         "Caffeine: about 3 mg per kg, so 240 mg for you.",
         "A 200 kcal gel every 45 minutes.",
         "Vitamin D 2,000 IU after a blood test, as your doctor advises.",
+        # Second review round
+        "Strength training raises testosterone a little.",
+        "Avoid SARMs: they are banned and unsafe.",
+        "Never take melatonin without asking your doctor.",
+        "Vitamin D and magnesium 400 mg are often discussed.",
+        "One 200 mg caffeine tablet an hour before is enough.",
+        "Two 100 mg caffeine doses spread over the race.",
     ],
 )
 def test_review_false_alarms_pass(text: str) -> None:
