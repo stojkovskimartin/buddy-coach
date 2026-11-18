@@ -13,3 +13,5 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Low-kcal output check: snack words after the number can mask daily limits ("eat only 800 kcal, drink water") | PR #4 re-review | Next coach PR |
 | Web: move tokens from localStorage to httpOnly, SameSite cookies (needs a backend cookie auth mode); CSP mitigates meanwhile | feat/clients review | Before public launch |
 | Safety Guard dose-pattern edge cases: dose after a semicolon ("Take vitamin D; 5000 IU daily"), alternatives ("5000 or 10000 IU"), space-grouped numbers read as one ("Session 3 200 mg" = 3200 mg, safe side). Replace with the AI safety classifier | #7 re-review round 4 | Milestone 3 |
+| Mobile: check `EXPO_PUBLIC_API_BASE_URL` is https at build time (app.config.ts or CI), so a wrong value never crashes a release app on launch | #13 re-review | Before app store builds |
+| Mobile: verify keyboard layout on a real Android device (edge-to-edge) | #13 re-review | Before beta |
