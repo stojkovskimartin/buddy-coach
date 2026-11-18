@@ -35,14 +35,13 @@ models or repository, or if domain or science code imports a framework.
 
 ```bash
 cd services/api
-uv run alembic revision --autogenerate -m "short description"
-# review the generated file, then
-uv run alembic upgrade head
+uv run --env-file .env alembic revision --autogenerate -m "short description"
+uv run --env-file .env alembic upgrade head
 ```
 
 A test (`test_migrations_match_models`) fails if models and migrations drift apart.
 
-## Updating the API client after a backend change
+## Updating the API client after a backend change (once `feat/clients` is merged)
 
 ```bash
 cd services/api && uv run python scripts/export_openapi.py ../../packages/api-client/openapi.json

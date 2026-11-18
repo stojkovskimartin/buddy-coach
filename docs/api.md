@@ -1,8 +1,8 @@
 # API
 
 Base path `/api/v1`. The live, always-current reference is the OpenAPI page at
-http://localhost:8000/docs (disabled in production). The contract snapshot used by the apps
-is `packages/api-client/openapi.json`.
+http://localhost:8000/docs (disabled in production, as is `/openapi.json`). The apps use a
+committed snapshot of the contract, `packages/api-client/openapi.json` (with `feat/clients`).
 
 ## Authentication
 
@@ -48,6 +48,7 @@ All errors are [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457
 | `invalid_request` | 422 | Body or parameters fail validation; `errors` lists the fields |
 | `validation_failed` | 422 | A business rule failed (e.g. under 18, target weight in the wrong direction) |
 | `unauthenticated` | 401 | Missing, invalid or expired token |
+| `forbidden` | 403 | Authenticated but not allowed (reserved; not used yet) |
 | `not_found` | 404 | Missing, or not yours |
 | `conflict` | 409 | Duplicate (e.g. email already registered) |
 | `internal_error` | 500 | Unexpected; details are only in the server logs (by `X-Request-ID`) |

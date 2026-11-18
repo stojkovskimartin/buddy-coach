@@ -6,7 +6,7 @@
 | Architecture | `services/api/tests/architecture` | nothing | module boundaries, pure engines |
 | Agents | `services/api/tests/agents` | scripted LLM (some need Postgres) | agent limits, tool permissions, safety, routing, provider mapping |
 | Integration | `services/api/tests/integration` | Postgres | endpoints, transactions, concurrency, migrations = models |
-| Client | `packages/*/src/**/*.test.ts` | nothing | API client auth, refresh, errors |
+| Client | `packages/*/src/**/*.test.ts`, `apps/*/src/**/*.test.tsx` | nothing | API client auth and refresh, app screens (with `feat/clients`) |
 | End-to-end | `e2e/` (planned) | running stack | full user journeys in the apps |
 
 ## Principles

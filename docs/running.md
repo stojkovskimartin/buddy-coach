@@ -33,31 +33,59 @@ also deletes the local database.
 
 Needs Python 3.13 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
+Works the same in PowerShell, bash and zsh (one command per line):
+
 ```bash
-docker compose -f infra/docker-compose.yml up -d db     # only the database
+docker compose -f infra/docker-compose.yml up -d db
 cd services/api
-uv sync                                                 # creates .venv with all dependencies
-cp .env.example .env                                    # Windows: copy .env.example .env
-# in .env set BUDDY_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy
-uv run alembic upgrade head
-uv run uvicorn buddy_coach.main:app --reload            # http://localhost:8000/docs
+uv sync
+cp .env.example .env
+uv run --env-file .env alembic upgrade head
+uv run --env-file .env uvicorn buddy_coach.main:app --reload
 ```
+
+`uv sync` creates `.venv` with all dependencies. `.env.example` already points at the Docker
+database on `localhost:5433`; set your own `BUDDY_JWT_SECRET` in `.env`. `--env-file` is needed
+because neither uv nor Alembic reads `.env` by itself. The API runs on http://localhost:8000/docs.
 
 PyCharm: open the repo root, set the interpreter to `services/api/.venv`, mark
 `services/api/src` as Sources Root and `services/api/tests` as Test Sources Root.
 
 ## 3. Run the tests
 
+Unit and architecture tests need no database:
+
 ```bash
 cd services/api
-uv run pytest                                     # unit + architecture tests, no database
-# with the Docker database running (Windows PowerShell: $env:BUDDY_TEST_DATABASE_URL="...")
-BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test uv run pytest
-uv run ruff check . && uv run ruff format --check . && uv run mypy
+uv run pytest
 ```
 
-The test database is created and migrated automatically. Frontend tests:
-`pnpm install` once at the repo root, then `pnpm test`.
+All tests, with the Docker database running. PowerShell:
+
+```powershell
+$env:BUDDY_TEST_DATABASE_URL = "postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test"
+uv run pytest
+```
+
+bash / zsh:
+
+```bash
+BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test uv run pytest
+```
+
+Code quality (one per line):
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+```
+
+The test database is created and migrated automatically.
+
+Frontend (once `feat/clients` is merged): `pnpm install` once at the repo root, then
+`pnpm test` for all tests and `pnpm --filter @buddy/web dev` for the web app on
+http://localhost:5173 (with the API running).
 
 ## Configuration reference
 
@@ -66,8 +94,8 @@ All backend settings are environment variables with the prefix `BUDDY_`
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `BUDDY_ENVIRONMENT` | `development` | `production` disables `/docs` and refuses the dev LLM |
-| `BUDDY_DATABASE_URL` | local Postgres | `postgresql+asyncpg://user:pass@host:port/db` |
+| `BUDDY_ENVIRONMENT` | `development` | `production` disables `/docs` and `/openapi.json` and refuses the dev LLM |
+| `BUDDY_DATABASE_URL` | `postgresql+asyncpg://buddy:buddy@localhost:5432/buddy` | the Docker database is on port 5433 (set in `.env.example`) |
 | `BUDDY_JWT_SECRET` | – (required) | at least 32 characters |
 | `BUDDY_ACCESS_TOKEN_TTL_MINUTES` | 15 | |
 | `BUDDY_REFRESH_TOKEN_TTL_DAYS` | 30 | |
