@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 import pytest
@@ -89,7 +89,7 @@ async def test_goal_days_to_target_are_computed(
     llm_provider.responses.extend([call("list_goals"), answer("Keep going.")])
     headers = await register_and_login(client)
     await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
-    target = date.today() + timedelta(days=100)
+    target = datetime.now(UTC).date() + timedelta(days=100)  # the server counts in UTC
     await client.post(
         "/api/v1/goals",
         json={
