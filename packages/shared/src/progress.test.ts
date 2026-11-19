@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { average, daysBefore, localToday } from "./progress";
+import { average, daysBefore, foodSummary, localToday, readinessSummary, trainingSummary } from "./progress";
 
 describe("progress helpers", () => {
   it("counts days back over month and year ends", () => {
@@ -21,5 +21,21 @@ describe("progress helpers", () => {
   it("averages, or returns null for no values", () => {
     expect(average([2400, 2601])).toBe(2501);
     expect(average([])).toBeNull();
+  });
+
+  it("summarises food, training and readiness in words", () => {
+    const days = [
+      { kcal: 2400, protein_g: 140 },
+      { kcal: 2200, protein_g: 120 },
+    ];
+    expect(foodSummary(days, { kcal: 2500, protein_g: 150 })).toBe(
+      "2 days logged · on average 2300 kcal and 130 g protein (today's target: 2500 kcal, 150 g protein)",
+    );
+    expect(foodSummary(days.slice(0, 1), null)).toBe("1 day logged · on average 2400 kcal and 140 g protein");
+    expect(trainingSummary({ fitness: 42, fatigue: 55, form: -13 }, 1.2)).toBe(
+      "Fitness 42 · fatigue 55 · form -13 · load ratio 1.2",
+    );
+    expect(readinessSummary([70, 81], 365)).toBe("2 check-ins · on average 76 of 100 (last 92 days)");
+    expect(readinessSummary([70], 28)).toBe("1 check-in · on average 70 of 100");
   });
 });

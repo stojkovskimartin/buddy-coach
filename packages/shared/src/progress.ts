@@ -25,3 +25,31 @@ export function average(values: readonly number[]): number | null {
   if (values.length === 0) return null;
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
 }
+
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+/** "12 days logged · on average 2310 kcal and 140 g protein (today's target: …)". */
+export function foodSummary(
+  days: readonly { kcal: number; protein_g: number }[],
+  target: { kcal: number; protein_g: number } | null,
+): string {
+  const goal = target ? ` (today's target: ${target.kcal} kcal, ${target.protein_g} g protein)` : "";
+  return `${plural(days.length, "day")} logged · on average ${average(days.map((d) => d.kcal))} kcal and ${average(
+    days.map((d) => d.protein_g),
+  )} g protein${goal}`;
+}
+
+/** "Fitness 42 · fatigue 55 · form -13 · load ratio 1.2". */
+export function trainingSummary(
+  today: { fitness: number; fatigue: number; form: number },
+  ratio: number | null,
+): string {
+  const load = ratio !== null ? ` · load ratio ${ratio}` : "";
+  return `Fitness ${today.fitness} · fatigue ${today.fatigue} · form ${today.form}${load}`;
+}
+
+/** "8 check-ins · on average 74 of 100", noting when a long period shows only recent ones. */
+export function readinessSummary(scores: readonly number[], days: number): string {
+  const recent = days > CHECKIN_RANGE_DAYS ? ` (last ${CHECKIN_RANGE_DAYS} days)` : "";
+  return `${plural(scores.length, "check-in")} · on average ${average(scores)} of 100${recent}`;
+}
