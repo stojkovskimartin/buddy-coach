@@ -379,6 +379,7 @@ export interface paths {
         /**
          * List Photos
          * @description Photos in a date range (default: the last 90 days), newest first. Max 366 days.
+         *     ``kind=avatar`` without dates returns the current profile picture, however old.
          */
         get: operations["list_photos_api_v1_photos_get"];
         put?: never;

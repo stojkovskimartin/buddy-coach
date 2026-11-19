@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { errorMessage, useSession } from "../lib/session";
+import { PhotoStrip } from "./Photos";
 
 type Meal = MealEntry["meal"];
 const MEALS = Object.keys(MEAL_LABEL) as Meal[];
@@ -112,6 +113,14 @@ export function FoodPage() {
               );
             })}
             {day.entries.length === 0 && <p className="muted">Nothing logged for this day yet.</p>}
+            <h2>Meal photos</h2>
+            <PhotoStrip
+              kind="meal"
+              title="Meal photos"
+              range={{ from: day.day, to: day.day }}
+              canAdd={isToday}
+            />
+            <p className="muted small">Meal photos are removed after 90 days; what you ate stays.</p>
           </>
         )}
       </section>

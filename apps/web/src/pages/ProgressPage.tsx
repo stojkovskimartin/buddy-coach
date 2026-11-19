@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { errorMessage, useSession } from "../lib/session";
 import { BarChart, LineChart } from "./Charts";
+import { PhotoStrip } from "./Photos";
 
 interface Data {
   weights: WeightHistory;
@@ -172,6 +173,12 @@ function Sections({ data }: { data: Data }) {
             />
           </>
         )}
+      </section>
+
+      <section className="card" aria-labelledby="p-photos">
+        <h2 id="p-photos">Progress photos</h2>
+        <PhotoStrip kind="progress" title="Progress photos" range={{ from: range[0], to: range[1] }} />
+        <p className="muted small">Only you can see them. They are stored without location data.</p>
       </section>
 
       <section className="card" aria-labelledby="p-readiness">

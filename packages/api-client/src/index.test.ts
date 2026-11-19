@@ -267,6 +267,29 @@ describe("BuddyClient", () => {
     expect(new URL(api.calls[1]!.url).searchParams.get("days")).toBe("90");
   });
 
+  it("uploads a photo as its raw bytes and reads its image as a blob", async () => {
+    const photo = { id: "p1", kind: "meal", day: "2026-11-19", width: 1280, height: 960, created_at: "x" };
+    const api = fakeApi({
+      "POST /api/v1/photos": () => json(201, photo),
+      "GET /api/v1/photos/p1/image": () => new Response(new Blob(["jpeg"], { type: "image/jpeg" })),
+      "DELETE /api/v1/photos/p1": () => new Response(null, { status: 204 }),
+      "GET /api/v1/photos": () => json(200, [photo]),
+    });
+    const client = new BuddyClient({ baseUrl: BASE, tokens: memoryTokenStore(tokens(1)), fetch: api.fetch });
+    const image = new Blob(["raw-png"], { type: "image/png" });
+
+    expect(await client.uploadPhoto("meal", image)).toEqual(photo);
+    const sent = api.calls[0]!;
+    expect(new URL(sent.url).searchParams.get("kind")).toBe("meal");
+    expect(sent.headers.get("Content-Type")).toBe("image/png");
+    expect(await sent.text()).toBe("raw-png");
+
+    expect(await (await client.photoImage("p1")).text()).toBe("jpeg");
+    expect(new URL(api.calls[1]!.url).searchParams.get("size")).toBe("thumb");
+    expect(await client.listPhotos({ kind: "meal" })).toHaveLength(1);
+    await expect(client.deletePhoto("p1")).resolves.toBeUndefined();
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

@@ -14,6 +14,8 @@ import {
   type MealEntry,
   type MealEntryIn,
   type NutritionTargets,
+  type Photo,
+  type PhotoKind,
   type Profile,
   type ProfileIn,
   type TokenPair,
@@ -46,6 +48,10 @@ export interface CoachApi {
   listDailyTotals(range?: { from?: string; to?: string }): Promise<DailyTotals[]>;
   getTrainingLoad(days?: number): Promise<TrainingLoad>;
   listCheckins(range?: { from?: string; to?: string }): Promise<Checkin[]>;
+  uploadPhoto(kind: PhotoKind, image: Blob): Promise<Photo>;
+  listPhotos(query?: { kind?: PhotoKind; from?: string; to?: string }): Promise<Photo[]>;
+  photoImage(id: string, size?: "full" | "thumb"): Promise<Blob>;
+  deletePhoto(id: string): Promise<void>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }
