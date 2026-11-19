@@ -36,6 +36,8 @@ export type DailyTotals = Schemas["DailyTotalsOut"];
 export type TrainingLoad = Schemas["LoadOut"];
 export type Photo = Schemas["PhotoOut"];
 export type PhotoKind = Schemas["PhotoKind"];
+export type WorkoutSourceSummary = Schemas["WorkoutSourceOut"];
+export type WeightSourceSummary = Schemas["WeightSourceOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -253,6 +255,27 @@ export class BuddyClient {
       params: { path: { photo_id: id } },
     });
     if (!result.response.ok) unwrap(result);
+  }
+
+  /** Import a FIT activity file from a watch (max 10 MB) as the raw body. */
+  async uploadFit(file: Blob): Promise<ImportResult> {
+    return unwrap(
+      await this.raw.POST("/api/v1/workouts/fit", {
+        body: file as unknown as string, // sent as is, not as JSON
+        bodySerializer: (body) => body,
+        headers: { "Content-Type": "application/octet-stream" },
+      }),
+    );
+  }
+
+  /** Where workouts come from, latest first. */
+  async workoutSources(): Promise<WorkoutSourceSummary[]> {
+    return unwrap(await this.raw.GET("/api/v1/workouts/sources"));
+  }
+
+  /** Where weights come from, latest first. */
+  async weightSources(): Promise<WeightSourceSummary[]> {
+    return unwrap(await this.raw.GET("/api/v1/body/weights/sources"));
   }
 
   async chat(message: string): Promise<ChatReply> {
