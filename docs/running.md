@@ -98,6 +98,24 @@ BUDDY_ANTHROPIC_API_KEY=sk-ant-...
 Small local models follow the coach's rules less reliably than large hosted ones; the safety
 checks and the tools behave the same with every provider.
 
+## Update after `git pull`
+
+New code often brings new libraries and database tables, and a running API keeps the old code
+until it is restarted. After every pull:
+
+```bash
+cd services/api
+uv sync
+uv run --env-file .env alembic upgrade head
+uv run --env-file .env uvicorn buddy_coach.main:app --reload
+```
+
+and, for the web app, `pnpm install` in the repo root. With Docker:
+`docker compose -f infra/docker-compose.yml up --build` (the `--build` matters).
+
+If the app says "This needs a newer server", the API that runs is older than the app: do the
+steps above.
+
 ## 3. Run the tests
 
 Unit and architecture tests need no database:
@@ -170,5 +188,7 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `port is already allocated` | Another app uses 8000 or 5433: stop it, or change the left port in `infra/docker-compose.yml` |
 | `/health/ready` says database down | The `db` container is still starting; wait a few seconds |
 | `jwt_secret must be at least 32 characters` | Set a longer `BUDDY_JWT_SECRET` |
+| "This needs a newer server" on a page | The API runs older code: see "Update after `git pull`" |
+| Coach answers "I cannot reach my coaching brain right now" with `openai_compatible` | The model server is not running: start Ollama (or LM Studio), or switch back to `dev` |
 | Coach answers start with "(development coach)" | Expected without an API key; see "Real AI answers" |
 | Integration tests are skipped | Set `BUDDY_TEST_DATABASE_URL` |

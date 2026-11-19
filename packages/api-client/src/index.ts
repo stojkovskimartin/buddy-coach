@@ -348,9 +348,17 @@ interface Result<T> {
   response: Response;
 }
 
+/** Shown when the server has no such endpoint at all (its 404 carries no problem code): the
+ * app is newer than the server that runs. */
+export const SERVER_OUTDATED =
+  "This needs a newer server. Restart the API with the latest code (docs/running.md, \"Update after git pull\").";
+
 function unwrap<T>(result: Result<T>): T {
   if (result.data !== undefined) return result.data;
   const problem = (result.error ?? {}) as { code?: string; detail?: string };
+  if (result.response.status === 404 && !problem.code) {
+    throw new ApiError(404, "server_outdated", SERVER_OUTDATED);
+  }
   throw new ApiError(
     result.response.status,
     problem.code ?? "unknown",
