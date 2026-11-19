@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     oauth_redirect_url: str = "http://localhost:5173/connections/callback"
     withings_client_id: str | None = None
     withings_client_secret: SecretStr | None = None
+    whoop_client_id: str | None = None
+    whoop_client_secret: SecretStr | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -97,7 +99,7 @@ class Settings(BaseSettings):
     def _redirect_is_safe_in_production(self) -> Settings:
         if (
             self.is_production
-            and self.withings_client_id
+            and (self.withings_client_id or self.whoop_client_id)
             and not self.oauth_redirect_url.startswith("https://")
         ):
             msg = "oauth_redirect_url must be https in production"

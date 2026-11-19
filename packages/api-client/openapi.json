@@ -1396,7 +1396,8 @@
       "Provider": {
         "description": "Accounts that can be connected directly.",
         "enum": [
-          "withings"
+          "withings",
+          "whoop"
         ],
         "title": "Provider",
         "type": "string"

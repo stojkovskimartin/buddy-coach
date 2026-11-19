@@ -83,8 +83,9 @@ pull request numbers.
 | #41 | The API starts with `uv run --env-file .env` on Windows: allowed web origins accept a comma-separated list (the JSON form lost its quotes) | +3 |
 | #42 | `CLAUDE.md`: Claude Code in the IDE runs the same cycle (challenger, checks, reviewer, docs, PR, CI, merge) | – |
 | #43 | Direct accounts: connect a Withings account on the Connections page (OAuth, tokens encrypted, sign-in bound to the user), the last year of weigh-ins on connect, "Sync now" every 10 minutes, disconnect – ADR-0008 | +20, +7 frontend (shared 1, web 6) |
+| #44 | WHOOP account: workouts of the last year on connect, then from a week before the last sync (WHOOP rescores late); unusable records skipped; providers share one client interface | +8, +1 frontend (web 1) |
 
-Totals: backend 570 tests, frontend 214 tests (shared 33, client 28, web 47, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 578 tests, frontend 215 tests (shared 33, client 28, web 48, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -94,7 +95,7 @@ Totals: backend 570 tests, frontend 214 tests (shared 33, client 28, web 47, mob
 
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
-1. Direct accounts for workouts: WHOOP, then Strava and Polar, on the `integrations` module (ADR-0008) [7.3.1, 7.3.5].
+1. Direct accounts for workouts: Strava, then Polar, on the `integrations` module (ADR-0008) [7.3.5].
 2. Mobile app catches up with web: food diary with barcode camera, photo camera, progress charts, connections [5.2.6, 10.2.1, 7.1.5].
 3. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
 4. Today screen: session card [4.2.4].

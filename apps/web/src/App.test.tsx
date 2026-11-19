@@ -820,6 +820,20 @@ describe("web app", () => {
       expect(api.integrations).toHaveBeenCalledTimes(3); // reloaded after each action
     });
 
+    it("counts workouts after a WHOOP sync", async () => {
+      const api = fakeApi({
+        integrations: vi.fn(async () => [
+          { provider: "whoop" as const, available: true, connected: true, last_sync_at: null },
+        ]),
+        syncIntegration: vi.fn(async () => ({ synced: true, last_sync_at: null, created: 1, updated: 0, skipped: 0 })),
+      });
+      renderAt("/connections", api, true);
+      const accounts = await screen.findByRole("region", { name: "Accounts" });
+      await userEvent.click(await within(accounts).findByRole("button", { name: "Sync WHOOP now" }));
+      expect(api.syncIntegration).toHaveBeenCalledWith("whoop");
+      expect(await screen.findByText("1 new workout.")).toBeInTheDocument();
+    });
+
     it("says when a provider is not set up on the server", async () => {
       const api = fakeApi({
         integrations: vi.fn(async () => [

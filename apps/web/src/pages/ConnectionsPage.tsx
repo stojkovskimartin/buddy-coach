@@ -4,7 +4,7 @@ import type {
   WeightSourceSummary,
   WorkoutSourceSummary,
 } from "@buddy/api-client";
-import { WEIGHT_SOURCE_LABEL, importText, weightSyncText } from "@buddy/shared";
+import { WEIGHT_SOURCE_LABEL, importText, syncText } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -13,8 +13,9 @@ import { errorMessage, useSession } from "../lib/session";
 /** The provider being connected, kept for the callback page (the provider does not send it). */
 const PENDING_PROVIDER = "buddy.connecting";
 
-const PROVIDER: Record<IntegrationProvider, { name: string; what: string }> = {
-  withings: { name: "Withings", what: "weight from Withings smart scales" },
+const PROVIDER: Record<IntegrationProvider, { name: string; what: string; data: "weight" | "workout" }> = {
+  withings: { name: "Withings", what: "weight from Withings smart scales", data: "weight" },
+  whoop: { name: "WHOOP", what: "workouts from WHOOP", data: "workout" },
 };
 
 const MAX_FIT_BYTES = 10 * 1024 * 1024;
@@ -79,7 +80,7 @@ export function ConnectionsPage() {
         window.location.assign(await api.connectIntegration(provider));
         return;
       }
-      if (action === "sync") setMessage(`${weightSyncText(await api.syncIntegration(provider))}.`);
+      if (action === "sync") setMessage(`${syncText(await api.syncIntegration(provider), PROVIDER[provider].data)}.`);
       else await api.disconnectIntegration(provider);
       await load();
     } catch (e) {
@@ -167,8 +168,8 @@ export function ConnectionsPage() {
         <h2 id="c-accounts">Accounts</h2>
         <p className="muted">
           Connect an account directly, without the phone. If that app already sends the same data to Apple
-          Health or Health Connect, use only one of the two, or every weigh-in shows up twice. Garmin, WHOOP,
-          Polar and Strava come next.
+          Health or Health Connect, use only one of the two, or everything shows up twice. Strava and Polar
+          come next.
         </p>
         <ul className="entries">
           {accounts.map((a) => (
@@ -230,7 +231,7 @@ export function ConnectionCallback() {
       (r) =>
         setResult(
           r.synced
-            ? { ok: true, text: `${name} is connected: ${weightSyncText(r)}.` }
+            ? { ok: true, text: `${name} is connected: ${syncText(r, PROVIDER[provider].data)}.` }
             : { ok: true, text: `${name} is connected. Bringing in the data failed; use Sync now in Connections.` },
         ),
       (e: unknown) => setResult({ ok: false, text: errorMessage(e) }),

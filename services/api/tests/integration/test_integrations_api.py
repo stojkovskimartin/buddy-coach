@@ -16,7 +16,8 @@ from pydantic import SecretStr
 from sqlalchemy import text
 
 from buddy_coach.core.deps import get_clock
-from buddy_coach.integrations.deps import get_withings_client
+from buddy_coach.integrations.deps import get_provider_clients
+from buddy_coach.integrations.domain import Provider
 from buddy_coach.integrations.withings import MEASURE_URL, TOKEN_URL, WithingsClient
 from tests.support import VALID_PROFILE, make_settings, register_and_login
 
@@ -121,7 +122,7 @@ async def withings_app(app: FastAPI, fake: FakeWithings, clock: Clock) -> AsyncI
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)) as http:
         withings = WithingsClient(http, "client-id", "client-secret", REDIRECT)
-        app.dependency_overrides[get_withings_client] = lambda: withings
+        app.dependency_overrides[get_provider_clients] = lambda: {Provider.WITHINGS: withings}
         app.dependency_overrides[get_clock] = lambda: clock
         yield
     app.dependency_overrides.clear()
@@ -199,7 +200,8 @@ async def test_connecting_imports_the_last_year_and_keeps_tokens_encrypted(
             "available": True,
             "connected": True,
             "last_sync_at": "2026-11-18T23:30:00Z",
-        }
+        },
+        {"provider": "whoop", "available": False, "connected": False, "last_sync_at": None},
     ]
     async with app.state.db.engine.connect() as conn:
         stored = (
@@ -314,7 +316,7 @@ async def test_disconnect_keeps_the_weights(client: httpx.AsyncClient, fake: Fak
 async def test_without_setup_the_provider_is_listed_but_not_offered(
     client: httpx.AsyncClient, app: FastAPI
 ) -> None:
-    app.dependency_overrides[get_withings_client] = lambda: None
+    app.dependency_overrides[get_provider_clients] = lambda: {}
     headers = await _athlete(client)
 
     providers = (await client.get(URL, headers=headers)).json()

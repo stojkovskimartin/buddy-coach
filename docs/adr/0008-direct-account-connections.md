@@ -7,7 +7,8 @@
 
 Some devices do not reach the phone's health store, and some athletes want their data without
 the phone app (ADR-0007). Vendors offer cloud APIs with OAuth 2. Withings (smart scales) is open
-to any developer for free; WHOOP, Strava and Polar follow, Garmin and Google Health are gated.
+to any developer for free, and so is WHOOP (workouts); Strava and Polar follow, Garmin and
+Google Health are gated.
 
 ## Decision
 
@@ -22,9 +23,14 @@ to any developer for free; WHOOP, Strava and Polar follow, Garmin and Google Hea
   (Withings' polling rule). A row lock serialises syncs, so a rotated refresh token is never used
   twice; the claim and any new token are committed before data is fetched, and the cursor is
   saved only after every page was imported. The first sync brings in the last year.
-- Data goes through the owning module's service (weights through `body`), with its own source
-  (`withings`), so imports stay idempotent by (source, external_id). Guests on the scale and
-  readings dated in the future are left out.
+- Data goes through the owning module's service (weights through `body`, workouts through
+  `workouts`), with the provider as its source, so imports stay idempotent by (source,
+  external_id). Unusable records (guests on the scale, dates in the future, implausible values)
+  are left out and counted as skipped, so one bad record never blocks a sync.
+- Each provider client (`ProviderClient`: authorize URL, code exchange, refresh, pull) owns its
+  paging and the meaning of its cursor: Withings' own "changed since" time; for WHOOP, which has
+  none and rescores workouts for a while, the time of our last sync, read again from 7 days
+  before it.
 - A refused token disconnects the account and asks the athlete to connect again (409
   `reconnect_required`); other provider failures are 502 `provider_error` and change nothing.
 - A device that also writes to Apple Health or Health Connect would be counted twice; the

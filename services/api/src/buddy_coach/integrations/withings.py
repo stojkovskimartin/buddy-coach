@@ -6,14 +6,18 @@ response bodies are never logged.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
 import httpx
 
+from buddy_coach.body.domain import WeightSource
+from buddy_coach.body.schemas import ImportedWeight
+from buddy_coach.integrations.clients import Pulled, Tokens
 from buddy_coach.integrations.domain import (
+    FIRST_SYNC,
+    MAX_PAGES,
     WITHINGS_WEIGHT,
     MeasurePage,
     ProviderError,
@@ -31,15 +35,6 @@ REFUSED = frozenset({100, 101, 102, 200, 343, 401})
 """Statuses meaning Withings no longer accepts the token; any other error is passing."""
 REFUSED_GRANT = REFUSED | {304, 503}
 """On the token endpoint also a bad or used code and an invalid refresh token."""
-
-
-@dataclass(frozen=True, slots=True)
-class Tokens:
-    """A fresh token pair. Withings rotates the refresh token on every refresh."""
-
-    access_token: str
-    refresh_token: str
-    expires_at: datetime
 
 
 class WithingsClient:
@@ -81,6 +76,33 @@ class WithingsClient:
             on_error="Withings no longer accepts this connection. Connect it again.",
         )
         return _tokens(body, now)
+
+    async def pull(self, access_token: str, now: datetime, cursor: int | None) -> Pulled:
+        """Weigh-ins changed since ``cursor`` (Withings' ``updatetime``), or the last year."""
+        weights: list[ImportedWeight] = []
+        new_cursor, offset = cursor, 0
+        for _ in range(MAX_PAGES):
+            page = await self.weights(
+                access_token, now, since=cursor, start=now - FIRST_SYNC, offset=offset
+            )
+            if page.update_time is not None and offset == 0:
+                new_cursor = page.update_time
+            weights += [
+                ImportedWeight(
+                    source=WeightSource.WITHINGS,
+                    external_id=r.external_id,
+                    measured_at=r.measured_at,
+                    weight_kg=r.weight_kg,
+                )
+                for r in page.readings
+            ]
+            if not page.more:
+                return Pulled(cursor=new_cursor, weights=weights)
+            if page.offset <= offset:
+                raise ProviderError("Withings did not answer as expected. Try again later.")
+            offset = page.offset
+        # Too many pages: keep the old cursor so the next sync continues where this one began.
+        return Pulled(cursor=cursor, weights=weights)
 
     async def weights(
         self, access_token: str, now: datetime, *, since: int | None, start: datetime, offset: int

@@ -13,22 +13,37 @@ from buddy_coach.core.config import Settings
 from buddy_coach.core.db import get_session
 from buddy_coach.core.deps import Clock, get_app_settings, get_clock, get_event_bus
 from buddy_coach.core.events import EventBus
+from buddy_coach.integrations.clients import ProviderClient
+from buddy_coach.integrations.domain import Provider
 from buddy_coach.integrations.service import IntegrationsService
+from buddy_coach.integrations.whoop import WhoopClient
 from buddy_coach.integrations.withings import WithingsClient
 from buddy_coach.profile.service import ProfileService
+from buddy_coach.workouts.service import WorkoutService
 
 
-def get_withings_client(
+def get_provider_clients(
     request: Request, settings: Annotated[Settings, Depends(get_app_settings)]
-) -> WithingsClient | None:
-    """The Withings app of this server, or None when it is not set up."""
-    secret = settings.withings_client_secret
-    if not settings.withings_client_id or secret is None:
-        return None
+) -> dict[Provider, ProviderClient]:
+    """The providers this server has an app (client id and secret) for."""
     http: httpx.AsyncClient = request.app.state.http
-    return WithingsClient(
-        http, settings.withings_client_id, secret.get_secret_value(), settings.oauth_redirect_url
-    )
+    redirect = settings.oauth_redirect_url
+    clients: dict[Provider, ProviderClient] = {}
+    if settings.withings_client_id and settings.withings_client_secret:
+        clients[Provider.WITHINGS] = WithingsClient(
+            http,
+            settings.withings_client_id,
+            settings.withings_client_secret.get_secret_value(),
+            redirect,
+        )
+    if settings.whoop_client_id and settings.whoop_client_secret:
+        clients[Provider.WHOOP] = WhoopClient(
+            http,
+            settings.whoop_client_id,
+            settings.whoop_client_secret.get_secret_value(),
+            redirect,
+        )
+    return clients
 
 
 def get_integrations_service(
@@ -36,11 +51,13 @@ def get_integrations_service(
     events: Annotated[EventBus, Depends(get_event_bus)],
     clock: Annotated[Clock, Depends(get_clock)],
     settings: Annotated[Settings, Depends(get_app_settings)],
-    withings: Annotated[WithingsClient | None, Depends(get_withings_client)],
+    clients: Annotated[dict[Provider, ProviderClient], Depends(get_provider_clients)],
 ) -> IntegrationsService:
-    """Build the service for one request; weights go through the body module's service."""
-    body = BodyService(session, events, ProfileService(session, events), now=clock)
-    return IntegrationsService(session, settings, withings, body, now=clock)
+    """Build the service for one request; data goes through the owning modules' services."""
+    profiles = ProfileService(session, events)
+    body = BodyService(session, events, profiles, now=clock)
+    workouts = WorkoutService(session, events, profiles, now=clock)
+    return IntegrationsService(session, settings, clients, body, workouts, now=clock)
 
 
 IntegrationsServiceDep = Annotated[IntegrationsService, Depends(get_integrations_service)]

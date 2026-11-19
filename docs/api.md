@@ -50,7 +50,7 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | GET | `/integrations` | Accounts that can be connected directly: per provider `available` (set up on this server), `connected`, `last_sync_at` |
 | POST | `/integrations/{provider}/connect` | `authorize_url` of the provider's sign-in page; it returns to the web app's `/connections/callback` |
 | POST | `/integrations/{provider}/callback` | Finish connecting with `code` and `state` (only the user who started it; 422 if late or foreign), then the first sync (last year) |
-| POST | `/integrations/{provider}/sync` | Bring in new data; within 10 minutes of the last sync returns `synced: false`; 409 `reconnect_required` if the provider refused the connection, 502 `provider_error` if it failed |
+| POST | `/integrations/{provider}/sync` | Bring in new data (`withings`: weights, `whoop`: workouts); within 10 minutes of the last sync returns `synced: false`; 409 `reconnect_required` if the provider refused the connection, 502 `provider_error` if it failed |
 | DELETE | `/integrations/{provider}` | Disconnect (204); data already brought in stays |
 | DELETE | `/body/weights/{id}` | Delete a weight (204); the profile keeps the newest one left. `PUT /profile` still sets the weight directly; the next measurement replaces it |
 | POST | `/meals/entries` | Add a food with the nutrients of the portion (201); the day is the athlete's; plausibility checked (macros ≤ weight, kcal ≤ 9 per gram) |
