@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +23,7 @@ from buddy_coach.core.logging import configure_logging
 from buddy_coach.core.middleware import RequestContextMiddleware
 from buddy_coach.health.router import router as health_router
 from buddy_coach.identity.router import router as identity_router
+from buddy_coach.integrations.router import router as integrations_router
 from buddy_coach.meals.router import router as meals_router
 from buddy_coach.media.router import router as media_router
 from buddy_coach.nutrition.router import router as nutrition_router
@@ -45,6 +47,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
+        await app.state.http.aclose()
         await close_coach(app)
         await app.state.db.dispose()
 
@@ -61,6 +64,8 @@ def create_app(
         settings.database_url, pool_size=settings.database_pool_size
     )
     app.state.event_bus = event_bus or InProcessEventBus()
+    # One pooled client for calls to connected services (Withings), closed on shutdown.
+    app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0))
     install_coach(app, settings, llm_provider)
 
     app.add_middleware(
@@ -83,6 +88,7 @@ def create_app(
     api.include_router(body_router)
     api.include_router(meals_router)
     api.include_router(media_router)
+    api.include_router(integrations_router)
     api.include_router(coach_router)
     app.include_router(health_router)
     app.include_router(api)

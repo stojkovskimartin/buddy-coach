@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-19, 02:38
+Last update: 2026-11-19, 18:20
 
 ## How to run it
 
@@ -81,8 +81,10 @@ pull request numbers.
 | #39 | Connections page on web: phone health app, watch-file upload, typed-in data, planned direct accounts | +4 frontend (shared 1, client 1, web 2) |
 | #40 | Feedback fixes: the app says when the server is older than the app (instead of "Not Found"), profile picture inside the page, long coach answers wrap, the offline coach shows all of its data; update steps in the docs | +1 frontend (client 1) |
 | #41 | The API starts with `uv run --env-file .env` on Windows: allowed web origins accept a comma-separated list (the JSON form lost its quotes) | +3 |
+| #42 | `CLAUDE.md`: Claude Code in the IDE runs the same cycle (challenger, checks, reviewer, docs, PR, CI, merge) | – |
+| #43 | Direct accounts: connect a Withings account on the Connections page (OAuth, tokens encrypted, sign-in bound to the user), the last year of weigh-ins on connect, "Sync now" every 10 minutes, disconnect – ADR-0008 | +20, +7 frontend (shared 1, web 6) |
 
-Totals: backend 550 tests, frontend 207 tests (shared 32, client 28, web 41, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 570 tests, frontend 214 tests (shared 33, client 28, web 47, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -92,10 +94,12 @@ Totals: backend 550 tests, frontend 207 tests (shared 32, client 28, web 41, mob
 
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
-1. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
-2. Today screen: session card [4.2.4].
-3. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
-4. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
+1. Direct accounts for workouts: WHOOP, then Strava and Polar, on the `integrations` module (ADR-0008) [7.3.1, 7.3.5].
+2. Mobile app catches up with web: food diary with barcode camera, photo camera, progress charts, connections [5.2.6, 10.2.1, 7.1.5].
+3. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
+4. Today screen: session card [4.2.4].
+5. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
+6. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
 
 ## Open decisions for the product owner
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from cryptography.fernet import Fernet
 from pydantic import ValidationError
 
 from buddy_coach.core.config import Environment, LLMProviderName
@@ -66,3 +67,17 @@ def test_cors_origins_accept_a_list_in_any_common_form(
 ) -> None:
     monkeypatch.setenv("BUDDY_CORS_ORIGINS", value)
     assert make_settings().cors_origins == ["http://localhost:5173", "https://app.example.ch"]
+
+
+def test_integrations_key_must_be_a_fernet_key() -> None:
+    with pytest.raises(ValidationError, match="Fernet"):
+        make_settings(integrations_key="not-a-key")
+    assert make_settings(integrations_key=Fernet.generate_key().decode()).integrations_key
+
+
+def test_production_needs_an_https_redirect_once_withings_is_set_up() -> None:
+    with pytest.raises(ValidationError, match="https"):
+        production_settings(withings_client_id="id")
+    production_settings(
+        withings_client_id="id", oauth_redirect_url="https://app.example/connections/callback"
+    )

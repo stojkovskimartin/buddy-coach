@@ -11,6 +11,7 @@ import {
   type Goal,
   type GoalIn,
   type ImportResult,
+  type IntegrationProvider,
   type MealDay,
   type MealEntry,
   type MealEntryIn,
@@ -19,6 +20,8 @@ import {
   type PhotoKind,
   type Profile,
   type ProfileIn,
+  type ProviderStatus,
+  type SyncResult,
   type TokenPair,
   type TokenStore,
   type TrainingLoad,
@@ -58,6 +61,11 @@ export interface CoachApi {
   uploadFit(file: Blob): Promise<ImportResult>;
   workoutSources(): Promise<WorkoutSourceSummary[]>;
   weightSources(): Promise<WeightSourceSummary[]>;
+  integrations(): Promise<ProviderStatus[]>;
+  connectIntegration(provider: IntegrationProvider): Promise<string>;
+  finishIntegration(provider: IntegrationProvider, code: string, state: string): Promise<SyncResult>;
+  syncIntegration(provider: IntegrationProvider): Promise<SyncResult>;
+  disconnectIntegration(provider: IntegrationProvider): Promise<void>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }

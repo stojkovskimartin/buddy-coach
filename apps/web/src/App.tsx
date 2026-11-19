@@ -4,7 +4,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
 import { CoachPage } from "./pages/CoachPage";
-import { ConnectionsPage } from "./pages/ConnectionsPage";
+import { ConnectionCallback, ConnectionsPage } from "./pages/ConnectionsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FoodPage } from "./pages/FoodPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -147,6 +147,14 @@ export function AppRoutes() {
           element={
             <RequireProfile>
               <ConnectionsPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/connections/callback"
+          element={
+            <RequireProfile>
+              <ConnectionCallback />
             </RequireProfile>
           }
         />

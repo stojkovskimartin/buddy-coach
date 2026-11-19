@@ -6,6 +6,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
 
+from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -55,6 +56,12 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None  # openai_compatible; local servers need none
     media_dir: str = "./media"  # photos on local disk; an S3-compatible store later
     meal_photo_retention_days: int = Field(default=90, ge=1, le=3650)
+    # Direct account connections: tokens are encrypted with this Fernet key; a provider is
+    # offered only when its client id and secret are set too.
+    integrations_key: SecretStr | None = None
+    oauth_redirect_url: str = "http://localhost:5173/connections/callback"
+    withings_client_id: str | None = None
+    withings_client_secret: SecretStr | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -74,6 +81,28 @@ class Settings(BaseSettings):
             msg = f"jwt_secret must be at least {MIN_SECRET_LENGTH} characters"
             raise ValueError(msg)
         return value
+
+    @field_validator("integrations_key")
+    @classmethod
+    def _key_is_fernet(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None:
+            try:
+                Fernet(value.get_secret_value())
+            except ValueError as exc:
+                msg = "integrations_key must be a Fernet key (Fernet.generate_key())"
+                raise ValueError(msg) from exc
+        return value
+
+    @model_validator(mode="after")
+    def _redirect_is_safe_in_production(self) -> Settings:
+        if (
+            self.is_production
+            and self.withings_client_id
+            and not self.oauth_redirect_url.startswith("https://")
+        ):
+            msg = "oauth_redirect_url must be https in production"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _llm_is_configured(self) -> Settings:

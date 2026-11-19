@@ -4,6 +4,7 @@ from buddy_coach.body import models as body_models
 from buddy_coach.checkin import models as checkin_models
 from buddy_coach.core.db import Base
 from buddy_coach.identity import models as identity_models
+from buddy_coach.integrations import models as integrations_models
 from buddy_coach.meals import models as meals_models
 from buddy_coach.media import models as media_models
 from buddy_coach.profile import models as profile_models
@@ -14,6 +15,7 @@ __all__ = [
     "body_models",
     "checkin_models",
     "identity_models",
+    "integrations_models",
     "meals_models",
     "media_models",
     "profile_models",
