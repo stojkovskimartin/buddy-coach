@@ -129,6 +129,66 @@ async def test_coach_reads_the_training_load(
     assert "days" not in result  # the day-by-day history stays out of the prompt
 
 
+async def test_coach_reads_the_food_diary_without_food_names(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    headers = await _athlete(client)
+    food = {
+        "name": "Grandma's secret recipe",
+        "grams": 300,
+        "protein_g": 20,
+        "carbs_g": 40,
+        "fat_g": 10,
+    }
+    await client.post(
+        "/api/v1/meals/entries", json={**food, "meal": "lunch", "kcal": 330}, headers=headers
+    )
+    await client.post(
+        "/api/v1/meals/entries", json={**food, "meal": "lunch", "kcal": 300}, headers=headers
+    )
+    today = await _tool_result(client, llm_provider, headers, "get_food_today", "What did I eat?")
+    assert today["totals"]["kcal"] == 630
+    assert today["meals"] == [{"meal": "lunch", "kcal": 630.0, "foods": 2}]
+    assert "secret" not in json.dumps(today)  # user-written food names never reach the model
+
+    week = await _tool_result(client, llm_provider, headers, "get_food_last_days", "How did I eat?")
+    assert len(week["days"]) == 1
+    assert week["days"][0]["day"] == ZURICH_TODAY.isoformat()
+
+
+async def test_coach_reads_the_weight_trend(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    headers = await _athlete(client)
+    empty = await _tool_result(
+        client, llm_provider, headers, "get_weight_trend", "My weight trend?"
+    )
+    assert (empty["latest_kg"], empty["measurements"]) == (None, 0)
+    readings = [
+        {
+            "source": "health_connect",
+            "external_id": d,
+            "measured_at": f"2026-11-{d}T06:00:00+00:00",
+            "weight_kg": kg,
+        }
+        for d, kg in [("01", 80.0), ("18", 78.0)]
+    ]
+    await client.post("/api/v1/body/weights/import", json={"weights": readings}, headers=headers)
+    trend = await _tool_result(
+        client, llm_provider, headers, "get_weight_trend", "My weight trend?"
+    )
+    assert (trend["latest_kg"], trend["latest_day"], trend["measurements"]) == (
+        78.0,
+        "2026-11-18",
+        2,
+    )
+    assert (trend["trend_start_kg"], trend["trend_end_kg"], trend["trend_change_kg"]) == (
+        80.0,
+        78.0,
+        -2.0,
+    )
+
+
 async def test_coach_requires_authentication(client: httpx.AsyncClient) -> None:
     response = await client.post("/api/v1/coach/chat", json={"message": "hi"})
     assert response.status_code == 401

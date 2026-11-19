@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from buddy_coach.checkin.schemas import CheckinIn, ReadinessOut
 from buddy_coach.coach.tools import Tool, ToolContext, ToolRegistry
 from buddy_coach.core.errors import NotFoundError
+from buddy_coach.meals.domain import MealSlot
+from buddy_coach.meals.schemas import DailyTotalsOut, NutrientTotals
 from buddy_coach.nutrition.schemas import TargetsOut
 from buddy_coach.profile.domain import GoalPriority, GoalStatus, age_on
 from buddy_coach.science.micronutrients import (
@@ -223,6 +225,83 @@ async def get_training_load(ctx: ToolContext, _: NoArguments) -> TrainingLoadSum
     return TrainingLoadSummary.model_validate(load.model_dump(exclude={"days"}))
 
 
+WEIGHT_DAYS = 28
+FOOD_DAYS = 7
+
+
+class WeightTrendOutput(BaseModel):
+    """Body weight over the last 4 weeks (7-day trend of the morning weights)."""
+
+    latest_kg: float | None
+    latest_day: date | None
+    trend_start_kg: float | None
+    trend_end_kg: float | None
+    trend_change_kg: float | None
+    measurements: int
+
+
+async def get_weight_trend(ctx: ToolContext, _: NoArguments) -> WeightTrendOutput:
+    """Latest weight and the trend over 4 weeks (body module)."""
+    history = await ctx.weights.history(
+        ctx.user_id, ctx.today - timedelta(days=WEIGHT_DAYS - 1), ctx.today
+    )
+    latest = history.weights[0] if history.weights else None
+    first = history.trend[0].weight_kg if history.trend else None
+    last = history.trend[-1].weight_kg if history.trend else None
+    return WeightTrendOutput(
+        latest_kg=latest.weight_kg if latest else None,
+        latest_day=latest.day if latest else None,
+        trend_start_kg=first,
+        trend_end_kg=last,
+        trend_change_kg=round(last - first, 2) if first is not None and last is not None else None,
+        measurements=len(history.weights),
+    )
+
+
+class MealTotals(BaseModel):
+    """Calories of one meal and how many foods it has."""
+
+    meal: str
+    kcal: float
+    foods: int
+
+
+class FoodTodayOutput(BaseModel):
+    """What was logged today, in totals. Food names are left out: they can be user-written text."""
+
+    totals: NutrientTotals
+    meals: list[MealTotals]
+
+
+async def get_food_today(ctx: ToolContext, _: NoArguments) -> FoodTodayOutput:
+    """Today's food diary in totals per meal (meals module)."""
+    day = await ctx.meals.day(ctx.user_id, ctx.today)
+    meals: dict[str, MealTotals] = {}
+    for entry in day.entries:
+        totals = meals.setdefault(
+            entry.meal.value, MealTotals(meal=entry.meal.value, kcal=0, foods=0)
+        )
+        totals.kcal = round(totals.kcal + entry.kcal, 1)
+        totals.foods += 1
+    order = list(MealSlot)
+    ordered = sorted(meals.values(), key=lambda m: order.index(MealSlot(m.meal)))
+    return FoodTodayOutput(totals=day.totals, meals=ordered)
+
+
+class FoodDaysOutput(BaseModel):
+    """Totals of the days with food logged in the last 7 days."""
+
+    days: list[DailyTotalsOut]
+
+
+async def get_food_last_days(ctx: ToolContext, _: NoArguments) -> FoodDaysOutput:
+    """Calories and macros per day over the last week (meals module)."""
+    days = await ctx.meals.daily_totals(
+        ctx.user_id, ctx.today - timedelta(days=FOOD_DAYS - 1), ctx.today
+    )
+    return FoodDaysOutput(days=days)
+
+
 async def _body(ctx: ToolContext) -> BodyData:
     profile = await ctx.profiles.find_profile(ctx.user_id)
     if profile is None:
@@ -421,6 +500,30 @@ def build_default_registry() -> ToolRegistry:
             "Today's calorie and macro targets, the same numbers the app shows.",
             NoArguments,
             get_today_targets,
+        )
+    )
+    registry.register(
+        Tool(
+            "get_food_today",
+            "What the user logged today: calories, protein, carbs and fat, and per meal.",
+            NoArguments,
+            get_food_today,
+        )
+    )
+    registry.register(
+        Tool(
+            "get_food_last_days",
+            "Calories and macros per day over the last 7 days of the food diary.",
+            NoArguments,
+            get_food_last_days,
+        )
+    )
+    registry.register(
+        Tool(
+            "get_weight_trend",
+            "The user's latest weight and its 7-day trend over the last 4 weeks.",
+            NoArguments,
+            get_weight_trend,
         )
     )
     registry.register(
