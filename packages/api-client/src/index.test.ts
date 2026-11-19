@@ -210,6 +210,20 @@ describe("BuddyClient", () => {
       expect(new URL(api.calls[1]!.url).searchParams.get("from")).toBe("2026-08-22");
     });
 
+    it("imports smart-scale weights in one batch", async () => {
+      const { api, client } = authed({
+        "POST /api/v1/body/weights/import": () => json(200, { created: 1, updated: 0, skipped: 0 }),
+      });
+      const reading = {
+        source: "health_connect" as const,
+        external_id: "hc-1",
+        measured_at: "2026-11-19T06:30:00Z",
+        weight_kg: 77.6,
+      };
+      expect(await client.importWeights([reading])).toEqual({ created: 1, updated: 0, skipped: 0 });
+      expect(await api.calls[0]?.json()).toEqual({ weights: [reading] });
+    });
+
     it("deletes, and reports a missing weight", async () => {
       const { client } = authed({
         "DELETE /api/v1/body/weights/w1": () => new Response(null, { status: 204 }),

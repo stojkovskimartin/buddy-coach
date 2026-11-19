@@ -1,10 +1,17 @@
 /**
  * Android Health Connect: Samsung, Google/Fitbit, Xiaomi/Zepp, Garmin and other apps that write
- * exercise sessions there. Read-only; sessions hold no metrics, so heart rate, distance and
+ * exercise sessions there, and smart scales that write weights. Read-only; sessions hold no metrics, so heart rate, distance and
  * calories are aggregated from the session's own app within its time range.
  */
 import { healthConnectActivity } from "./activityMapping";
-import type { Availability, HealthSource, RawWorkout, ReadResult } from "./types";
+import type {
+  Availability,
+  HealthSource,
+  RawWeight,
+  RawWorkout,
+  ReadResult,
+  WeightReadResult,
+} from "./types";
 
 type HealthConnect = typeof import("react-native-health-connect");
 
@@ -21,9 +28,16 @@ const PERMISSIONS = [
   { accessType: "read", recordType: "HeartRate" },
   { accessType: "read", recordType: "Distance" },
   { accessType: "read", recordType: "ActiveCaloriesBurned" },
+  { accessType: "read", recordType: "Weight" },
 ] as const;
 
 const PAGE_SIZE = 200;
+
+interface WeightRecord {
+  metadata?: { id?: string };
+  time: string;
+  weight: { inKilograms: number };
+}
 
 interface Session {
   metadata?: { id?: string; dataOrigin?: string };
@@ -84,19 +98,53 @@ export function healthConnectSource(hc: HealthConnect | null = load()): HealthSo
     };
   }
 
-  async function readWindow(api: HealthConnect, since: Date): Promise<Session[]> {
-    const sessions: Session[] = [];
+  type RecordType = "ExerciseSession" | "Weight";
+
+  async function readWindow(api: HealthConnect, recordType: RecordType, since: Date): Promise<unknown[]> {
+    const records: unknown[] = [];
     let pageToken: string | undefined;
     do {
-      const page = await api.readRecords("ExerciseSession", {
+      const page = await api.readRecords(recordType, {
         timeRangeFilter: { operator: "after", startTime: since.toISOString() },
         pageSize: PAGE_SIZE,
         ...(pageToken ? { pageToken } : {}),
       });
-      sessions.push(...(page.records as Session[]));
+      records.push(...page.records);
       pageToken = page.pageToken || undefined; // some Android versions return "" at the end
     } while (pageToken);
-    return sessions;
+    return records;
+  }
+
+  /** Records of one type changed since `cursor`, or the window after `since` on a first sync or
+   * when the token expired (the server import is idempotent). */
+  async function readChanged(
+    api: HealthConnect,
+    recordType: RecordType,
+    cursor: string | null,
+    since: Date,
+  ): Promise<{ records: unknown[]; nextCursor: string }> {
+    // A fresh token is taken BEFORE a window read, so changes made during the read come next time.
+    const freshToken = async () => (await api.getChanges({ recordTypes: [recordType] })).nextChangesToken;
+    if (!cursor) {
+      const nextCursor = await freshToken();
+      return { records: await readWindow(api, recordType, since), nextCursor };
+    }
+    const records: unknown[] = [];
+    let token = cursor;
+    let more = true;
+    while (more) {
+      const changes = await api.getChanges({ changesToken: token, recordTypes: [recordType] });
+      if (changes.changesTokenExpired) {
+        const nextCursor = await freshToken();
+        return { records: await readWindow(api, recordType, since), nextCursor };
+      }
+      for (const change of changes.upsertionChanges) {
+        if (change.record.recordType === recordType) records.push(change.record);
+      }
+      token = changes.nextChangesToken;
+      more = changes.hasMore;
+    }
+    return { records, nextCursor: token };
   }
 
   return {
@@ -122,34 +170,8 @@ export function healthConnectSource(hc: HealthConnect | null = load()): HealthSo
     async readSince(cursor: string | null, since: Date): Promise<ReadResult> {
       const api = await ready();
       if (!api) return { workouts: [], nextCursor: cursor };
-      // A fresh token is taken BEFORE a window read, so changes made during the read come next time.
-      const freshToken = async () =>
-        (await api.getChanges({ recordTypes: ["ExerciseSession"] })).nextChangesToken;
-      let sessions: Session[] = [];
-      let nextCursor: string;
-      if (cursor) {
-        let token = cursor;
-        let more = true;
-        while (more) {
-          const changes = await api.getChanges({ changesToken: token, recordTypes: ["ExerciseSession"] });
-          if (changes.changesTokenExpired) {
-            token = await freshToken();
-            sessions = await readWindow(api, since); // idempotent on the server
-            break;
-          }
-          for (const change of changes.upsertionChanges) {
-            if (change.record.recordType === "ExerciseSession") {
-              sessions.push(change.record as unknown as Session);
-            }
-          }
-          token = changes.nextChangesToken;
-          more = changes.hasMore;
-        }
-        nextCursor = token;
-      } else {
-        nextCursor = await freshToken();
-        sessions = await readWindow(api, since);
-      }
+      const { records, nextCursor } = await readChanged(api, "ExerciseSession", cursor, since);
+      const sessions = records as Session[];
       // One session at a time: three aggregate calls each, without flooding Health Connect.
       const workouts: RawWorkout[] = [];
       for (const session of sessions) {
@@ -157,6 +179,41 @@ export function healthConnectSource(hc: HealthConnect | null = load()): HealthSo
         if (workout) workouts.push(workout);
       }
       return { workouts, nextCursor };
+    },
+
+    async needsWeightAccess(): Promise<boolean> {
+      const api = await ready();
+      if (!api) return false;
+      const granted = await api.getGrantedPermissions();
+      return !granted.some((p) => "recordType" in p && p.recordType === "Weight" && p.accessType === "read");
+    },
+
+    async readWeightsSince(cursor: string | null, since: Date): Promise<WeightReadResult> {
+      const api = await ready();
+      if (!api) return { weights: [], nextCursor: cursor };
+      let result: { records: unknown[]; nextCursor: string };
+      try {
+        result = await readChanged(api, "Weight", cursor, since);
+      } catch (error) {
+        // Connected before weights were added: nothing to read until access is granted again.
+        if ((error as { code?: string }).code === "PERMISSION_ERROR") {
+          return { weights: [], nextCursor: cursor };
+        }
+        throw error;
+      }
+      const weights: RawWeight[] = [];
+      for (const record of result.records as WeightRecord[]) {
+        const id = record.metadata?.id;
+        const time = Date.parse(record.time);
+        if (id && !Number.isNaN(time)) {
+          weights.push({
+            external_id: id,
+            measured_at: new Date(time).toISOString(),
+            weight_kg: record.weight.inKilograms,
+          });
+        }
+      }
+      return { weights, nextCursor: result.nextCursor };
     },
   };
 }

@@ -70,8 +70,9 @@ pull request numbers.
 | #28 | Today's food targets card on web and mobile: calories, protein, carbs, fat and why | +6 frontend (web 3, mobile 3) |
 | #29 | Body weight: manual entries, smart-scale sync API, 7-day trend; the newest weight updates the profile and the targets | +13 |
 | #30 | Weight on web and mobile: latest weight, 90-day trend chart, quick entry, delete a wrong reading | +15 frontend (shared 6, client 2, web 4, mobile 3) |
+| #31 | Smart scales: the phone reads body weight from Apple Health / Health Connect and keeps it up to date; phones connected earlier get an "Allow weight" step | +10 frontend (client 1, mobile 9) |
 
-Totals: backend 512 tests, frontend 167 tests (shared 19, client 22, web 29, mobile 97); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 512 tests, frontend 177 tests (shared 19, client 23, web 29, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

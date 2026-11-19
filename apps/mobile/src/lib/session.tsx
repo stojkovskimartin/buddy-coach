@@ -10,6 +10,7 @@ import {
   type CheckinIn,
   type Goal,
   type GoalIn,
+  type ImportedWeight,
   type ImportedWorkout,
   type ImportResult,
   type NutritionTargets,
@@ -18,6 +19,7 @@ import {
   type TokenStore,
   type Weight,
   type WeightHistory,
+  type WeightImportResult,
   type WeightIn,
 } from "@buddy/api-client";
 import {
@@ -50,6 +52,7 @@ export interface CoachApi {
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
   importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult>;
+  importWeights(weights: ImportedWeight[]): Promise<WeightImportResult>;
 }
 
 /** "loading" while the stored session is checked on start. */
