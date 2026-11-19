@@ -30,3 +30,9 @@ jest.mock("expo-camera", () => {
       }),
   };
 });
+
+// Taking and shrinking photos needs the phone; tests replace the whole adapter.
+jest.mock("../src/lib/photos", () => ({
+  pickPhoto: jest.fn(async () => new Blob(["jpeg"], { type: "image/jpeg" })),
+  dataUri: jest.fn(async () => "data:image/jpeg;base64,AAAA"),
+}));

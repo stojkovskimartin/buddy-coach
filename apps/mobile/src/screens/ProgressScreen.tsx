@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BarChart, LineChart } from "../components/Charts";
+import { PhotoStrip } from "../components/PhotoStrip";
 import { Card, ErrorBanner } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
@@ -169,6 +170,14 @@ function Sections({ data }: { data: Data }) {
             />
           </>
         )}
+      </Card>
+
+      <Card>
+        <Text accessibilityRole="header" style={styles.heading}>
+          Progress photos
+        </Text>
+        <PhotoStrip kind="progress" title="Progress photos" one="progress photo" range={{ from: range[0], to: range[1] }} />
+        <Text style={styles.muted}>Only you can see them. They are stored without location data.</Text>
       </Card>
 
       <Card>

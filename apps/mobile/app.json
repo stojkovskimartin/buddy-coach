@@ -44,9 +44,17 @@
       ],
       "react-native-health-connect",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Buddy Coach lets you choose meal and progress photos and a profile picture. Only you can see them.",
+          "cameraPermission": "Buddy Coach uses the camera for meal and progress photos and to read food barcodes.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-camera",
         {
-          "cameraPermission": "Buddy Coach uses the camera to read barcodes on food packages. Nothing is recorded.",
+          "cameraPermission": "Buddy Coach uses the camera for meal and progress photos and to read food barcodes.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

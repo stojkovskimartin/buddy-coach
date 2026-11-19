@@ -4,6 +4,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 
 import { CheckinCard } from "../components/CheckinCard";
 import { HealthSyncCard } from "../components/HealthSyncCard";
+import { PhotoStrip } from "../components/PhotoStrip";
 import { TargetsCard } from "../components/TargetsCard";
 import { WeightCard } from "../components/WeightCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
@@ -108,6 +109,14 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
         ))}
       {!loading && !error && profile && goals.length === 0 && (
         <Text style={styles.body}>No active goal yet. Add one in the web app.</Text>
+      )}
+      {profile && (
+        <Card>
+          <Text accessibilityRole="header" style={styles.heading}>
+            Profile picture
+          </Text>
+          <PhotoStrip kind="avatar" title="Profile picture" one="profile picture" reloadKey={reloads} />
+        </Card>
       )}
       <Button label="Ask your coach" onPress={onOpenCoach} />
       <Button variant="secondary" label="Log out" onPress={() => void logout()} />
