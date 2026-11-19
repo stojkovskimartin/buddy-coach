@@ -52,8 +52,16 @@ async function openFood(api: ReturnType<typeof fakeApi>) {
   await fireEvent.press(await screen.findByRole("tab", { name: "Food" }));
 }
 
+const realFetch = globalThis.fetch;
+
 afterEach(() => {
   jest.restoreAllMocks();
+  globalThis.fetch = realFetch;
+  delete (globalThis as { fakeBarcode?: string }).fakeBarcode;
+  jest.requireMock("expo-camera").useCameraPermissions.mockImplementation(() => [
+    { granted: true, canAskAgain: true },
+    jest.fn(),
+  ]);
 });
 
 describe("FoodScreen", () => {
@@ -69,6 +77,7 @@ describe("FoodScreen", () => {
     expect(screen.getByText(/Oat flakes/)).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Delete Oat flakes" }));
     expect(api.deleteMeal).toHaveBeenCalledWith("m1");
+    expect(api.getMealDay).toHaveBeenCalledTimes(2); // reloaded
   });
 
   it("loads only when the tab is first shown, and pages back a day", async () => {
@@ -79,7 +88,26 @@ describe("FoodScreen", () => {
 
     await fireEvent.press(screen.getByRole("tab", { name: "Food" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Previous day" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Previous day" }));
+    expect(api.getMealDay).toHaveBeenLastCalledWith("2026-11-17");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Next day" }));
     expect(api.getMealDay).toHaveBeenLastCalledWith("2026-11-18");
+    await fireEvent.press(screen.getByRole("button", { name: "Next day" }));
+    expect(api.getMealDay).toHaveBeenLastCalledWith(undefined); // back to today
+    expect(screen.getByRole("button", { name: "Next day" })).toBeDisabled();
+  });
+
+  it("explains how to turn the camera on when access was refused", async () => {
+    const { useCameraPermissions } = jest.requireMock("expo-camera");
+    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: false }, jest.fn()]);
+    await openFood(fakeApi({ getTodayTargets: jest.fn().mockResolvedValue(TARGETS) }));
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Scan a barcode" }));
+
+    expect(await screen.findByText(/Camera access is off/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Fake camera" })).toBeNull();
   });
 
   it("finds a food by name and logs the portion", async () => {
@@ -135,7 +163,6 @@ describe("FoodScreen", () => {
 
     expect(await screen.findByLabelText("Grams eaten")).toBeTruthy();
     expect(fetchSpy.mock.calls[1]![0]).toContain("/api/v2/product/012345678905");
-    delete (globalThis as { fakeBarcode?: string }).fakeBarcode;
   });
 
   it("logs a food typed in by hand and refuses one without calories", async () => {

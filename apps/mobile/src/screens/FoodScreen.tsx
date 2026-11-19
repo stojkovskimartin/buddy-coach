@@ -30,6 +30,7 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
   const [picked, setPicked] = useState<string | null>(null); // null = today on the server
   const [day, setDay] = useState<MealDay | null>(null);
   const [targets, setTargets] = useState<NutritionTargets | null>(null);
+  const [today, setToday] = useState<string | null>(null); // the athlete's today, from the server
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const request = useRef(0);
@@ -47,6 +48,7 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
       if (id !== request.current) return;
       setDay(d);
       setTargets(t);
+      if (picked === null) setToday(d.day);
       setError(null);
     } catch (e) {
       if (id === request.current) setError(errorMessage(e));
@@ -61,8 +63,13 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
     void load();
   }, [active, load]);
 
-  const today = targets?.day ?? null;
   const isToday = picked === null || picked === today;
+  // Page from the day asked for, not the one shown, so quick taps are not lost while loading.
+  const page = (step: number) =>
+    setPicked((current) => {
+      const next = daysBefore(current ?? today ?? day!.day, -step);
+      return today !== null && next >= today ? null : next;
+    });
 
   function remove(entry: MealEntry) {
     Alert.alert(`Delete ${entry.name}?`, undefined, [
@@ -88,18 +95,9 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
       <ErrorBanner message={error} />
       {day && (
         <View style={styles.dayRow}>
-          <Button
-            variant="secondary"
-            label="Previous day"
-            onPress={() => setPicked(daysBefore(day.day, 1))}
-          />
+          <Button variant="secondary" label="Previous day" onPress={() => page(-1)} />
           <Text style={styles.dayText}>{isToday ? "Today" : day.day}</Text>
-          <Button
-            variant="secondary"
-            label="Next day"
-            disabled={isToday}
-            onPress={() => setPicked(today && daysBefore(day.day, -1) < today ? daysBefore(day.day, -1) : null)}
-          />
+          <Button variant="secondary" label="Next day" disabled={isToday} onPress={() => page(1)} />
         </View>
       )}
       {day && (
@@ -242,7 +240,7 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
           <Pressable
             key={m}
             accessibilityRole="radio"
-            accessibilityState={{ selected: m === meal }}
+            accessibilityState={{ checked: m === meal }}
             onPress={() => setMeal(m)}
             style={[styles.chip, m === meal && styles.chipOn]}
           >

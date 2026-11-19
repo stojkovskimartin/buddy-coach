@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useRef } from "react";
-import { Modal, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Linking, Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colors, font, space } from "../theme";
@@ -22,14 +22,14 @@ export function BarcodeScanner({
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const done = useRef(false); // the camera reports the same code many times a second
+  useEffect(() => {
+    if (visible) done.current = false;
+  }, [visible]);
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      onShow={() => {
-        done.current = false;
-      }}
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.screen}>
@@ -55,8 +55,10 @@ export function BarcodeScanner({
                 ? "Camera access is off for Buddy Coach. Turn it on in the phone's settings, or search the food by name."
                 : "Buddy Coach needs the camera to read the barcode. Nothing is recorded."}
             </Text>
-            {(!permission || permission.canAskAgain) && (
+            {!permission || permission.canAskAgain ? (
               <Button label="Allow camera" onPress={() => void requestPermission()} />
+            ) : (
+              <Button label="Open settings" onPress={() => void Linking.openSettings()} />
             )}
           </View>
         )}

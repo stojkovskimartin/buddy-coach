@@ -20,7 +20,7 @@ jest.mock("expo-camera", () => {
   const { Pressable } = jest.requireActual("react-native");
   const { createElement } = jest.requireActual("react");
   return {
-    useCameraPermissions: () => [{ granted: true, canAskAgain: true }, jest.fn()],
+    useCameraPermissions: jest.fn(() => [{ granted: true, canAskAgain: true }, jest.fn()]),
     CameraView: ({ onBarcodeScanned }: { onBarcodeScanned: (r: { data: string }) => void }) =>
       createElement(Pressable, {
         accessibilityRole: "button",
