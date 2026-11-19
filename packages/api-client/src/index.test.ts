@@ -130,6 +130,35 @@ describe("BuddyClient", () => {
     expect(await client.getProfile()).toBeNull();
   });
 
+  it("returns today's nutrition targets, or null before onboarding", async () => {
+    const targets = {
+      day: "2026-11-19",
+      goal: "maintain",
+      kcal: 2700,
+      protein_g: 130,
+      carbs_g: 360,
+      fat_g: 80,
+      maintenance_kcal: 2700,
+      floor_applied: false,
+      training_kcal_estimated: true,
+      reasons: [],
+    };
+    let onboarded = false;
+    const api = fakeApi({
+      "GET /api/v1/nutrition/targets/today": () =>
+        onboarded ? json(200, targets) : json(404, { code: "not_found", detail: "No profile." }),
+    });
+    const client = new BuddyClient({
+      baseUrl: BASE,
+      tokens: memoryTokenStore(tokens(1)),
+      fetch: api.fetch,
+    });
+
+    expect(await client.getTodayTargets()).toBeNull();
+    onboarded = true;
+    expect((await client.getTodayTargets())?.kcal).toBe(2700);
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

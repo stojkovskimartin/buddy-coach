@@ -16,3 +16,5 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Mobile: check `EXPO_PUBLIC_API_BASE_URL` is https at build time (app.config.ts or CI), so a wrong value never crashes a release app on launch | #13 re-review | Before app store builds |
 | Mobile: verify keyboard layout on a real Android device (edge-to-edge) | #13 re-review | Before beta |
 | Branch protection on `main` requiring the CI checks (needs repository admin settings) | docs review | Before beta |
+| Coach nutrition tool: build on `athlete_snapshot` + `nutrition.domain.targets_for` so the coach and the Today screen give the same numbers (tool still uses training_kcal 0 by default) | #20 review | Next coach PR |
+| Nutrition targets: training energy comes from available time (capped 180 min/day); replace with logged workouts and adaptive maintenance | #20 review | With workout logging |

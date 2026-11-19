@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, date, timedelta
+from datetime import date, timedelta
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +20,7 @@ from buddy_coach.checkin.events import CheckinSaved
 from buddy_coach.checkin.models import DailyCheckin
 from buddy_coach.checkin.repository import CheckinRepository
 from buddy_coach.checkin.schemas import CheckinIn, CheckinOut, ReadinessOut
+from buddy_coach.core.clock import local_date
 from buddy_coach.core.deps import Clock
 from buddy_coach.core.errors import NotFoundError
 from buddy_coach.core.events import EventBus
@@ -62,9 +62,7 @@ class CheckinService:
 
     async def local_today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone (UTC until the profile exists)."""
-        timezone = await self._profiles.timezone_for(user_id)
-        zone = ZoneInfo(timezone) if timezone else UTC
-        return self._now().astimezone(zone).date()
+        return local_date(self._now(), await self._profiles.timezone_for(user_id))
 
     async def save(self, user_id: uuid.UUID, day: date, data: CheckinIn) -> tuple[CheckinOut, bool]:
         """Create or replace the check-in of a day; True when it was created."""

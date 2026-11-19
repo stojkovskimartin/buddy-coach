@@ -151,3 +151,20 @@ def _validate_weight_goal(spec: GoalSpec, current_weight_kg: float | None) -> No
         raise ValidationFailedError("To lose weight, the target must be below your current weight.")
     if spec.goal_type is GoalType.GAIN_WEIGHT and target <= current_weight_kg:
         raise ValidationFailedError("To gain weight, the target must be above your current weight.")
+
+
+@dataclass(frozen=True, slots=True)
+class AthleteSnapshot:
+    """What other modules may know about an athlete: body data, time zone and main goal.
+
+    A plain value, so other modules never touch the profile module's tables.
+    """
+
+    birth_year: int
+    sex: Sex
+    height_cm: float
+    weight_kg: float
+    timezone: str
+    available_days_per_week: int
+    minutes_per_session: int
+    primary_goal: GoalType | None
