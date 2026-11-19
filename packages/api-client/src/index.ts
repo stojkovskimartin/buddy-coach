@@ -22,6 +22,8 @@ export type CheckinIn = Schemas["CheckinIn"];
 export type Checkin = Schemas["CheckinOut"];
 export type Readiness = Schemas["ReadinessOut"];
 export type NutritionTargets = Schemas["TargetsOut"];
+export type ImportedWorkout = Schemas["ImportedWorkout"];
+export type ImportResult = Schemas["ImportResult"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -150,6 +152,11 @@ export class BuddyClient {
     const result = await this.raw.GET("/api/v1/nutrition/targets/today");
     if (result.response.status === 404) return null;
     return unwrap(result);
+  }
+
+  /** Sync workouts from a device or app (max 500); known (source, external_id) pairs are updated. */
+  async importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult> {
+    return unwrap(await this.raw.POST("/api/v1/workouts/import", { body: { workouts } }));
   }
 
   async chat(message: string): Promise<ChatReply> {

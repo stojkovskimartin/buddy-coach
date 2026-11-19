@@ -68,6 +68,7 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     getTodayCheckin: jest.fn().mockResolvedValue(null),
     saveTodayCheckin: jest.fn(async (c: CheckinIn) => checkin("2026-11-19", c)),
     saveCheckin: jest.fn(async (day: string, c: CheckinIn) => checkin(day, c)),
+    importWorkouts: jest.fn().mockResolvedValue({ created: 0, updated: 0 }),
     ...overrides,
   };
   return api satisfies Record<keyof CoachApi, jest.Mock>;
