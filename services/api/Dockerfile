@@ -13,8 +13,9 @@ COPY alembic ./alembic
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev
 
-# Runs as an unprivileged user; the app only reads its files.
-RUN useradd --system --no-create-home app
+# Runs as an unprivileged user; the app only reads its files and writes photos to /app/media.
+RUN useradd --system --no-create-home app \
+    && mkdir /app/media && chown app /app/media
 USER app
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000

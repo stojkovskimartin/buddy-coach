@@ -49,6 +49,10 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | GET | `/meals/entries?day=` | One day of the food diary (default today) in the order eaten, with totals |
 | DELETE | `/meals/entries/{id}` | Delete a diary entry (204) |
 | GET | `/meals/daily?from=&to=` | Calories and macros per day with entries, oldest first (default 28 days, max 366) |
+| POST | `/photos?kind=meal\|progress\|avatar` | Upload a photo as the raw JPEG, PNG or WebP body (max 10 MB, 413 above); stored shrunk to 1280 px with a 320 px thumbnail, without EXIF/GPS; a new avatar replaces the old one (201) |
+| GET | `/photos?kind=&from=&to=` | Photos, newest first (default 90 days, max 366) |
+| GET | `/photos/{id}/image?size=full\|thumb` | The JPEG (never cached) |
+| DELETE | `/photos/{id}` | Delete a photo and its files (204) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 
@@ -69,6 +73,7 @@ All errors are [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457
 | `unauthenticated` | 401 | Missing, invalid or expired token |
 | `forbidden` | 403 | Authenticated but not allowed (reserved; not used yet) |
 | `not_found` | 404 | Missing, or not yours |
+| `payload_too_large` | 413 | Upload larger than the endpoint accepts (photos: 10 MB) |
 | `conflict` | 409 | Duplicate (e.g. email already registered) |
 | `internal_error` | 500 | Unexpected; details are only in the server logs (by `X-Request-ID`) |
 

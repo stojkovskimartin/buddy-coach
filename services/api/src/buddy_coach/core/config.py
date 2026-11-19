@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     llm_base_url: str | None = None  # openai_compatible, e.g. http://localhost:11434/v1
     llm_api_key: SecretStr | None = None  # openai_compatible; local servers need none
+    media_dir: str = "./media"  # photos on local disk; an S3-compatible store later
+    meal_photo_retention_days: int = Field(default=90, ge=1, le=3650)
 
     @field_validator("jwt_secret")
     @classmethod

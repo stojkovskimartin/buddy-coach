@@ -23,3 +23,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Store review for health data: App Store privacy policy and health-data consent (guidelines 5.1.2(i), 5.1.3); Google Play Health Connect data declaration and rationale screen | ADR-0007 | Before store builds |
 | Transactional outbox and a background worker for domain events; events are published after commit and nothing subscribes yet | expert review | With the first event subscriber |
 | Privacy notice: food search terms and barcodes go from the apps directly to Open Food Facts (with the user's IP address, no account data); OFF data is ODbL and attributed in the UI | #33 | Before beta |
+| Photos: scheduled purge of expired meal photos (now on the user's next upload), S3-compatible storage with pre-signed URLs, removing a user's photo files when account deletion exists, a per-user photo quota, one avatar per user enforced in the database | #36 | Before beta |

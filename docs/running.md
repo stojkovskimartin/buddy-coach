@@ -159,6 +159,8 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `BUDDY_LLM_MODEL` | `claude-sonnet-5-5` | required for `openai_compatible` |
 | `BUDDY_LLM_BASE_URL` | – | required for `openai_compatible`, e.g. `http://localhost:11434/v1` |
 | `BUDDY_LLM_API_KEY` | – | for `openai_compatible` providers that need a key |
+| `BUDDY_MEDIA_DIR` | `./media` | where photos are stored, relative to the API's folder (Docker: the `media` volume at `/app/media`) |
+| `BUDDY_MEAL_PHOTO_RETENTION_DAYS` | 90 | meal photos older than this are removed; food entries stay |
 | `BUDDY_LOG_LEVEL` | `INFO` | logs are JSON lines |
 
 ## Troubleshooting

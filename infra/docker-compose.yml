@@ -38,8 +38,11 @@ services:
       # Local-only secret; real deployments inject their own.
       BUDDY_JWT_SECRET: local-development-secret-change-me-0123456789
       BUDDY_CORS_ORIGINS: '["http://localhost:5173"]'
+    volumes:
+      - media:/app/media
     ports:
       - "8000:8000"
 
 volumes:
   pgdata:
+  media:

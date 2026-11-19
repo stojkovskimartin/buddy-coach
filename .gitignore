@@ -48,3 +48,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Photos stored by a locally running API (BUDDY_MEDIA_DIR)
+services/api/media/
