@@ -105,15 +105,49 @@ class ScriptedLLMProvider:
         return self.responses.popleft()
 
 
+DEV_NOTICE = (
+    "(development coach) No AI model is connected, so I can only show your saved data. "
+    "Set BUDDY_LLM_PROVIDER=anthropic and BUDDY_ANTHROPIC_API_KEY for real answers."
+)
+
+
+def _readable(value: Any, indent: str = "") -> list[str]:
+    """Turn a JSON tool result into indented "Label: value" lines, skipping empty fields."""
+    if isinstance(value, dict):
+        lines: list[str] = []
+        for key, item in value.items():
+            if item in (None, "", [], {}):
+                continue
+            label = f"{indent}- {key.replace('_', ' ').capitalize()}"
+            if isinstance(item, dict | list):
+                lines += [f"{label}:", *_readable(item, indent + "  ")]
+            else:
+                lines.append(f"{label}: {_scalar(item)}")
+        return lines
+    if isinstance(value, list):
+        # A blank line between items shows where one goal (or entry) ends and the next begins.
+        lines = []
+        for position, item in enumerate(value):
+            lines += ([""] if position else []) + _readable(item, indent)
+        return lines
+    return [f"{indent}- {_scalar(value)}"]
+
+
+def _scalar(value: Any) -> str:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    return str(value)
+
+
 class DevLLMProvider:
     """Deterministic stand-in for local development without an API key.
 
     On the first step it calls the first offered tool that needs no arguments; afterwards it
-    answers with a plain summary of the tool results. Good enough to exercise the whole stack.
+    lists the tool results as readable lines. Good enough to exercise the whole stack.
     """
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
-        """Call one argument-free tool, then summarise."""
+        """Call one argument-free tool, then list what it returned."""
         tool_results = [m for m in request.messages if m.role == "tool"]
         if not tool_results and request.tool_choice == "auto":
             for tool in request.tools:
@@ -121,10 +155,13 @@ class DevLLMProvider:
                     return LLMResponse(
                         tool_calls=(ToolCall(id="dev-1", name=tool.name, arguments={}),)
                     )
-        summary = "; ".join(m.content for m in tool_results) or "no data yet"
-        return LLMResponse(
-            text=f"(development coach) Here is what I found: {summary}",
-        )
+        lines: list[str] = []
+        for message in tool_results:
+            try:
+                lines += _readable(json.loads(message.content))
+            except ValueError:
+                lines.append(message.content)
+        return LLMResponse(text=f"{DEV_NOTICE}\n\n" + ("\n".join(lines) or "No data yet."))
 
 
 class AnthropicProvider:
