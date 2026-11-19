@@ -70,6 +70,7 @@ class WorkoutService:
         """Create or update workouts by (source, external_id); feedback the athlete gave stays."""
         athlete = await self._athletes.athlete_snapshot(user_id)
         latest = {(w.source, w.external_id): w for w in workouts}  # last one wins in a batch
+        await self._repo.lock_user(user_id)
         existing = await self._repo.by_source_ids(user_id, list(latest))
         created = 0
         first_day: date | None = None

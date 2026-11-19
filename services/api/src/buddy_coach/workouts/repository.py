@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import delete, func, select, tuple_
+from sqlalchemy import delete, func, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.workouts.domain import WorkoutSource
@@ -18,6 +18,17 @@ class WorkoutRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def lock_user(self, user_id: uuid.UUID) -> None:
+        """Serialise imports of one user until the transaction ends.
+
+        Row locks cannot cover workouts that do not exist yet: without this, two syncs of the
+        same new workout would both insert and one would fail on the unique constraint.
+        """
+        await self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"workouts_import:{user_id}"},
+        )
 
     async def by_source_ids(
         self, user_id: uuid.UUID, keys: Sequence[tuple[WorkoutSource, str]]

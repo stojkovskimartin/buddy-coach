@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
@@ -82,6 +83,20 @@ async def test_import_is_idempotent_and_keeps_the_athletes_feedback(
         400,
     )
     assert sum(isinstance(e, WorkoutsChanged) for e in event_bus.published) == 3
+
+
+async def test_concurrent_syncs_of_the_same_workouts_create_them_once(
+    client: httpx.AsyncClient,
+) -> None:
+    headers = await _athlete(client)
+    body = {"workouts": [_garmin_run(str(n)) for n in range(20)]}
+    responses = await asyncio.gather(
+        *(client.post("/api/v1/workouts/import", json=body, headers=headers) for _ in range(4))
+    )
+    assert [r.status_code for r in responses] == [200] * 4
+    assert sum(r.json()["created"] for r in responses) == 20
+    listed = (await client.get("/api/v1/workouts", headers=headers)).json()
+    assert len(listed) == 20
 
 
 async def test_the_same_id_from_two_sources_is_two_workouts(client: httpx.AsyncClient) -> None:
