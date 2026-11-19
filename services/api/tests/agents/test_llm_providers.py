@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from buddy_coach.coach.llm import (
+    DEV_NOTICE,
     AnthropicProvider,
     DevLLMProvider,
     LLMError,
@@ -164,7 +165,44 @@ async def test_dev_provider_calls_argument_free_tool_then_summarises() -> None:
     second = await dev.complete(
         LLMRequest(
             system="s",
-            messages=(Message("user", "x"), Message("tool", '{"a":1}', tool_call_id="dev-1")),
+            messages=(
+                Message("user", "x"),
+                Message(
+                    "tool",
+                    '{"onboarding_complete":true,"sex":null,"primary_goal":{"goal_type":"run"}}',
+                    tool_call_id="dev-1",
+                ),
+            ),
         )
     )
-    assert '{"a":1}' in second.text
+    assert second.text == (
+        f"{DEV_NOTICE}\n\n- Onboarding complete: yes\n- Primary goal:\n  - Goal type: run"
+    )
+
+
+async def test_dev_provider_keeps_plain_tool_results_and_says_when_empty() -> None:
+    dev = DevLLMProvider()
+    plain = await dev.complete(
+        LLMRequest(system="s", messages=(Message("tool", "plain", tool_call_id="dev-1"),))
+    )
+    assert plain.text == f"{DEV_NOTICE}\n\nplain"
+    empty = await dev.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
+    assert empty.text == f"{DEV_NOTICE}\n\nNo data yet."
+
+
+async def test_dev_provider_separates_list_items_and_shows_tool_errors() -> None:
+    dev = DevLLMProvider()
+    goals = '{"goals":[{"goal_type":"run","sport":""},{"goal_type":"lose_weight"}]}'
+    response = await dev.complete(
+        LLMRequest(
+            system="s",
+            messages=(
+                Message("tool", goals, tool_call_id="dev-1"),
+                Message("tool", '{"error":"unknown tool"}', tool_call_id="dev-2"),
+            ),
+        )
+    )
+    assert response.text == (
+        f"{DEV_NOTICE}\n\n- Goals:\n  - Goal type: run\n\n  - Goal type: lose_weight\n"
+        "- Error: unknown tool"
+    )
