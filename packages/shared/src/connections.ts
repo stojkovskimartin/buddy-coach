@@ -6,10 +6,13 @@ export function importText(result: { created: number; updated: number }): string
   return result.updated ? `${added}, ${result.updated} updated` : added;
 }
 
-/** "2 new weights, 1 updated" after a scale sync, or why nothing happened. */
-export function weightSyncText(result: { synced: boolean; created: number; updated: number }): string {
+/** "2 new weights, 1 updated" after an account sync, or why nothing happened. */
+export function syncText(
+  result: { synced: boolean; created: number; updated: number },
+  what: "weight" | "workout",
+): string {
   if (!result.synced) return "Synced less than 10 minutes ago, try again later";
-  if (!result.created && !result.updated) return "No new weights";
-  const added = result.created === 1 ? "1 new weight" : `${result.created} new weights`;
+  if (!result.created && !result.updated) return `No new ${what}s`;
+  const added = result.created === 1 ? `1 new ${what}` : `${result.created} new ${what}s`;
   return result.updated ? `${added}, ${result.updated} updated` : added;
 }

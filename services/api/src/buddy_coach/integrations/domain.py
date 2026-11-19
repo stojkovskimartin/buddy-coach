@@ -10,7 +10,7 @@ from typing import Any
 from buddy_coach.core.errors import DomainError
 
 SYNC_INTERVAL = timedelta(minutes=10)
-"""Withings asks for at most one poll per user every 10 minutes."""
+"""Withings asks for at most one poll per user every 10 minutes; the same for every provider."""
 FIRST_SYNC = timedelta(days=365)
 """The first sync brings in the last year."""
 REFRESH_MARGIN = timedelta(minutes=5)
@@ -26,7 +26,8 @@ WITHINGS_AMBIGUOUS = 1
 class Provider(StrEnum):
     """Accounts that can be connected directly."""
 
-    WITHINGS = "withings"
+    WITHINGS = "withings"  # smart-scale weights
+    WHOOP = "whoop"  # workouts
 
 
 class ProviderError(DomainError):
@@ -43,6 +44,23 @@ class ReconnectRequiredError(DomainError):
     status_code = 409
     code = "reconnect_required"
     title = "Connect the account again"
+
+
+@dataclass(frozen=True, slots=True)
+class SyncCounts:
+    """New, updated and skipped (implausible) records of one sync."""
+
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+
+    def add(self, created: int, updated: int, skipped: int) -> SyncCounts:
+        """The counts with one more import added."""
+        return SyncCounts(self.created + created, self.updated + updated, self.skipped + skipped)
+
+    def as_dict(self) -> dict[str, int]:
+        """For the response."""
+        return {"created": self.created, "updated": self.updated, "skipped": self.skipped}
 
 
 @dataclass(frozen=True, slots=True)

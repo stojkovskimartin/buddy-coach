@@ -1408,7 +1408,7 @@ export interface components {
          * @description Accounts that can be connected directly.
          * @enum {string}
          */
-        Provider: "withings";
+        Provider: "withings" | "whoop";
         /**
          * ProviderOut
          * @description An account type: offered on this server (set up by the operator) and connected or not.

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -18,25 +18,25 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from buddy_coach.body.domain import MAX_IMPORT_BATCH, WeightSource
+from buddy_coach.body.domain import MAX_IMPORT_BATCH as MAX_WEIGHTS
 from buddy_coach.body.schemas import ImportedWeight, WeightImportResult
 from buddy_coach.core.config import Settings
 from buddy_coach.core.deps import Clock
 from buddy_coach.core.errors import NotFoundError, ValidationFailedError
+from buddy_coach.integrations.clients import ProviderClient, Tokens
 from buddy_coach.integrations.domain import (
-    FIRST_SYNC,
-    MAX_PAGES,
     REFRESH_MARGIN,
     SYNC_INTERVAL,
     Provider,
     ProviderError,
-    Reading,
     ReconnectRequiredError,
+    SyncCounts,
 )
 from buddy_coach.integrations.models import Connection
 from buddy_coach.integrations.repository import ConnectionRepository
 from buddy_coach.integrations.schemas import ProviderOut, SyncOut
-from buddy_coach.integrations.withings import Tokens, WithingsClient
+from buddy_coach.workouts.domain import MAX_IMPORT_BATCH as MAX_WORKOUTS
+from buddy_coach.workouts.schemas import ImportedWorkout, ImportResult
 
 STATE_AUDIENCE = "buddy-coach-oauth-state"
 STATE_TTL = timedelta(minutes=10)
@@ -50,6 +50,14 @@ class WeightImporter(Protocol):
     ) -> WeightImportResult: ...
 
 
+class WorkoutImporter(Protocol):
+    """What the integrations module needs from the workouts module."""
+
+    async def import_workouts(
+        self, user_id: uuid.UUID, workouts: Sequence[ImportedWorkout]
+    ) -> ImportResult: ...
+
+
 class IntegrationsService:
     """Commits its own transactions."""
 
@@ -57,15 +65,17 @@ class IntegrationsService:
         self,
         session: AsyncSession,
         settings: Settings,
-        withings: WithingsClient | None,
+        clients: Mapping[Provider, ProviderClient],
         weights: WeightImporter,
+        workouts: WorkoutImporter,
         now: Clock,
     ) -> None:
         self._session = session
         self._repo = ConnectionRepository(session)
         self._settings = settings
-        self._withings = withings
+        self._clients = clients
         self._weights = weights
+        self._workouts = workouts
         self._now = now
         key = settings.integrations_key
         self._fernet = Fernet(key.get_secret_value()) if key else None
@@ -152,10 +162,10 @@ class IntegrationsService:
         if connection := await self._repo.get(user_id, provider, lock=True):
             connection.cursor = new_cursor
         await self._session.commit()
-        return SyncOut(synced=True, last_sync_at=now, **result.model_dump())
+        return SyncOut(synced=True, last_sync_at=now, **result.as_dict())
 
     async def disconnect(self, user_id: uuid.UUID, provider: Provider) -> None:
-        """Forget the tokens. Weights already brought in stay."""
+        """Forget the tokens. Data already brought in stays."""
         connection = await self._repo.get(user_id, provider, lock=True)
         if connection is None:
             raise NotFoundError("This account is not connected.")
@@ -164,35 +174,23 @@ class IntegrationsService:
 
     async def _import(
         self,
-        client: WithingsClient,
+        client: ProviderClient,
         user_id: uuid.UUID,
         access_token: str,
         now: datetime,
         cursor: int | None,
-    ) -> tuple[WeightImportResult, int | None]:
-        total = WeightImportResult(created=0, updated=0, skipped=0)
-        new_cursor, offset = cursor, 0
-        for _ in range(MAX_PAGES):
-            page = await client.weights(
-                access_token, now, since=cursor, start=now - FIRST_SYNC, offset=offset
-            )
-            if page.update_time is not None and offset == 0:
-                new_cursor = page.update_time
-            for start in range(0, len(page.readings), MAX_IMPORT_BATCH):
-                batch = page.readings[start : start + MAX_IMPORT_BATCH]
-                result = await self._weights.import_weights(user_id, _imported(batch))
-                total = WeightImportResult(
-                    created=total.created + result.created,
-                    updated=total.updated + result.updated,
-                    skipped=total.skipped + result.skipped,
-                )
-            if not page.more:
-                return total, new_cursor
-            if page.offset <= offset:
-                raise ProviderError("Withings did not answer as expected. Try again later.")
-            offset = page.offset
-        # Too many pages: keep the old cursor so the next sync continues where this one began.
-        return total, cursor
+    ) -> tuple[SyncCounts, int | None]:
+        pulled = await client.pull(access_token, now, cursor)
+        counts = SyncCounts(skipped=pulled.skipped)
+        for start in range(0, len(pulled.weights), MAX_WEIGHTS):
+            weights = pulled.weights[start : start + MAX_WEIGHTS]
+            result = await self._weights.import_weights(user_id, weights)
+            counts = counts.add(result.created, result.updated, result.skipped)
+        for start in range(0, len(pulled.workouts), MAX_WORKOUTS):
+            workouts = pulled.workouts[start : start + MAX_WORKOUTS]
+            done = await self._workouts.import_workouts(user_id, workouts)
+            counts = counts.add(done.created, done.updated, 0)
+        return counts, pulled.cursor
 
     async def _drop(self, user_id: uuid.UUID, provider: Provider) -> None:
         await self._session.rollback()
@@ -201,10 +199,10 @@ class IntegrationsService:
             await self._repo.remove(connection)
         await self._session.commit()
 
-    def _available(self, provider: Provider) -> WithingsClient | None:
-        return self._withings if provider is Provider.WITHINGS and self._fernet else None
+    def _available(self, provider: Provider) -> ProviderClient | None:
+        return self._clients.get(provider) if self._fernet else None
 
-    def _client(self, provider: Provider) -> WithingsClient:
+    def _client(self, provider: Provider) -> ProviderClient:
         client = self._available(provider)
         if client is None:
             raise ValidationFailedError("This connection is not set up on this server.")
@@ -254,15 +252,3 @@ class IntegrationsService:
             or int(claims["exp"]) < self._now().timestamp()
         ):
             raise ValidationFailedError("The sign-in took too long or is invalid.")
-
-
-def _imported(readings: Sequence[Reading]) -> list[ImportedWeight]:
-    return [
-        ImportedWeight(
-            source=WeightSource.WITHINGS,
-            external_id=r.external_id,
-            measured_at=r.measured_at,
-            weight_kg=r.weight_kg,
-        )
-        for r in readings
-    ]
