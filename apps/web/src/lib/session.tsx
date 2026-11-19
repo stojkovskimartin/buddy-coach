@@ -14,6 +14,9 @@ import {
   type ProfileIn,
   type TokenPair,
   type TokenStore,
+  type Weight,
+  type WeightHistory,
+  type WeightIn,
 } from "@buddy/api-client";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
@@ -29,6 +32,9 @@ export interface CoachApi {
   chat(message: string): Promise<ChatReply>;
   getTodayCheckin(): Promise<Checkin | null>;
   getTodayTargets(): Promise<NutritionTargets | null>;
+  logWeight(weight: WeightIn): Promise<Weight>;
+  listWeights(range?: { from?: string; to?: string }): Promise<WeightHistory>;
+  deleteWeight(id: string): Promise<void>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }

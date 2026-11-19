@@ -24,6 +24,9 @@ export type Readiness = Schemas["ReadinessOut"];
 export type NutritionTargets = Schemas["TargetsOut"];
 export type ImportedWorkout = Schemas["ImportedWorkout"];
 export type ImportResult = Schemas["ImportResult"];
+export type WeightIn = Schemas["WeightIn"];
+export type Weight = Schemas["WeightOut"];
+export type WeightHistory = Schemas["WeightHistoryOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -157,6 +160,23 @@ export class BuddyClient {
   /** Sync workouts from a device or app (max 500); known (source, external_id) pairs are updated. */
   async importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult> {
     return unwrap(await this.raw.POST("/api/v1/workouts/import", { body: { workouts } }));
+  }
+
+  /** Log a weight by hand; the newest weight also becomes the profile's weight. */
+  async logWeight(weight: WeightIn): Promise<Weight> {
+    return unwrap(await this.raw.POST("/api/v1/body/weights", { body: weight }));
+  }
+
+  /** Weights (newest first) and their 7-day trend between two ISO dates (default: 90 days). */
+  async listWeights(range: { from?: string; to?: string } = {}): Promise<WeightHistory> {
+    return unwrap(await this.raw.GET("/api/v1/body/weights", { params: { query: range } }));
+  }
+
+  async deleteWeight(id: string): Promise<void> {
+    const result = await this.raw.DELETE("/api/v1/body/weights/{weight_id}", {
+      params: { path: { weight_id: id } },
+    });
+    if (!result.response.ok) unwrap(result);
   }
 
   async chat(message: string): Promise<ChatReply> {

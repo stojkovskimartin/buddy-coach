@@ -6,6 +6,9 @@ import type {
   NutritionTargets,
   Profile,
   ProfileIn,
+  Weight,
+  WeightHistory,
+  WeightIn,
 } from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -78,8 +81,22 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     ),
     getTodayCheckin: vi.fn(async () => null),
     getTodayTargets: vi.fn(async () => null),
+    logWeight: vi.fn(async (w: WeightIn) => weightOf(w.weight_kg)),
+    listWeights: vi.fn(async (): Promise<WeightHistory> => ({ weights: [], trend: [] })),
+    deleteWeight: vi.fn(async () => undefined),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
+    ...overrides,
+  };
+}
+
+function weightOf(weight_kg: number, overrides: Partial<Weight> = {}): Weight {
+  return {
+    id: `w-${weight_kg}`,
+    source: "manual",
+    measured_at: "2026-11-19T06:30:00Z",
+    day: "2026-11-19",
+    weight_kg,
     ...overrides,
   };
 }
@@ -430,6 +447,64 @@ describe("web app", () => {
       expect(await within(card).findByRole("alert")).toHaveTextContent("Network error");
       await userEvent.click(within(card).getByRole("button", { name: "Try again" }));
       expect(await within(card).findByText("2,450")).toBeInTheDocument();
+    });
+  });
+
+  describe("weight", () => {
+    const HISTORY: WeightHistory = {
+      weights: [
+        weightOf(77.6, { id: "w2", day: "2026-11-19", source: "health_connect" }),
+        weightOf(79.2, { id: "w1", day: "2026-08-21" }),
+      ],
+      trend: [
+        { day: "2026-08-21", weight_kg: 79.2 },
+        { day: "2026-11-19", weight_kg: 78.0 },
+      ],
+    };
+
+    it("shows the latest weight, the trend chart and where readings came from", async () => {
+      renderAt("/", fakeApi({ listWeights: vi.fn(async () => HISTORY) }), true);
+      const card = await screen.findByRole("region", { name: "Weight" });
+      expect(await within(card).findByText("77.6")).toBeInTheDocument();
+      expect(within(card).getByText(/−1.2 kg since Aug 21/)).toBeInTheDocument();
+      expect(within(card).getByRole("img", { name: /from 79.2 to 78.0 kg/ })).toBeInTheDocument();
+      expect(within(card).getByText(/Health Connect/)).toBeInTheDocument();
+    });
+
+    it("logs a weight with a comma and reloads", async () => {
+      const listWeights = vi
+        .fn<CoachApi["listWeights"]>()
+        .mockResolvedValueOnce({ weights: [], trend: [] })
+        .mockResolvedValue({ weights: [weightOf(77.5)], trend: [] });
+      const api = fakeApi({ listWeights });
+      renderAt("/", api, true);
+      const card = await screen.findByRole("region", { name: "Weight" });
+      expect(await within(card).findByText(/connect a smart scale/)).toBeInTheDocument();
+      await userEvent.type(within(card).getByLabelText("Weight now (kg)"), "77,5");
+      await userEvent.click(within(card).getByRole("button", { name: "Save weight" }));
+      expect(api.logWeight).toHaveBeenCalledWith({ weight_kg: 77.5 });
+      expect(await within(card).findByText("77.5")).toBeInTheDocument();
+      expect(within(card).getByLabelText("Weight now (kg)")).toHaveValue("");
+    });
+
+    it("refuses an implausible weight without calling the server", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const card = await screen.findByRole("region", { name: "Weight" });
+      await userEvent.type(within(card).getByLabelText("Weight now (kg)"), "7");
+      await userEvent.click(within(card).getByRole("button", { name: "Save weight" }));
+      expect(within(card).getByRole("alert")).toHaveTextContent("between 30 and 300 kg");
+      expect(api.logWeight).not.toHaveBeenCalled();
+    });
+
+    it("deletes a wrong reading", async () => {
+      const api = fakeApi({ listWeights: vi.fn(async () => HISTORY) });
+      renderAt("/", api, true);
+      const card = await screen.findByRole("region", { name: "Weight" });
+      await userEvent.click(
+        await within(card).findByRole("button", { name: "Delete 77.6 kg from 2026-11-19" }),
+      );
+      expect(api.deleteWeight).toHaveBeenCalledWith("w2");
     });
   });
 });

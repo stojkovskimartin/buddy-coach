@@ -69,8 +69,9 @@ pull request numbers.
 | #27 | Free AI for the coach: any OpenAI-compatible model (Ollama or LM Studio on your computer, Groq, Gemini, OpenRouter) | +9 |
 | #28 | Today's food targets card on web and mobile: calories, protein, carbs, fat and why | +6 frontend (web 3, mobile 3) |
 | #29 | Body weight: manual entries, smart-scale sync API, 7-day trend; the newest weight updates the profile and the targets | +13 |
+| #30 | Weight on web and mobile: latest weight, 90-day trend chart, quick entry, delete a wrong reading | +15 frontend (shared 6, client 2, web 4, mobile 3) |
 
-Totals: backend 512 tests, frontend 152 tests (shared 13, client 20, web 25, mobile 94); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 512 tests, frontend 167 tests (shared 19, client 22, web 29, mobile 97); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

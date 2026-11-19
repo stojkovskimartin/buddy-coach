@@ -4,3 +4,5 @@
  */
 export * from "./checkin";
 export * from "./targets";
+export * from "./chart";
+export * from "./weight";
