@@ -3,3 +3,4 @@
  * same thing. No UI code and no dependencies: plain data and pure functions.
  */
 export * from "./checkin";
+export * from "./targets";

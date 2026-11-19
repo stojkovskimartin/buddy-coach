@@ -67,8 +67,9 @@ pull request numbers.
 | #25 | Readable offline coach answers that say how to switch on the real AI; web favicon | +2 |
 | #26 | The coach reads stored data on the athlete's day: today's targets, check-in readiness and training load (same numbers as the app) | +2 |
 | #27 | Free AI for the coach: any OpenAI-compatible model (Ollama or LM Studio on your computer, Groq, Gemini, OpenRouter) | +9 |
+| #28 | Today's food targets card on web and mobile: calories, protein, carbs, fat and why | +6 frontend (web 3, mobile 3) |
 
-Totals: backend 499 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 499 tests, frontend 152 tests (shared 13, client 20, web 25, mobile 94); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -79,7 +80,7 @@ Totals: backend 499 tests, frontend 146 tests (shared 13, client 20, web 22, mob
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
 1. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
-2. Today screen: targets and session cards [4.2.3, 4.2.4].
+2. Today screen: session card [4.2.4].
 3. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
 4. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
 

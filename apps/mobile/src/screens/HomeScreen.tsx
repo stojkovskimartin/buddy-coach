@@ -4,6 +4,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 
 import { CheckinCard } from "../components/CheckinCard";
 import { HealthSyncCard } from "../components/HealthSyncCard";
+import { TargetsCard } from "../components/TargetsCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
@@ -49,7 +50,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
     }
   }, [api]);
 
-  /** Reload goals and the check-in card (pull to refresh, tab shown again). */
+  /** Reload goals and the cards (pull to refresh, tab shown again). */
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
     void load();
@@ -76,6 +77,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       </Text>
       <ErrorBanner message={error} />
       <CheckinCard reloadKey={reloads} />
+      {profile && <TargetsCard reloadKey={reloads} />}
       <HealthSyncCard />
       {!loading && !error && !profile && (
         <Card>
