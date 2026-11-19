@@ -9,6 +9,9 @@ import {
   type CheckinIn,
   type Goal,
   type GoalIn,
+  type MealDay,
+  type MealEntry,
+  type MealEntryIn,
   type NutritionTargets,
   type Profile,
   type ProfileIn,
@@ -35,6 +38,9 @@ export interface CoachApi {
   logWeight(weight: WeightIn): Promise<Weight>;
   listWeights(range?: { from?: string; to?: string }): Promise<WeightHistory>;
   deleteWeight(id: string): Promise<void>;
+  logMeal(entry: MealEntryIn): Promise<MealEntry>;
+  getMealDay(day?: string): Promise<MealDay>;
+  deleteMeal(id: string): Promise<void>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }

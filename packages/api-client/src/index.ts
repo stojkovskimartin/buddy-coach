@@ -29,6 +29,10 @@ export type Weight = Schemas["WeightOut"];
 export type WeightHistory = Schemas["WeightHistoryOut"];
 export type ImportedWeight = Schemas["ImportedWeight"];
 export type WeightImportResult = Schemas["WeightImportResult"];
+export type MealEntryIn = Schemas["MealEntryIn"];
+export type MealEntry = Schemas["MealEntryOut"];
+export type MealDay = Schemas["MealDayOut"];
+export type DailyTotals = Schemas["DailyTotalsOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -184,6 +188,25 @@ export class BuddyClient {
   /** Sync smart-scale weights (max 500); implausible readings are skipped and counted. */
   async importWeights(weights: ImportedWeight[]): Promise<WeightImportResult> {
     return unwrap(await this.raw.POST("/api/v1/body/weights/import", { body: { weights } }));
+  }
+
+  /** Add a food with the nutrients of the portion eaten. */
+  async logMeal(entry: MealEntryIn): Promise<MealEntry> {
+    return unwrap(await this.raw.POST("/api/v1/meals/entries", { body: entry }));
+  }
+
+  /** One day of the food diary (ISO date; default today) with its totals. */
+  async getMealDay(day?: string): Promise<MealDay> {
+    return unwrap(
+      await this.raw.GET("/api/v1/meals/entries", { params: { query: day ? { day } : {} } }),
+    );
+  }
+
+  async deleteMeal(id: string): Promise<void> {
+    const result = await this.raw.DELETE("/api/v1/meals/entries/{entry_id}", {
+      params: { path: { entry_id: id } },
+    });
+    if (!result.response.ok) unwrap(result);
   }
 
   async chat(message: string): Promise<ChatReply> {

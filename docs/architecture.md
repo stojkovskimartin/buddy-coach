@@ -59,6 +59,9 @@ Athlete ──► manual log ──► POST /workouts                           
               GET /training/load: fitness, fatigue, form, ramp (computed when read)
 ```
 
+Food search and barcodes go from the apps straight to Open Food Facts, so its rate limits apply
+per user; the server only stores the diary entries (`meals`), never the food database.
+
 Smart scales take the same phone path to `POST /body/weights/import`; the newest weight becomes
 the profile's weight, so targets and the coach always use it.
 

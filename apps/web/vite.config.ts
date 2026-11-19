@@ -14,7 +14,7 @@ function contentSecurityPolicy(apiBaseUrl: string): Plugin {
     "script-src 'self'",
     "style-src 'self'",
     "img-src 'self' data:",
-    `connect-src 'self' ${apiOrigin}`,
+    `connect-src 'self' ${apiOrigin} https://world.openfoodfacts.org`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

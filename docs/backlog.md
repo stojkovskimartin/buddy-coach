@@ -22,3 +22,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Walking, alpine skiing and yoga are left out of the training-load summary – product owner to confirm | #21 review | Product decision |
 | Store review for health data: App Store privacy policy and health-data consent (guidelines 5.1.2(i), 5.1.3); Google Play Health Connect data declaration and rationale screen | ADR-0007 | Before store builds |
 | Transactional outbox and a background worker for domain events; events are published after commit and nothing subscribes yet | expert review | With the first event subscriber |
+| Privacy notice: food search terms and barcodes go from the apps directly to Open Food Facts (with the user's IP address, no account data); OFF data is ODbL and attributed in the UI | #33 | Before beta |
