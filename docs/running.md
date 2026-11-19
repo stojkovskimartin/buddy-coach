@@ -98,6 +98,20 @@ BUDDY_ANTHROPIC_API_KEY=sk-ant-...
 Small local models follow the coach's rules less reliably than large hosted ones; the safety
 checks and the tools behave the same with every provider.
 
+## Demo data
+
+To try every screen by clicking, create a demo athlete with four months of check-ins, workouts,
+weigh-ins and meals (development only; the command refuses in production):
+
+```bash
+cd services/api
+uv run --env-file .env python -m buddy_coach.demo
+```
+
+With Docker: `docker compose -f infra/docker-compose.yml exec api python -m buddy_coach.demo`.
+Then log in with `demo@example.com` / `demo-password-2026`. Running it again leaves the existing
+demo athlete as it is; `--email` creates another one.
+
 ## Connect a Withings account
 
 Withings scales can send weights straight to Buddy Coach, without the phone app. The server needs

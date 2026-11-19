@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 00:30
+Last update: 2026-11-20, 01:10
 
 ## How to run it
 
@@ -87,8 +87,9 @@ pull request numbers.
 | #46 | Mobile Food tab: the day's diary against today's targets, earlier days, Open Food Facts search, barcode scan with the camera, typed-in food | +7 frontend (mobile 7) |
 | #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +5 frontend (shared 1, mobile 4) |
 | #48 | Mobile photos and Connect tab: meal, progress and profile photos taken with the camera or picked (shrunk on the phone, no metadata); data sources and Withings/WHOOP sync and disconnect | +7 frontend (mobile 7) |
+| #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +1 |
 
-Totals: backend 578 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 579 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -96,19 +97,43 @@ Totals: backend 578 tests, frontend 234 tests (shared 34, client 28, web 48, mob
 
 ## Next
 
-One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
+The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, each challenged
+before coding and reviewed after (tracker 12.x):
 
-1. Polar account for workouts on the `integrations` module (ADR-0008) [7.3.5].
-2. Mobile: guided setup and goals on the phone, connect accounts from the phone, workout logging [3.2.2, 7.1.5, 6.4.1].
-3. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
-4. Today screen: session card [4.2.4].
-5. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
-6. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
+1. Demo data: a dev-only command fills a demo athlete with 120 days through the API [12.1].
+2. Fake providers for clicking without keys or internet: dev OAuth provider, dev food recognizer,
+   Mailpit for e-mail in Docker [12.2].
+3. Languages: English and Macedonian, every text translated, dates and numbers per language;
+   the coach answers in Macedonian once its safety rules cover it [12.3].
+4. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
+5. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
+6. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
+7. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
+8. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
+   secure cookies on the web [12.8].
+9. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
+   e-mail, device list; a reset still asks for the second factor. SMS codes left out: they cost
+   money [12.9].
+10. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
+11. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
+    and grams, nutrients come from the food database; free local model by default [12.11].
+12. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
+    phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
+13. Web parity: workout logging, goals, check-in history [12.13].
+14. Click-through tests of every feature in the browser, in CI [12.14].
+
+After that: mobile setup and goals on the phone, quick actions, today's session card, latest
+stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].
 
 ## Open decisions for the product owner
 
 - Strava: its API agreement forbids using Strava data in AI models or similar applications, which
   includes an AI coach. Build it only with Strava's written permission; until then Strava workouts
   arrive through the phone health app or watch files.
+- E-mail sending (verification, password reset) needs a domain for reliable delivery, about
+  CHF 10 a year; the only cost in the plan. Free alternative: a Gmail address with an app
+  password, often landing in spam.
+- Food recognition: free by default with a model on your computer (Ollama); a hosted model
+  (OpenAI, paid; Gemini free tier, which may use the photos for training) only by your choice.
 - App name (shortlist: BuddyCoach, Coachli, FuelStride).
 - Repository visibility: currently public.
