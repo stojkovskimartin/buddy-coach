@@ -26,3 +26,28 @@ def test_dev_llm_is_refused_in_production() -> None:
 def test_anthropic_requires_api_key(key: str | None) -> None:
     with pytest.raises(ValidationError, match="anthropic_api_key is required"):
         make_settings(llm_provider=LLMProviderName.ANTHROPIC, anthropic_api_key=key)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"llm_model": "qwen3:8b"},
+        {"llm_base_url": "http://localhost:11434/v1"},
+        {"llm_base_url": "http://localhost:11434/v1", "llm_model": " "},
+    ],
+)
+def test_openai_compatible_needs_a_base_url_and_a_model(overrides: dict[str, str]) -> None:
+    with pytest.raises(ValidationError, match="llm_base_url and llm_model are required"):
+        make_settings(llm_provider=LLMProviderName.OPENAI_COMPATIBLE, **overrides)
+
+
+def test_openai_compatible_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BUDDY_LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("BUDDY_LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("BUDDY_LLM_MODEL", "qwen3:8b")
+    settings = make_settings()
+    assert (settings.llm_provider, settings.llm_model) == (
+        LLMProviderName.OPENAI_COMPATIBLE,
+        "qwen3:8b",
+    )
+    assert settings.llm_api_key is None

@@ -8,7 +8,12 @@ from fastapi import Depends, FastAPI, Request
 
 from buddy_coach.checkin.deps import CheckinServiceDep
 from buddy_coach.coach.builtin_tools import build_default_registry
-from buddy_coach.coach.llm import AnthropicProvider, DevLLMProvider, LLMProvider
+from buddy_coach.coach.llm import (
+    AnthropicProvider,
+    DevLLMProvider,
+    LLMProvider,
+    OpenAICompatibleProvider,
+)
 from buddy_coach.coach.orchestrator import HeadCoach
 from buddy_coach.coach.tools import ToolContext
 from buddy_coach.core.clock import local_date
@@ -25,6 +30,10 @@ def build_llm_provider(settings: Settings) -> LLMProvider:
     if settings.llm_provider is LLMProviderName.ANTHROPIC:
         assert settings.anthropic_api_key is not None  # noqa: S101  # enforced by Settings
         return AnthropicProvider(settings.anthropic_api_key.get_secret_value(), settings.llm_model)
+    if settings.llm_provider is LLMProviderName.OPENAI_COMPATIBLE:
+        assert settings.llm_base_url is not None  # noqa: S101  # enforced by Settings
+        key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else None
+        return OpenAICompatibleProvider(settings.llm_base_url, settings.llm_model, key)
     return DevLLMProvider()
 
 

@@ -1,7 +1,8 @@
 """Provider-neutral LLM interface and its implementations.
 
 Agents only see ``LLMProvider``. Tests use ``ScriptedLLMProvider``; local development without an
-API key uses ``DevLLMProvider``; production uses ``AnthropicProvider``.
+API key uses ``DevLLMProvider``; real answers come from ``AnthropicProvider`` or, for free local or
+hosted models, ``OpenAICompatibleProvider``.
 """
 
 from __future__ import annotations
@@ -107,7 +108,8 @@ class ScriptedLLMProvider:
 
 DEV_NOTICE = (
     "(development coach) No AI model is connected, so I can only show your saved data. "
-    "Set BUDDY_LLM_PROVIDER=anthropic and BUDDY_ANTHROPIC_API_KEY for real answers."
+    "For real answers set BUDDY_LLM_PROVIDER; a free model on your own computer works too "
+    "(docs/running.md, 'Real AI answers')."
 )
 
 
@@ -164,25 +166,19 @@ class DevLLMProvider:
         return LLMResponse(text=f"{DEV_NOTICE}\n\n" + ("\n".join(lines) or "No data yet."))
 
 
-class AnthropicProvider:
-    """Anthropic Messages API over HTTPS."""
+class _HttpProvider:
+    """HTTP client, retries with backoff and shutdown shared by the real providers."""
 
-    API_URL = "https://api.anthropic.com/v1/messages"
-    API_VERSION = "2023-06-01"
     RETRY_STATUSES = frozenset({429, 500, 502, 503, 529})
 
     def __init__(
         self,
-        api_key: str,
-        model: str,
         *,
         client: httpx.AsyncClient | None = None,
         timeout_s: float = 30.0,
         max_retries: int = 2,
         backoff_s: float = 0.5,
     ) -> None:
-        self._api_key = api_key
-        self._model = model
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
         self._max_retries = max_retries
         self._backoff_s = backoff_s
@@ -190,6 +186,39 @@ class AnthropicProvider:
     async def aclose(self) -> None:
         """Close the HTTP client (called on app shutdown)."""
         await self._client.aclose()
+
+    async def _post_with_retries(
+        self, url: str, payload: dict[str, Any], headers: dict[str, str]
+    ) -> httpx.Response:
+        for attempt in range(self._max_retries + 1):
+            last_try = attempt == self._max_retries
+            try:
+                response = await self._client.post(url, json=payload, headers=headers)
+            except httpx.HTTPError as exc:
+                if last_try:
+                    raise LLMError("LLM provider unreachable") from exc
+            else:
+                if response.status_code == httpx.codes.OK:
+                    return response
+                logger.warning("llm_error", extra={"status": response.status_code})
+                if response.status_code not in self.RETRY_STATUSES or last_try:
+                    msg = f"LLM provider returned {response.status_code}"
+                    raise LLMError(msg)
+            await asyncio.sleep(self._backoff_s * 2**attempt)
+        msg = "unreachable"  # pragma: no cover
+        raise LLMError(msg)
+
+
+class AnthropicProvider(_HttpProvider):
+    """Anthropic Messages API over HTTPS."""
+
+    API_URL = "https://api.anthropic.com/v1/messages"
+    API_VERSION = "2023-06-01"
+
+    def __init__(self, api_key: str, model: str, **http: Any) -> None:
+        super().__init__(**http)
+        self._api_key = api_key
+        self._model = model
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
         """Send one request; map tool use both ways."""
@@ -205,35 +234,120 @@ class AnthropicProvider:
                 for t in request.tools
             ]
             payload["tool_choice"] = {"type": request.tool_choice}
-        response = await self._post_with_retries(payload)
-        try:
-            return _from_anthropic_response(response.json())
-        except (ValueError, KeyError, TypeError) as exc:
-            raise LLMError("LLM provider returned an unreadable response") from exc
-
-    async def _post_with_retries(self, payload: dict[str, Any]) -> httpx.Response:
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": self.API_VERSION,
             "content-type": "application/json",
         }
-        for attempt in range(self._max_retries + 1):
-            last_try = attempt == self._max_retries
-            try:
-                response = await self._client.post(self.API_URL, json=payload, headers=headers)
-            except httpx.HTTPError as exc:
-                if last_try:
-                    raise LLMError("LLM provider unreachable") from exc
-            else:
-                if response.status_code == httpx.codes.OK:
-                    return response
-                logger.warning("llm_error", extra={"status": response.status_code})
-                if response.status_code not in self.RETRY_STATUSES or last_try:
-                    msg = f"LLM provider returned {response.status_code}"
-                    raise LLMError(msg)
-            await asyncio.sleep(self._backoff_s * 2**attempt)
-        msg = "unreachable"  # pragma: no cover
-        raise LLMError(msg)
+        response = await self._post_with_retries(self.API_URL, payload, headers)
+        try:
+            return _from_anthropic_response(response.json())
+        except (ValueError, KeyError, TypeError) as exc:
+            raise LLMError("LLM provider returned an unreadable response") from exc
+
+
+class OpenAICompatibleProvider(_HttpProvider):
+    """Any server that speaks the OpenAI Chat Completions API with tools.
+
+    Covers local models (Ollama, LM Studio: free, nothing leaves the machine) and hosted ones
+    (Groq, Google Gemini, OpenRouter). ``api_key`` is optional because local servers need none.
+    """
+
+    def __init__(self, base_url: str, model: str, api_key: str | None = None, **http: Any) -> None:
+        super().__init__(**http)
+        self._url = base_url.rstrip("/") + "/chat/completions"
+        self._model = model
+        self._api_key = api_key
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        """Send one request; map tool calls both ways."""
+        payload: dict[str, Any] = {
+            "model": self._model,
+            "max_tokens": request.max_tokens,
+            "messages": [
+                {"role": "system", "content": request.system},
+                *_to_openai_messages(request.messages),
+            ],
+        }
+        if request.tools:
+            payload["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.input_schema,
+                    },
+                }
+                for t in request.tools
+            ]
+            payload["tool_choice"] = request.tool_choice
+        headers = {"content-type": "application/json"}
+        if self._api_key:
+            headers["authorization"] = f"Bearer {self._api_key}"
+        response = await self._post_with_retries(self._url, payload, headers)
+        try:
+            return _from_openai_response(response.json())
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            raise LLMError("LLM provider returned an unreadable response") from exc
+
+
+def _to_openai_messages(messages: Sequence[Message]) -> list[dict[str, Any]]:
+    """OpenAI wants tool calls on the assistant turn and each result as a ``tool`` turn."""
+    out: list[dict[str, Any]] = []
+    for message in messages:
+        if message.role == "tool":
+            out.append(
+                {"role": "tool", "tool_call_id": message.tool_call_id, "content": message.content}
+            )
+        elif message.role == "assistant" and message.tool_calls:
+            out.append(
+                {
+                    "role": "assistant",
+                    "content": message.content or None,
+                    "tool_calls": [
+                        {
+                            "id": c.id,
+                            "type": "function",
+                            "function": {"name": c.name, "arguments": json.dumps(c.arguments)},
+                        }
+                        for c in message.tool_calls
+                    ],
+                }
+            )
+        else:
+            out.append({"role": message.role, "content": message.content})
+    return out
+
+
+def _from_openai_response(body: dict[str, Any]) -> LLMResponse:
+    choice = body["choices"][0]
+    message = choice["message"]
+    calls: list[ToolCall] = []
+    for index, call in enumerate(message.get("tool_calls") or []):
+        raw = call["function"].get("arguments") or "{}"
+        try:
+            arguments = json.loads(raw) if isinstance(raw, str) else raw
+        except ValueError:
+            arguments = {"_raw": raw}
+        if not isinstance(arguments, dict):
+            arguments = {"_raw": json.dumps(arguments)}
+        calls.append(
+            ToolCall(
+                # Some local servers leave the id out; the agent only needs it to be unique.
+                id=str(call.get("id") or f"call-{index}"),
+                name=str(call["function"]["name"]),
+                arguments=arguments,
+            )
+        )
+    usage = body.get("usage") or {}
+    return LLMResponse(
+        text=(message.get("content") or "").strip(),
+        tool_calls=tuple(calls),
+        input_tokens=int(usage.get("prompt_tokens", 0)),
+        output_tokens=int(usage.get("completion_tokens", 0)),
+        truncated=choice.get("finish_reason") == "length",
+    )
 
 
 def _to_anthropic_messages(messages: Sequence[Message]) -> list[dict[str, Any]]:
