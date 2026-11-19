@@ -51,6 +51,14 @@ class ValidationFailedError(DomainError):
     title = "Validation failed"
 
 
+class PayloadTooLargeError(DomainError):
+    """The request body is larger than the endpoint accepts."""
+
+    status_code = status.HTTP_413_CONTENT_TOO_LARGE
+    code = "payload_too_large"
+    title = "Payload too large"
+
+
 class AuthenticationError(DomainError):
     """Missing, invalid or expired credentials."""
 
