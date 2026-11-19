@@ -285,6 +285,70 @@ export interface paths {
         patch: operations["update_goal_status_api_v1_goals__goal_id__patch"];
         trace?: never;
     };
+    "/api/v1/meals/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily Totals
+         * @description Calories and macros per day with entries (default: the last 28 days). Max 366 days.
+         */
+        get: operations["daily_totals_api_v1_meals_daily_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meals/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meal Day
+         * @description One day of the diary (default: today in the athlete's time zone) with its totals.
+         */
+        get: operations["meal_day_api_v1_meals_entries_get"];
+        put?: never;
+        /**
+         * Log Meal
+         * @description Add a food and the nutrients of the portion eaten.
+         */
+        post: operations["log_meal_api_v1_meals_entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meals/entries/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Meal
+         * @description Delete a diary entry.
+         */
+        delete: operations["delete_meal_api_v1_meals_entries__entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nutrition/targets/today": {
         parameters: {
             query?: never;
@@ -630,6 +694,25 @@ export interface components {
          */
         CoachStyle: "friendly" | "strict" | "data_driven";
         /**
+         * DailyTotalsOut
+         * @description Totals of one day that has entries.
+         */
+        DailyTotalsOut: {
+            /** Carbs G */
+            carbs_g: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Fat G */
+            fat_g: number;
+            /** Kcal */
+            kcal: number;
+            /** Protein G */
+            protein_g: number;
+        };
+        /**
          * DayLoadOut
          * @description Training load, fitness, fatigue and form of one day.
          */
@@ -672,6 +755,12 @@ export interface components {
             /** Rpe */
             rpe?: number | null;
         };
+        /**
+         * FoodSource
+         * @description Where the nutrient values came from.
+         * @enum {string}
+         */
+        FoodSource: "manual" | "open_food_facts";
         /**
          * GoalIn
          * @description Create a goal.
@@ -866,6 +955,105 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MealDayOut
+         * @description One day of the diary: entries in the order eaten and their totals.
+         */
+        MealDayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Entries */
+            entries: components["schemas"]["MealEntryOut"][];
+            totals: components["schemas"]["NutrientTotals"];
+        };
+        /**
+         * MealEntryIn
+         * @description A food and the nutrients of the portion eaten (computed by the app from per-100 g values).
+         */
+        MealEntryIn: {
+            /** Barcode */
+            barcode?: string | null;
+            /** Carbs G */
+            carbs_g: number;
+            /**
+             * Eaten At
+             * @description When it was eaten, with its UTC offset; default now
+             */
+            eaten_at?: string | null;
+            /** Fat G */
+            fat_g: number;
+            /** Grams */
+            grams: number;
+            /** Kcal */
+            kcal: number;
+            meal: components["schemas"]["MealSlot"];
+            /** Name */
+            name: string;
+            /** Protein G */
+            protein_g: number;
+            /** @default manual */
+            source?: components["schemas"]["FoodSource"];
+        };
+        /**
+         * MealEntryOut
+         * @description A stored diary entry.
+         */
+        MealEntryOut: {
+            /** Barcode */
+            barcode: string | null;
+            /** Carbs G */
+            carbs_g: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Eaten At
+             * Format: date-time
+             */
+            eaten_at: string;
+            /** Fat G */
+            fat_g: number;
+            /** Grams */
+            grams: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kcal */
+            kcal: number;
+            meal: components["schemas"]["MealSlot"];
+            /** Name */
+            name: string;
+            /** Protein G */
+            protein_g: number;
+            source: components["schemas"]["FoodSource"];
+        };
+        /**
+         * MealSlot
+         * @description When in the day the food was eaten.
+         * @enum {string}
+         */
+        MealSlot: "breakfast" | "lunch" | "dinner" | "snack";
+        /**
+         * NutrientTotals
+         * @description Sums of a day (or of any set of entries).
+         */
+        NutrientTotals: {
+            /** Carbs G */
+            carbs_g: number;
+            /** Fat G */
+            fat_g: number;
+            /** Kcal */
+            kcal: number;
+            /** Protein G */
+            protein_g: number;
         };
         /**
          * ProfileIn
@@ -1853,6 +2041,138 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GoalOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    daily_totals_api_v1_meals_daily_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyTotalsOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meal_day_api_v1_meals_entries_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealDayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_meal_api_v1_meals_entries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealEntryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealEntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_meal_api_v1_meals_entries__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not yours or gone */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

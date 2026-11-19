@@ -18,7 +18,7 @@ The full product and architecture spec lives in the shared doc "Personal Buddy C
 
 1. **Clients** – web (React) and mobile (Expo). Both use the generated `@buddy/api-client` and `@buddy/shared`.
 2. **API** – FastAPI app in `services/api`, versioned under `/api/v1`, JWT auth, RFC 9457 errors.
-3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `body` (weight, smart scales), `coach`, `health` (probes). Planned: `meals`, `integrations`, `planning`, `progress`.
+3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `body` (weight, smart scales), `meals` (food diary), `coach`, `health` (probes). Planned: `integrations`, `planning`, `progress`.
 4. **Engines** – pure, deterministic science code in `science/`: nutrition targets, micronutrients, recovery nutrition, supplements, training load, readiness.
 5. **Coach agent network** – Head Coach + specialists + Safety Guard, acting only through tools (ADR-0003).
 6. **Infrastructure** – PostgreSQL (TimescaleDB and pgvector later), Redis, an event bus (in-process now, broker later).

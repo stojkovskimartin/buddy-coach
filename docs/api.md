@@ -45,6 +45,10 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | POST | `/body/weights/import` | Sync up to 500 smart-scale weights from Apple Health or Health Connect; idempotent by (source, external_id); readings outside 30-300 kg are skipped; returns created / updated / skipped |
 | GET | `/body/weights?from=&to=` | Weights (newest first) and a 7-day trend of the morning weights (default 90 days, max 366) |
 | DELETE | `/body/weights/{id}` | Delete a weight (204); the profile keeps the newest one left. `PUT /profile` still sets the weight directly; the next measurement replaces it |
+| POST | `/meals/entries` | Add a food with the nutrients of the portion (201); the day is the athlete's; plausibility checked (macros ≤ weight, kcal ≤ 9 per gram) |
+| GET | `/meals/entries?day=` | One day of the food diary (default today) in the order eaten, with totals |
+| DELETE | `/meals/entries/{id}` | Delete a diary entry (204) |
+| GET | `/meals/daily?from=&to=` | Calories and macros per day with entries, oldest first (default 28 days, max 366) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 
