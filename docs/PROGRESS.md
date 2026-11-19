@@ -61,7 +61,7 @@ pull request numbers.
 | #17 | Progress and API docs after the check-in | – |
 | #18 | Test for invalid check-ins; a midnight-flaky coach test fixed | +1 |
 | #19 | Web and mobile only: desktop app removed everywhere (ADR-0006) | – |
-| #20 | Today's calorie and macro targets API, training energy estimated from available time | +22 |
+| #20 | Today's calorie and macro targets API, training energy estimated from available time | +21, +1 frontend |
 | #21 | Workouts from every source (import, manual, feedback) and training load: fitness, fatigue, form, weekly ramp | +40 |
 
 Totals: backend 486 tests, frontend 99 tests (shared 13, client 19, web 22, mobile 45); CI green (lint, strict types, tests, no API contract drift).

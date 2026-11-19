@@ -25,6 +25,8 @@ The full product and architecture spec lives in the shared doc "Personal Buddy C
 
 ## Module layout
 
+Only the files a module needs:
+
 ```
 buddy_coach/<module>/
   domain.py      pure logic and value objects, no I/O
@@ -45,16 +47,21 @@ athlete's time zone (`core.clock.local_date`).
 ## Device data flow
 
 ```
-Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐
-Watch / app ──► vendor cloud API (WHOOP, Garmin, Fitbit, ...) ──► integrations ────┼─► POST /workouts/import
-Athlete ──► manual log / FIT file ─────────────────────────────────────────────────┘        │
-                                                         one load per workout (session RPE) ◄┘
-                                                                        │
-                       GET /training/load: fitness, fatigue, form, ramp (computed when read)
+Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐  (planned)
+Watch / app ──► vendor cloud API (WHOOP, Garmin, Fitbit, ...) ──► integrations ────┤  (planned)
+FIT file upload ───────────────────────────────────────────────────────────────────┤  (planned)
+                                                                                    ▼
+                                                                        POST /workouts/import
+Athlete ──► manual log ──► POST /workouts                                           │
+                 │                                                                  │
+                 └──────────────► one load per workout (session RPE) ◄──────────────┘
+                                                │
+              GET /training/load: fitness, fatigue, form, ramp (computed when read)
 ```
 
 Imports are idempotent by (source, external_id); the athlete's own rating is never overwritten
-by a re-sync. The phone and cloud parts (`integrations`) are planned; the import API exists.
+by a re-sync. Phone sync, cloud connections (`integrations`) and FIT upload are planned; the
+import and manual endpoints exist.
 
 ## Decisions
 
