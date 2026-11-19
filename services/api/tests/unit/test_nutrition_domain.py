@@ -46,6 +46,8 @@ def test_training_energy_comes_from_the_planned_week() -> None:
     # 5 x 60 min = ~43 min a day at 6 MET for 79 kg: (6-1) x 3.5 x 79 x 5 / 1000 = 6.9 kcal/min.
     assert estimated_training_kcal(79, 5, 60) == pytest.approx(296, abs=1)
     assert estimated_training_kcal(79, 0, 60) == 0
+    # Available time is capped at 180 min a day, so 7 x 600 min counts like 7 x 180.
+    assert estimated_training_kcal(79, 7, 600) == estimated_training_kcal(79, 7, 180)
 
 
 def test_planned_training_raises_the_targets_and_is_explained() -> None:
@@ -54,7 +56,7 @@ def test_planned_training_raises_the_targets_and_is_explained() -> None:
     # The engine discounts training energy (it is often overestimated).
     expected = estimated_training_kcal(79, 5, 60) * WATCH_ENERGY_DISCOUNT
     assert trained.kcal - rest.kcal == pytest.approx(expected, abs=2)
-    assert "planned week (43 min a day" in trained.reasons[-1]
+    assert "available training time (43 min a day" in trained.reasons[-1]
 
 
 def test_losing_weight_eats_below_maintenance_and_keeps_protein_high() -> None:

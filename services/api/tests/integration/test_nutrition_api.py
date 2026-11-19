@@ -110,7 +110,7 @@ async def test_targets_say_training_is_estimated(client: httpx.AsyncClient) -> N
     await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
     targets = (await client.get(URL, headers=headers)).json()
     assert targets["training_kcal_estimated"] is True
-    assert "planned week" in targets["reasons"][-1]
+    assert "available training time" in targets["reasons"][-1]
 
 
 async def test_targets_need_authentication(client: httpx.AsyncClient) -> None:
