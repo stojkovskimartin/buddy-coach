@@ -631,6 +631,40 @@
         "title": "ImportResult",
         "type": "object"
       },
+      "ImportedWeight": {
+        "description": "A measurement from a phone health store, identified by that store's own id.",
+        "properties": {
+          "external_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "External Id",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WeightSource"
+          },
+          "weight_kg": {
+            "description": "Readings outside 30-300 kg are skipped",
+            "exclusiveMinimum": 0.0,
+            "maximum": 1000.0,
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "source",
+          "external_id",
+          "measured_at",
+          "weight_kg"
+        ],
+        "title": "ImportedWeight",
+        "type": "object"
+      },
       "ImportedWorkout": {
         "description": "A session from a device or app, identified by that source's own id.",
         "properties": {
@@ -1241,6 +1275,26 @@
         "title": "TokenPair",
         "type": "object"
       },
+      "TrendPoint": {
+        "description": "The smoothed weight of one day with a measurement.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "weight_kg"
+        ],
+        "title": "TrendPoint",
+        "type": "object"
+      },
       "UserOut": {
         "description": "Account data safe to return to its owner.",
         "properties": {
@@ -1312,6 +1366,150 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WeightHistoryOut": {
+        "description": "Measurements in a range (newest first) and the trend (oldest first).",
+        "properties": {
+          "trend": {
+            "description": "Mean of the measured days in the 7 days up to each day; one value per day",
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          },
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/WeightOut"
+            },
+            "title": "Weights",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weights",
+          "trend"
+        ],
+        "title": "WeightHistoryOut",
+        "type": "object"
+      },
+      "WeightImportIn": {
+        "description": "A batch from one sync. Sending the same weights again updates them, never duplicates.",
+        "properties": {
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedWeight"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Weights",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weights"
+        ],
+        "title": "WeightImportIn",
+        "type": "object"
+      },
+      "WeightImportResult": {
+        "description": "New, updated and skipped (implausible) measurements.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated",
+          "skipped"
+        ],
+        "title": "WeightImportResult",
+        "type": "object"
+      },
+      "WeightIn": {
+        "description": "A weight typed in by the athlete.",
+        "properties": {
+          "measured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was measured, with its UTC offset; default now",
+            "title": "Measured At"
+          },
+          "weight_kg": {
+            "maximum": 300.0,
+            "minimum": 30.0,
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "weight_kg"
+        ],
+        "title": "WeightIn",
+        "type": "object"
+      },
+      "WeightOut": {
+        "description": "A stored measurement.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WeightSource"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "measured_at",
+          "day",
+          "weight_kg"
+        ],
+        "title": "WeightOut",
+        "type": "object"
+      },
+      "WeightSource": {
+        "description": "Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)\nwrite to the phone's health store, which the app reads.",
+        "enum": [
+          "manual",
+          "apple_health",
+          "health_connect"
+        ],
+        "title": "WeightSource",
+        "type": "string"
       },
       "WorkoutData": {
         "description": "What a device, an app or the athlete reports about a session.",
@@ -1775,6 +1973,216 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/body/weights": {
+      "get": {
+        "description": "Weights and their 7-day trend in a date range (default: the last 90 days). Max 366 days.",
+        "operationId": "weight_history_api_v1_body_weights_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Weight History",
+        "tags": [
+          "body"
+        ]
+      },
+      "post": {
+        "description": "Log a weight by hand. The newest weight also becomes the profile's weight.",
+        "operationId": "log_weight_api_v1_body_weights_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeightIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Log Weight",
+        "tags": [
+          "body"
+        ]
+      }
+    },
+    "/api/v1/body/weights/import": {
+      "post": {
+        "description": "Sync smart-scale weights from Apple Health or Health Connect. Safe to repeat.\n\nDeletions in the phone's health store are not mirrored; delete here instead.",
+        "operationId": "import_weights_api_v1_body_weights_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeightImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Weights",
+        "tags": [
+          "body"
+        ]
+      }
+    },
+    "/api/v1/body/weights/{weight_id}": {
+      "delete": {
+        "description": "Delete a measurement.",
+        "operationId": "delete_weight_api_v1_body_weights__weight_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "weight_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Weight Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not yours or gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Weight",
+        "tags": [
+          "body"
         ]
       }
     },

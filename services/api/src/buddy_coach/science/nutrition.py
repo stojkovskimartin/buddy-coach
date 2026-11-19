@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from enum import StrEnum
 
 KCAL_PER_KG_BODY_MASS = 7700.0  # common approximation for adipose tissue
@@ -266,6 +266,29 @@ def weight_trend_kg_per_day(weights: Sequence[WeightEntry]) -> float:
         raise ValueError(msg)
     cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys, strict=True))
     return cov / var_x
+
+
+TREND_WINDOW_DAYS = 7
+
+
+def weight_trend(
+    daily: Sequence[WeightEntry], window_days: int = TREND_WINDOW_DAYS
+) -> list[WeightEntry]:
+    """For each measured day, the mean of the measured days in the ``window_days`` up to it.
+
+    ``daily`` holds one weight per day (the morning one is the most comparable). Days without a
+    measurement are not filled in. Smooths the day-to-day water swings of 1-2 kg.
+    """
+    ordered = sorted(daily, key=lambda w: w.day)
+    trend: list[WeightEntry] = []
+    for entry in ordered:
+        window = [
+            w.weight_kg
+            for w in ordered
+            if entry.day - timedelta(days=window_days - 1) <= w.day <= entry.day
+        ]
+        trend.append(WeightEntry(day=entry.day, weight_kg=sum(window) / len(window)))
+    return trend
 
 
 def adaptive_maintenance_kcal(

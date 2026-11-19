@@ -77,6 +77,13 @@ class ProfileService:
         """The user's profile or None. Used by other modules that can work without it."""
         return await self._repo.get_profile(user_id)
 
+    async def set_current_weight(self, user_id: uuid.UUID, weight_kg: float) -> None:
+        """Set the weight from the latest measurement (body module). Joins the caller's
+        transaction and does not commit; does nothing before onboarding."""
+        profile = await self._repo.get_profile(user_id)
+        if profile is not None:
+            profile.weight_kg = weight_kg
+
     async def upsert_profile(self, user_id: uuid.UUID, data: ProfileIn) -> Profile:
         """Create or replace the profile."""
         validate_adult(data.birth_year, self._today())

@@ -41,6 +41,10 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | PATCH | `/workouts/{id}/feedback` | Effort (RPE 1-10), feeling (1-5), pain; recomputes the load |
 | DELETE | `/workouts/{id}` | Delete a workout (204) |
 | GET | `/training/load?days=42` | Fitness, fatigue, form per day, acute:chronic ratio, weekly ramp check (7-366 days) |
+| POST | `/body/weights` | Log a weight by hand (201); the newest weight becomes the profile's weight |
+| POST | `/body/weights/import` | Sync up to 500 smart-scale weights from Apple Health or Health Connect; idempotent by (source, external_id); readings outside 30-300 kg are skipped; returns created / updated / skipped |
+| GET | `/body/weights?from=&to=` | Weights (newest first) and a 7-day trend of the morning weights (default 90 days, max 366) |
+| DELETE | `/body/weights/{id}` | Delete a weight (204); the profile keeps the newest one left. `PUT /profile` still sets the weight directly; the next measurement replaces it |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 

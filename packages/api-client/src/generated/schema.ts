@@ -84,6 +84,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/body/weights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weight History
+         * @description Weights and their 7-day trend in a date range (default: the last 90 days). Max 366 days.
+         */
+        get: operations["weight_history_api_v1_body_weights_get"];
+        put?: never;
+        /**
+         * Log Weight
+         * @description Log a weight by hand. The newest weight also becomes the profile's weight.
+         */
+        post: operations["log_weight_api_v1_body_weights_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/body/weights/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Weights
+         * @description Sync smart-scale weights from Apple Health or Health Connect. Safe to repeat.
+         *
+         *     Deletions in the phone's health store are not mirrored; delete here instead.
+         */
+        post: operations["import_weights_api_v1_body_weights_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/body/weights/{weight_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Weight
+         * @description Delete a measurement.
+         */
+        delete: operations["delete_weight_api_v1_body_weights__weight_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/checkins": {
         parameters: {
             query?: never;
@@ -701,6 +767,25 @@ export interface components {
             updated: number;
         };
         /**
+         * ImportedWeight
+         * @description A measurement from a phone health store, identified by that store's own id.
+         */
+        ImportedWeight: {
+            /** External Id */
+            external_id: string;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            source: components["schemas"]["WeightSource"];
+            /**
+             * Weight Kg
+             * @description Readings outside 30-300 kg are skipped
+             */
+            weight_kg: number;
+        };
+        /**
          * ImportedWorkout
          * @description A session from a device or app, identified by that source's own id.
          */
@@ -977,6 +1062,19 @@ export interface components {
             token_type?: string;
         };
         /**
+         * TrendPoint
+         * @description The smoothed weight of one day with a measurement.
+         */
+        TrendPoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /**
          * UserOut
          * @description Account data safe to return to its owner.
          */
@@ -1012,6 +1110,83 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WeightHistoryOut
+         * @description Measurements in a range (newest first) and the trend (oldest first).
+         */
+        WeightHistoryOut: {
+            /**
+             * Trend
+             * @description Mean of the measured days in the 7 days up to each day; one value per day
+             */
+            trend: components["schemas"]["TrendPoint"][];
+            /** Weights */
+            weights: components["schemas"]["WeightOut"][];
+        };
+        /**
+         * WeightImportIn
+         * @description A batch from one sync. Sending the same weights again updates them, never duplicates.
+         */
+        WeightImportIn: {
+            /** Weights */
+            weights: components["schemas"]["ImportedWeight"][];
+        };
+        /**
+         * WeightImportResult
+         * @description New, updated and skipped (implausible) measurements.
+         */
+        WeightImportResult: {
+            /** Created */
+            created: number;
+            /** Skipped */
+            skipped: number;
+            /** Updated */
+            updated: number;
+        };
+        /**
+         * WeightIn
+         * @description A weight typed in by the athlete.
+         */
+        WeightIn: {
+            /**
+             * Measured At
+             * @description When it was measured, with its UTC offset; default now
+             */
+            measured_at?: string | null;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /**
+         * WeightOut
+         * @description A stored measurement.
+         */
+        WeightOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            source: components["schemas"]["WeightSource"];
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /**
+         * WeightSource
+         * @description Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)
+         *     write to the phone's health store, which the app reads.
+         * @enum {string}
+         */
+        WeightSource: "manual" | "apple_health" | "health_connect";
         /**
          * WorkoutData
          * @description What a device, an app or the athlete reports about a session.
@@ -1229,6 +1404,140 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weight_history_api_v1_body_weights_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightHistoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_weight_api_v1_body_weights_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeightIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_weights_api_v1_body_weights_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeightImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_weight_api_v1_body_weights__weight_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                weight_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not yours or gone */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
