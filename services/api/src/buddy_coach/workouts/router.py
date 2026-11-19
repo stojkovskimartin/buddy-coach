@@ -6,10 +6,15 @@ import uuid
 from datetime import date, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Response, status
+from anyio import CapacityLimiter, to_thread
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from buddy_coach.core.db import get_session
+from buddy_coach.core.uploads import read_capped
 from buddy_coach.identity.deps import CurrentUserDep
 from buddy_coach.workouts.deps import WorkoutServiceDep
+from buddy_coach.workouts.fit import MAX_FIT_BYTES, workouts_from_fit
 from buddy_coach.workouts.schemas import (
     FeedbackIn,
     ImportIn,
@@ -17,9 +22,13 @@ from buddy_coach.workouts.schemas import (
     LoadOut,
     WorkoutData,
     WorkoutOut,
+    WorkoutSourceOut,
 )
 
 router = APIRouter(tags=["workouts"])
+
+FIT_DECODING = CapacityLimiter(2)
+"""A large FIT file takes seconds of CPU and a few hundred MB to decode; at most two at a time."""
 
 # FastAPI types `responses` as dict[int | str, dict[str, Any]]; the values are OpenAPI snippets.
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
@@ -33,6 +42,44 @@ async def import_workouts(
 ) -> ImportResult:
     """Sync workouts from a device or app. Safe to repeat: known workouts are updated."""
     return await service.import_workouts(current.id, body.workouts)
+
+
+@router.post(
+    "/workouts/fit",
+    response_model=ImportResult,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}
+            },
+        }
+    },
+    responses={
+        status.HTTP_413_CONTENT_TOO_LARGE: {
+            "description": f"Larger than {MAX_FIT_BYTES // (1024 * 1024)} MB"
+        }
+    },
+)
+async def upload_fit(
+    request: Request,
+    current: CurrentUserDep,
+    service: WorkoutServiceDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ImportResult:
+    """Import a FIT activity file from a watch (max 10 MB). Uploading it again updates it."""
+    await session.commit()  # no database connection waits while the file streams in
+    data = await read_capped(request, MAX_FIT_BYTES)
+    workouts = await to_thread.run_sync(workouts_from_fit, data, limiter=FIT_DECODING)
+    return await service.import_workouts(current.id, workouts)
+
+
+@router.get("/workouts/sources", response_model=list[WorkoutSourceOut])
+async def workout_sources(
+    current: CurrentUserDep, service: WorkoutServiceDep
+) -> list[WorkoutSourceOut]:
+    """Where the workouts come from (phone health app, watch files, manual): count and latest."""
+    return await service.sources(current.id)
 
 
 @router.post("/workouts", response_model=WorkoutOut, status_code=status.HTTP_201_CREATED)

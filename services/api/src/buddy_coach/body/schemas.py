@@ -66,6 +66,14 @@ class WeightOut(BaseModel):
     weight_kg: float
 
 
+class WeightSourceOut(BaseModel):
+    """A source the athlete has weights from (a smart scale via the phone, or typed in)."""
+
+    source: WeightSource
+    weights: int
+    last_at: datetime
+
+
 class TrendPoint(BaseModel):
     """The smoothed weight of one day with a measurement."""
 
