@@ -251,6 +251,16 @@
         "title": "CoachStyle",
         "type": "string"
       },
+      "EnergyGoal": {
+        "description": "Direction of body-mass change.",
+        "enum": [
+          "lose",
+          "maintain",
+          "gain"
+        ],
+        "title": "EnergyGoal",
+        "type": "string"
+      },
       "ExperienceLevel": {
         "description": "Training experience.",
         "enum": [
@@ -760,6 +770,63 @@
         ],
         "title": "Sport",
         "type": "string"
+      },
+      "TargetsOut": {
+        "description": "Today's energy and macro targets and why they are what they are.",
+        "properties": {
+          "carbs_g": {
+            "title": "Carbs G",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "fat_g": {
+            "title": "Fat G",
+            "type": "integer"
+          },
+          "floor_applied": {
+            "title": "Floor Applied",
+            "type": "boolean"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/EnergyGoal"
+          },
+          "kcal": {
+            "title": "Kcal",
+            "type": "integer"
+          },
+          "maintenance_kcal": {
+            "title": "Maintenance Kcal",
+            "type": "integer"
+          },
+          "protein_g": {
+            "title": "Protein G",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "goal",
+          "kcal",
+          "protein_g",
+          "carbs_g",
+          "fat_g",
+          "maintenance_kcal",
+          "floor_applied",
+          "reasons"
+        ],
+        "title": "TargetsOut",
+        "type": "object"
       },
       "TokenPair": {
         "description": "Access and refresh tokens returned after login or refresh.",
@@ -1529,6 +1596,36 @@
         "tags": [
           "profile",
           "goals"
+        ]
+      }
+    },
+    "/api/v1/nutrition/targets/today": {
+      "get": {
+        "description": "Today's calories and macros from the athlete's profile and main goal.",
+        "operationId": "targets_today_api_v1_nutrition_targets_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No profile yet (complete onboarding first)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Targets Today",
+        "tags": [
+          "nutrition"
         ]
       }
     },

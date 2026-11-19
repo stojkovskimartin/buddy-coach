@@ -21,6 +21,7 @@ export type ChatReply = Schemas["ChatReply"];
 export type CheckinIn = Schemas["CheckinIn"];
 export type Checkin = Schemas["CheckinOut"];
 export type Readiness = Schemas["ReadinessOut"];
+export type NutritionTargets = Schemas["TargetsOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -142,6 +143,13 @@ export class BuddyClient {
   /** Check-ins between two ISO dates (default: the last 14 days), newest first. */
   async listCheckins(range: { from?: string; to?: string } = {}): Promise<Checkin[]> {
     return unwrap(await this.raw.GET("/api/v1/checkins", { params: { query: range } }));
+  }
+
+  /** Today's calories and macros; null before onboarding (no profile yet). */
+  async getTodayTargets(): Promise<NutritionTargets | null> {
+    const result = await this.raw.GET("/api/v1/nutrition/targets/today");
+    if (result.response.status === 404) return null;
+    return unwrap(result);
   }
 
   async chat(message: string): Promise<ChatReply> {

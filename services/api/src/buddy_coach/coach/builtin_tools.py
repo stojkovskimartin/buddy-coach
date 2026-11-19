@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from buddy_coach.coach.tools import Tool, ToolContext, ToolRegistry
 from buddy_coach.core.errors import NotFoundError
+from buddy_coach.nutrition.domain import energy_goal
 from buddy_coach.profile.domain import GoalPriority, GoalStatus, GoalType, age_on
 from buddy_coach.science.micronutrients import (
     FOOD_SOURCES,
@@ -151,9 +152,6 @@ class NutritionTargetsOutput(BaseModel):
     reasons: list[str]
 
 
-_GOAL_TO_ENERGY = {GoalType.LOSE_WEIGHT: EnergyGoal.LOSE, GoalType.GAIN_WEIGHT: EnergyGoal.GAIN}
-
-
 async def calculate_nutrition_targets(
     ctx: ToolContext, args: NutritionTargetsInput
 ) -> NutritionTargetsOutput:
@@ -166,11 +164,7 @@ async def calculate_nutrition_targets(
         primary = next(
             (g for g in await _active_goals(ctx) if g.priority == GoalPriority.PRIMARY.value), None
         )
-        goal = (
-            _GOAL_TO_ENERGY.get(GoalType(primary.goal_type), EnergyGoal.MAINTAIN)
-            if primary
-            else EnergyGoal.MAINTAIN
-        )
+        goal = energy_goal(GoalType(primary.goal_type) if primary else None)
     body = BodyData(
         weight_kg=profile.weight_kg,
         height_cm=profile.height_cm,

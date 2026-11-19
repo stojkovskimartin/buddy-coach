@@ -219,6 +219,26 @@ export interface paths {
         patch: operations["update_goal_status_api_v1_goals__goal_id__patch"];
         trace?: never;
     };
+    "/api/v1/nutrition/targets/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Targets Today
+         * @description Today's calories and macros from the athlete's profile and main goal.
+         */
+        get: operations["targets_today_api_v1_nutrition_targets_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -433,6 +453,12 @@ export interface components {
          * @enum {string}
          */
         CoachStyle: "friendly" | "strict" | "data_driven";
+        /**
+         * EnergyGoal
+         * @description Direction of body-mass change.
+         * @enum {string}
+         */
+        EnergyGoal: "lose" | "maintain" | "gain";
         /**
          * ExperienceLevel
          * @description Training experience.
@@ -654,6 +680,32 @@ export interface components {
          * @enum {string}
          */
         Sport: "running" | "cycling" | "swimming" | "triathlon" | "hiking" | "ski_touring" | "alpine_skiing" | "climbing" | "strength" | "other";
+        /**
+         * TargetsOut
+         * @description Today's energy and macro targets and why they are what they are.
+         */
+        TargetsOut: {
+            /** Carbs G */
+            carbs_g: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Fat G */
+            fat_g: number;
+            /** Floor Applied */
+            floor_applied: boolean;
+            goal: components["schemas"]["EnergyGoal"];
+            /** Kcal */
+            kcal: number;
+            /** Maintenance Kcal */
+            maintenance_kcal: number;
+            /** Protein G */
+            protein_g: number;
+            /** Reasons */
+            reasons: string[];
+        };
         /**
          * TokenPair
          * @description Access and refresh tokens returned after login or refresh.
@@ -1161,6 +1213,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    targets_today_api_v1_nutrition_targets_today_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetsOut"];
+                };
+            };
+            /** @description No profile yet (complete onboarding first) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from buddy_coach.core.errors import NotFoundError
 from buddy_coach.core.events import EventBus
 from buddy_coach.profile.domain import (
+    AthleteSnapshot,
     GoalPriority,
     GoalSpec,
     GoalStatus,
@@ -52,6 +53,22 @@ class ProfileService:
         """The user's IANA time zone, or None before onboarding. For other modules."""
         profile = await self._repo.get_profile(user_id)
         return profile.timezone if profile else None
+
+    async def athlete_snapshot(self, user_id: uuid.UUID) -> AthleteSnapshot | None:
+        """Body data, time zone and main goal for other modules; None before onboarding."""
+        profile = await self._repo.get_profile(user_id)
+        if profile is None:
+            return None
+        goals = await self._repo.list_goals(user_id, GoalStatus.ACTIVE)
+        primary = next((g for g in goals if g.priority is GoalPriority.PRIMARY), None)
+        return AthleteSnapshot(
+            birth_year=profile.birth_year,
+            sex=profile.sex,
+            height_cm=profile.height_cm,
+            weight_kg=profile.weight_kg,
+            timezone=profile.timezone,
+            primary_goal=primary.goal_type if primary else None,
+        )
 
     async def find_profile(self, user_id: uuid.UUID) -> Profile | None:
         """The user's profile or None. Used by other modules that can work without it."""
