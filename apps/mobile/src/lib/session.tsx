@@ -8,6 +8,7 @@ import {
   type ChatReply,
   type Checkin,
   type CheckinIn,
+  type DailyTotals,
   type Goal,
   type GoalIn,
   type ImportedWeight,
@@ -20,6 +21,7 @@ import {
   type Profile,
   type ProfileIn,
   type TokenStore,
+  type TrainingLoad,
   type Weight,
   type WeightHistory,
   type WeightImportResult,
@@ -59,6 +61,9 @@ export interface CoachApi {
   getMealDay(day?: string): Promise<MealDay>;
   logMeal(entry: MealEntryIn): Promise<MealEntry>;
   deleteMeal(id: string): Promise<void>;
+  listDailyTotals(range?: { from?: string; to?: string }): Promise<DailyTotals[]>;
+  getTrainingLoad(days?: number): Promise<TrainingLoad>;
+  listCheckins(range?: { from?: string; to?: string }): Promise<Checkin[]>;
 }
 
 /** "loading" while the stored session is checked on start. */

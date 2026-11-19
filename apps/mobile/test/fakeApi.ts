@@ -5,6 +5,7 @@ import {
   type CheckinIn,
   type Goal,
   type Profile,
+  type TrainingLoad,
   type Weight,
   type WeightIn,
 } from "@buddy/api-client";
@@ -68,6 +69,17 @@ export function weight(weight_kg: number, overrides: Partial<Weight> = {}): Weig
   };
 }
 
+export function trainingLoad(days: TrainingLoad["days"]): TrainingLoad {
+  const today = days[days.length - 1] ?? { day: "2026-11-19", load: 0, fitness: 0, fatigue: 0, form: 0 };
+  return {
+    days,
+    today,
+    acute_chronic_ratio: null,
+    excluded_activities: [],
+    ramp: { last_week_load: 0, this_week_load: 0, max_allowed_load: 0, verdict: "ok" },
+  } satisfies TrainingLoad;
+}
+
 export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = {}) {
   const api = {
     register: jest.fn().mockResolvedValue({}),
@@ -94,6 +106,9 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     }),
     logMeal: jest.fn().mockResolvedValue({}),
     deleteMeal: jest.fn().mockResolvedValue(undefined),
+    listDailyTotals: jest.fn().mockResolvedValue([]),
+    getTrainingLoad: jest.fn().mockResolvedValue(trainingLoad([])),
+    listCheckins: jest.fn().mockResolvedValue([]),
     ...overrides,
   };
   return api satisfies Record<keyof CoachApi, jest.Mock>;

@@ -9,6 +9,8 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
 - **Today** – main goal with countdown, other goals, pull to refresh, log out.
 - **Food** – the food diary of a day against today's targets, entries per meal, earlier days;
   add food by Open Food Facts search, by scanning the barcode with the camera, or typed in.
+- **Progress** – weight, food against the target, fitness and fatigue, readiness over 4 weeks,
+  3 months or a year, as charts described in words for screen readers.
 - **Coach** – chat with the coach network; one-tap suggestions, specialist label,
   safety escalations and failed calls shown as alerts and read out by screen readers. The
   conversation stays when you switch tabs.

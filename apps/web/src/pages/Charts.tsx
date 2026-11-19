@@ -39,11 +39,12 @@ export function LineChart({
   const options = { padding: PAD, days, values: range, minSpan: 1 };
   const scaled = series.map((s) => ({ ...s, ...scaleSeries(s.points, WIDTH, HEIGHT, options) }));
   const { min, max } = scaled[0]!;
+  const value = (v: number) => `${max - min < 5 ? v.toFixed(1) : Math.round(v)} ${unit}`.trim();
   return (
     <figure className="chart-figure">
       <svg className="chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
-        <text x={2} y={PAD + 4} className="axis">{`${Math.round(max)} ${unit}`.trim()}</text>
-        <text x={2} y={HEIGHT - PAD + 4} className="axis">{`${Math.round(min)} ${unit}`.trim()}</text>
+        <text x={2} y={PAD + 4} className="axis">{value(max)}</text>
+        <text x={2} y={HEIGHT - PAD + 4} className="axis">{value(min)}</text>
         <text x={PAD} y={HEIGHT - 6} className="axis">
           {shortDay(days[0])}
         </text>
@@ -85,7 +86,7 @@ export function BarChart({
   unit: string;
 }) {
   if (points.length === 0) return null;
-  const top = Math.max(target ?? 0, ...points.map((p) => p.value));
+  const top = Math.max(1, target ?? 0, ...points.map((p) => p.value));
   const options = { padding: PAD, days, values: [0, top] as const };
   const scaled = scaleSeries(points, WIDTH, HEIGHT, options);
   const totalDays = Math.max(1, (Date.parse(days[1]) - Date.parse(days[0])) / 86_400_000 + 1);

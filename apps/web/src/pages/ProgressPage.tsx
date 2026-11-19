@@ -2,9 +2,11 @@ import type { Checkin, DailyTotals, NutritionTargets, TrainingLoad, WeightHistor
 import {
   CHECKIN_RANGE_DAYS,
   PROGRESS_RANGES,
-  average,
   daysBefore,
+  foodSummary,
   localToday,
+  readinessSummary,
+  trainingSummary,
   trendChangeText,
 } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -91,14 +93,10 @@ export function ProgressPage() {
   );
 }
 
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 function Sections({ data }: { data: Data }) {
   const { weights, food, targets, load, checkins, days, range, checkinRange } = data;
   const trend = weights.trend.map((t) => ({ day: t.day, value: t.weight_kg }));
   const measured = weights.weights.map((w) => ({ day: w.day, value: w.weight_kg }));
-  const avgKcal = average(food.map((d) => d.kcal));
-  const avgProtein = average(food.map((d) => d.protein_g));
   const readiness = checkins.map((c) => ({ day: c.day, value: c.readiness.score }));
 
   return (
@@ -129,10 +127,7 @@ function Sections({ data }: { data: Data }) {
           <p className="muted">No food logged in this period yet.</p>
         ) : (
           <>
-            <p>
-              {plural(food.length, "day")} logged · on average {avgKcal} kcal and {avgProtein} g protein
-              {targets ? ` (today's target: ${targets.kcal} kcal, ${targets.protein_g} g protein)` : ""}
-            </p>
+            <p>{foodSummary(food, targets)}</p>
             <BarChart
               label={`Calories per logged day over ${days} days${targets ? `, line at today's target of ${targets.kcal} kcal` : ""}`}
               days={range}
@@ -150,10 +145,7 @@ function Sections({ data }: { data: Data }) {
           <p className="muted">No workouts in this period yet.</p>
         ) : (
           <>
-            <p>
-              Fitness {load.today.fitness} · fatigue {load.today.fatigue} · form {load.today.form}
-              {load.acute_chronic_ratio !== null ? ` · load ratio ${load.acute_chronic_ratio}` : ""}
-            </p>
+            <p>{trainingSummary(load.today, load.acute_chronic_ratio)}</p>
             <LineChart
               label={`Fitness and fatigue over ${days} days`}
               days={range}
@@ -187,11 +179,7 @@ function Sections({ data }: { data: Data }) {
           <p className="muted">No check-ins in this period yet.</p>
         ) : (
           <>
-            <p>
-              {plural(readiness.length, "check-in")} · on average {average(readiness.map((r) => r.value))} of
-              100
-              {days > CHECKIN_RANGE_DAYS ? ` (last ${CHECKIN_RANGE_DAYS} days)` : ""}
-            </p>
+            <p>{readinessSummary(readiness.map((r) => r.value), days)}</p>
             <LineChart
               label="Readiness score per check-in, 0 to 100"
               days={checkinRange}
