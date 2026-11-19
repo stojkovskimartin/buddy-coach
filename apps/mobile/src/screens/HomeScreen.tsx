@@ -80,7 +80,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       <CheckinCard reloadKey={reloads} />
       {profile && <TargetsCard reloadKey={reloads} />}
       <WeightCard reloadKey={reloads} />
-      <HealthSyncCard />
+      <HealthSyncCard onNewWeights={reload} />
       {!loading && !error && !profile && (
         <Card>
           <Text style={styles.heading}>Set up your profile</Text>

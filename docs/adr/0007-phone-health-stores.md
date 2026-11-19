@@ -16,6 +16,11 @@ agreement, OAuth and webhooks, and some are gated (Garmin).
   (`@kingstinct/react-native-healthkit`) and Health Connect (`react-native-health-connect`; on
   Android also distance and active calories, which Health Connect keeps as separate records) and
   sends them to `POST /workouts/import` with source `apple_health` / `health_connect`.
+- Body weight from smart scales (Withings, Eufy, Renpho, Xiaomi, Garmin, ...) comes the same way:
+  HealthKit `HKQuantityTypeIdentifierBodyMass` / Health Connect `Weight`, with its own cursor, sent
+  to `POST /body/weights/import` (added later; implausible readings are skipped by the server).
+  Phones connected before weights were read are offered an "Allow weight" step. Readings deleted
+  in the phone's store are not mirrored; they are deleted in the app.
 - Read only: no write access to either store, no background-delivery entitlement.
 - Sync runs in the foreground (app opened, "Sync now"). Incremental via the HealthKit anchor and
   the Health Connect changes token, saved on the phone only after the server accepted the batch.

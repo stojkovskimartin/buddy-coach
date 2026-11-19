@@ -29,13 +29,20 @@ function fakeSource(granted = true): HealthSource {
       ],
       nextCursor: "anchor",
     }),
+    readWeightsSince: jest.fn().mockResolvedValue({ weights: [], nextCursor: null }),
+    needsWeightAccess: jest.fn().mockResolvedValue(false),
   };
 }
 
-async function renderCard(source: HealthSource | null, state = memoryState(), api = fakeApi()) {
+async function renderCard(
+  source: HealthSource | null,
+  state = memoryState(),
+  api = fakeApi(),
+  onNewWeights?: () => void,
+) {
   await render(
     <SessionProvider createApi={() => api} tokens={memoryTokenStore()} restore={async () => true}>
-      <HealthSyncCard source={source} state={state} />
+      <HealthSyncCard source={source} state={state} onNewWeights={onNewWeights} />
     </SessionProvider>,
   );
   return api;
@@ -45,6 +52,33 @@ describe("HealthSyncCard", () => {
   it("explains when the phone cannot sync (Expo Go, other platforms)", async () => {
     await renderCard(null);
     expect(await screen.findByText(/needs the installed Buddy Coach app/)).toBeTruthy();
+  });
+
+  it("asks for weight access when connected before weights were read", async () => {
+    const source = fakeSource();
+    (source.needsWeightAccess as jest.Mock).mockResolvedValueOnce(true).mockResolvedValue(false);
+    const state = memoryState({ "buddy-coach.health.apple_health.connected": "true" });
+    await renderCard(source, state);
+    await fireEvent.press(await screen.findByRole("button", { name: "Allow weight" }));
+    await waitFor(() => expect(source.connect).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Allow weight" })).toBeNull());
+  });
+
+  it("reports new scale weights and lets the screen refresh", async () => {
+    const source = fakeSource();
+    (source.readWeightsSince as jest.Mock).mockResolvedValue({
+      weights: [{ external_id: "W1", measured_at: "2026-11-19T06:30:00.000Z", weight_kg: 77.6 }],
+      nextCursor: "w",
+    });
+    const api = fakeApi({
+      importWorkouts: jest.fn().mockResolvedValue({ created: 0, updated: 2 }),
+      importWeights: jest.fn().mockResolvedValue({ created: 1, updated: 0, skipped: 0 }),
+    });
+    const onNewWeights = jest.fn();
+    await renderCard(source, memoryState(), api, onNewWeights);
+    await fireEvent.press(await screen.findByRole("button", { name: "Connect Apple Health" }));
+    expect(await screen.findByText("0 new workouts, 2 updated, 1 new weight.")).toBeTruthy();
+    expect(onNewWeights).toHaveBeenCalledTimes(1);
   });
 
   it("connects, syncs right away and reports what was added", async () => {

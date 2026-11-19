@@ -1,9 +1,10 @@
 /**
  * Apple Health (HealthKit) on iPhone: Apple Watch and every app that writes workouts there
- * (Garmin, WHOOP, Polar, Huawei, Xiaomi, Strava, ...). Read-only.
+ * (Garmin, WHOOP, Polar, Huawei, Xiaomi, Strava, ...), and smart scales that write body weight
+ * (Withings, Eufy, Renpho, ...). Read-only.
  */
 import { healthKitActivity } from "./activityMapping";
-import type { Availability, HealthSource, RawWorkout, ReadResult } from "./types";
+import type { Availability, HealthSource, RawWorkout, ReadResult, WeightReadResult } from "./types";
 import { toKilocalories, toKilometers, toMinutes } from "./units";
 
 type HealthKit = typeof import("@kingstinct/react-native-healthkit");
@@ -17,7 +18,14 @@ function load(): HealthKit | null {
   }
 }
 
-const READ = ["HKWorkoutTypeIdentifier", "HKQuantityTypeIdentifierHeartRate"] as const;
+/** `AuthorizationRequestStatus.shouldRequest`: the user was never asked for these types. */
+const SHOULD_REQUEST = 1;
+
+const READ = [
+  "HKWorkoutTypeIdentifier",
+  "HKQuantityTypeIdentifierHeartRate",
+  "HKQuantityTypeIdentifierBodyMass",
+] as const;
 
 export function appleHealthSource(healthKit: HealthKit | null = load()): HealthSource {
   return {
@@ -71,6 +79,31 @@ export function appleHealthSource(healthKit: HealthKit | null = load()): HealthS
         for (const proxy of result.workouts) proxy.dispose();
       }
       return { workouts, nextCursor: result.newAnchor };
+    },
+
+    async needsWeightAccess(): Promise<boolean> {
+      if (!healthKit) return false;
+      const status = await healthKit.getRequestStatusForAuthorization({
+        toRead: ["HKQuantityTypeIdentifierBodyMass"],
+      });
+      return status === SHOULD_REQUEST;
+    },
+
+    async readWeightsSince(cursor: string | null, since: Date): Promise<WeightReadResult> {
+      if (!healthKit) return { weights: [], nextCursor: cursor };
+      const result = await healthKit.queryQuantitySamplesWithAnchor("HKQuantityTypeIdentifierBodyMass", {
+        limit: 0,
+        unit: "kg",
+        ...(cursor ? { anchor: cursor } : { filter: { date: { startDate: since } } }),
+      });
+      return {
+        weights: result.samples.map((s) => ({
+          external_id: s.uuid,
+          measured_at: new Date(s.startDate).toISOString(),
+          weight_kg: s.quantity,
+        })),
+        nextCursor: result.newAnchor,
+      };
     },
   };
 }

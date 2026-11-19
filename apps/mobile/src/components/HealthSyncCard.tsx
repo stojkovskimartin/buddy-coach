@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, StyleSheet, Text, View } from "react-native";
 
 import { HealthSync, phoneHealthSource, type SyncOutcome, type SyncState } from "../health/sync";
@@ -20,19 +20,23 @@ function summary(outcome: SyncOutcome): string {
   const parts = [added];
   if (outcome.updated) parts.push(`${outcome.updated} updated`);
   if (outcome.skipped) parts.push(`${outcome.skipped} skipped (incomplete data)`);
+  if (outcome.weights) parts.push(outcome.weights === 1 ? "1 new weight" : `${outcome.weights} new weights`);
   return `${parts.join(", ")}.`;
 }
 
 /**
- * Connects the phone's health store and syncs workouts in the foreground. `source` and `state`
- * are for tests; the app uses the store of this phone and AsyncStorage.
+ * Connects the phone's health store and syncs workouts and smart-scale weights in the foreground.
+ * `onNewWeights` lets the screen refresh what depends on the weight. `source` and `state` are for
+ * tests; the app uses the store of this phone and AsyncStorage.
  */
 export function HealthSyncCard({
   source: injected,
   state,
+  onNewWeights,
 }: {
   source?: HealthSource | null;
   state?: SyncState;
+  onNewWeights?: () => void;
 }) {
   const { api } = useSession();
   // Built once: a new source on every render would restart the sync effect in a loop.
@@ -48,6 +52,11 @@ export function HealthSyncCard({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [needsWeight, setNeedsWeight] = useState(false);
+
+  // In a ref: a new callback from the screen must not restart the sync effect below.
+  const newWeights = useRef(onNewWeights);
+  newWeights.current = onNewWeights;
 
   const runSync = useCallback(async () => {
     if (!sync) return;
@@ -56,6 +65,7 @@ export function HealthSyncCard({
     try {
       const outcome = await sync.sync();
       setMessage(summary(outcome));
+      if (outcome.weights) newWeights.current?.();
       setView({ kind: "connected", lastSync: outcome.syncedAt });
     } catch (e) {
       setError(errorMessage(e));
@@ -77,6 +87,8 @@ export function HealthSyncCard({
       if (await sync.isConnected()) {
         setView({ kind: "connected", lastSync: await sync.lastSync() });
         void runSync();
+        const missing = await sync.source.needsWeightAccess();
+        if (active) setNeedsWeight(missing);
       } else {
         setView({ kind: "disconnected" });
       }
@@ -101,7 +113,7 @@ export function HealthSyncCard({
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.title}>
-        Workouts from your watch
+        Watch and scale
       </Text>
       <ErrorBanner message={error} />
       {view.kind === "unavailable" && (
@@ -115,8 +127,9 @@ export function HealthSyncCard({
       {view.kind === "disconnected" && (
         <>
           <Text style={styles.body}>
-            Buddy Coach reads your workouts and heart rate from {store} (read only) to calculate
-            your training load. Garmin, Fitbit, Samsung, Xiaomi, WHOOP and other apps that write
+            Buddy Coach reads your workouts, heart rate and body weight from {store} (read only)
+            to calculate your training load and keep your weight up to date. Garmin, Fitbit,
+            Samsung, Xiaomi, WHOOP and smart scales (Withings, Eufy, Renpho and others) that write
             there are included.
           </Text>
           <Button
@@ -151,10 +164,34 @@ export function HealthSyncCard({
                 ? `Last synced ${new Date(view.lastSync).toLocaleString()}`
                 : "Not synced yet"}
               {source?.platform === "apple_health"
-                ? ". No workouts? Check that Buddy Coach may read them in the Health app."
+                ? ". No workouts or weights? Check that Buddy Coach may read them in the Health app."
                 : ""}
             </Text>
           </View>
+          {needsWeight && (
+            <>
+              <Text style={styles.body}>
+                Keep your weight up to date from a smart scale: allow Buddy Coach to read body
+                weight from {store}.
+              </Text>
+              <Button
+                variant="secondary"
+                label="Allow weight"
+                disabled={busy}
+                onPress={() => {
+                  if (!sync) return;
+                  setError(null);
+                  sync
+                    .connect() // asks only for what is still missing
+                    .then(async () => {
+                      setNeedsWeight(await sync.source.needsWeightAccess());
+                      return runSync();
+                    })
+                    .catch((e: unknown) => setError(errorMessage(e)));
+                }}
+              />
+            </>
+          )}
           <Button label="Sync now" busy={busy} onPress={() => void runSync()} />
           <Button
             variant="secondary"

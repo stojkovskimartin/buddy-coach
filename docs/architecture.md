@@ -59,6 +59,9 @@ Athlete ──► manual log ──► POST /workouts                           
               GET /training/load: fitness, fatigue, form, ramp (computed when read)
 ```
 
+Smart scales take the same phone path to `POST /body/weights/import`; the newest weight becomes
+the profile's weight, so targets and the coach always use it.
+
 Imports are idempotent by (source, external_id); the athlete's own rating is never overwritten
 by a re-sync. Phone sync exists (ADR-0007); cloud connections (`integrations`) and FIT upload
 are planned.

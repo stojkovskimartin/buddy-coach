@@ -27,6 +27,8 @@ export type ImportResult = Schemas["ImportResult"];
 export type WeightIn = Schemas["WeightIn"];
 export type Weight = Schemas["WeightOut"];
 export type WeightHistory = Schemas["WeightHistoryOut"];
+export type ImportedWeight = Schemas["ImportedWeight"];
+export type WeightImportResult = Schemas["WeightImportResult"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -177,6 +179,11 @@ export class BuddyClient {
       params: { path: { weight_id: id } },
     });
     if (!result.response.ok) unwrap(result);
+  }
+
+  /** Sync smart-scale weights (max 500); implausible readings are skipped and counted. */
+  async importWeights(weights: ImportedWeight[]): Promise<WeightImportResult> {
+    return unwrap(await this.raw.POST("/api/v1/body/weights/import", { body: { weights } }));
   }
 
   async chat(message: string): Promise<ChatReply> {

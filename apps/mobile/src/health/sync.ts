@@ -1,10 +1,10 @@
 /**
- * Phone health store → POST /workouts/import. Runs in the foreground (on "Sync now" and when the
+ * Phone health store → POST /workouts/import and POST /body/weights/import (smart scales). Runs in the foreground (on "Sync now" and when the
  * app becomes active); one sync at a time; the store's cursor is saved only after the server
- * accepted every batch, so a failed sync is simply repeated. Workouts are never stored on the
- * phone: only the cursor, the connected flag and the last sync time.
+ * accepted every batch, so a failed sync is simply repeated. Workouts and weights are never stored
+ * on the phone: only the cursors, the connected flag and the last sync time.
  */
-import type { ImportedWorkout, ImportResult } from "@buddy/api-client";
+import type { ImportedWeight, ImportedWorkout, ImportResult, WeightImportResult } from "@buddy/api-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
@@ -18,6 +18,7 @@ export const FIRST_SYNC_DAYS = 30;
 
 export interface SyncApi {
   importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult>;
+  importWeights(weights: ImportedWeight[]): Promise<WeightImportResult>;
 }
 
 export interface SyncState {
@@ -30,10 +31,12 @@ export interface SyncOutcome {
   created: number;
   updated: number;
   skipped: number;
+  /** New weights from a smart scale. */
+  weights: number;
   syncedAt: string;
 }
 
-const key = (platform: HealthPlatform, name: "cursor" | "connected" | "last_sync") =>
+const key = (platform: HealthPlatform, name: "cursor" | "weight_cursor" | "connected" | "last_sync") =>
   `buddy-coach.health.${platform}.${name}`;
 
 export const asyncStorageState: SyncState = {
@@ -81,6 +84,7 @@ export class HealthSync {
     await Promise.all([
       this.state.remove(key(platform, "connected")),
       this.state.remove(key(platform, "cursor")),
+      this.state.remove(key(platform, "weight_cursor")),
       this.state.remove(key(platform, "last_sync")),
     ]);
   }
@@ -111,8 +115,18 @@ export class HealthSync {
       updated += result.updated;
     }
     if (nextCursor) await this.state.set(key(platform, "cursor"), nextCursor);
+
+    const weightCursor = await this.state.get(key(platform, "weight_cursor"));
+    const scale = await this.source.readWeightsSince(weightCursor, since);
+    let weights = 0;
+    // The server skips implausible readings (another person on the scale); the rest is sent as is.
+    for (const batch of chunk(scale.weights.map((w) => ({ ...w, source: platform })))) {
+      weights += (await this.api.importWeights(batch)).created;
+    }
+    if (scale.nextCursor) await this.state.set(key(platform, "weight_cursor"), scale.nextCursor);
+
     const syncedAt = this.now().toISOString();
     await this.state.set(key(platform, "last_sync"), syncedAt);
-    return { created, updated, skipped: workouts.length - ready.length, syncedAt };
+    return { created, updated, skipped: workouts.length - ready.length, weights, syncedAt };
   }
 }

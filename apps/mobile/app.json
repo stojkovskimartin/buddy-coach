@@ -29,14 +29,15 @@
         "android.permission.health.READ_EXERCISE",
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.READ_DISTANCE",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_WEIGHT"
       ]
     },
     "plugins": [
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Buddy Coach reads your workouts and heart rate to calculate your training load. Nothing is written to Apple Health.",
+          "NSHealthShareUsageDescription": "Buddy Coach reads your workouts, heart rate and body weight to calculate your training load and keep your weight up to date. Nothing is written to Apple Health.",
           "NSHealthUpdateUsageDescription": false,
           "background": false
         }
