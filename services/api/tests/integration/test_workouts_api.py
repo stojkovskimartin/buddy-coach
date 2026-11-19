@@ -99,6 +99,54 @@ async def test_concurrent_syncs_of_the_same_workouts_create_them_once(
     assert len(listed) == 20
 
 
+async def test_a_device_rpe_never_overwrites_the_athletes_rating(client: httpx.AsyncClient) -> None:
+    headers = await _athlete(client)
+    await client.post(
+        "/api/v1/workouts/import", json={"workouts": [_garmin_run()]}, headers=headers
+    )
+    [run] = (await client.get("/api/v1/workouts", headers=headers)).json()
+    await client.patch(
+        f"/api/v1/workouts/{run['id']}/feedback", json={"rpe": 8, "pain": True}, headers=headers
+    )
+    resync = _garmin_run(rpe=4, feeling=5, pain=False)
+    await client.post("/api/v1/workouts/import", json={"workouts": [resync]}, headers=headers)
+    [after] = (await client.get("/api/v1/workouts", headers=headers)).json()
+    assert (after["rpe"], after["pain"], after["load"]) == (8, True, 400)
+    assert after["feeling"] == 5  # was empty, so the device may fill it
+
+
+async def test_future_workouts_are_refused(client: httpx.AsyncClient) -> None:
+    headers = await _athlete(client)
+    later = _garmin_run(started_at="2026-11-19T02:00:00+00:00")  # 2.5 h after "now"
+    response = await client.post(
+        "/api/v1/workouts/import", json={"workouts": [later]}, headers=headers
+    )
+    assert response.status_code == 422
+    drift = _garmin_run(started_at="2026-11-19T00:15:00+00:00")  # 45 min clock drift is fine
+    response = await client.post(
+        "/api/v1/workouts/import", json={"workouts": [drift]}, headers=headers
+    )
+    assert response.status_code == 200
+
+
+async def test_easy_long_activities_stay_out_of_the_load_summary(
+    client: httpx.AsyncClient,
+) -> None:
+    headers = await _athlete(client)
+    ski_day = {
+        "source": "apple_health",
+        "external_id": "ski",
+        "activity": "alpine_skiing",
+        "started_at": "2026-11-18T09:00:00+01:00",
+        "duration_min": 360,
+    }
+    await client.post("/api/v1/workouts/import", json={"workouts": [ski_day]}, headers=headers)
+    load = (await client.get("/api/v1/training/load", headers=headers)).json()
+    assert load["ramp"]["this_week_load"] == 0
+    assert "alpine_skiing" in load["excluded_activities"]
+    assert len((await client.get("/api/v1/workouts", headers=headers)).json()) == 1
+
+
 async def test_the_same_id_from_two_sources_is_two_workouts(client: httpx.AsyncClient) -> None:
     headers = await _athlete(client)
     body = {"workouts": [_garmin_run("1"), {**_garmin_run("1"), "source": "strava"}]}
@@ -138,17 +186,22 @@ async def test_manual_workout_and_delete(client: httpx.AsyncClient) -> None:
 
 async def test_training_load_summary(client: httpx.AsyncClient) -> None:
     headers = await _athlete(client)
+    # A 50-minute run at RPE 5 every morning from 1 to 18 Nov ("now" is 00:30 on 19 Nov).
     workouts = [
         _garmin_run(f"run-{day}", started_at=f"2026-11-{day:02d}T07:00:00+01:00", rpe=5)
-        for day in range(1, 20)
+        for day in range(1, 19)
     ]
-    await client.post("/api/v1/workouts/import", json={"workouts": workouts}, headers=headers)
+    imported = await client.post(
+        "/api/v1/workouts/import", json={"workouts": workouts}, headers=headers
+    )
+    assert imported.json() == {"created": 18, "updated": 0}
 
     load = (await client.get("/api/v1/training/load", params={"days": 14}, headers=headers)).json()
     assert len(load["days"]) == 14
     assert load["today"]["day"] == "2026-11-19"
-    assert load["today"]["load"] == 250  # 50 min x RPE 5
-    assert load["ramp"]["this_week_load"] == 1750
+    assert load["today"]["load"] == 0
+    assert load["days"][-2]["load"] == 250  # 50 min x RPE 5
+    assert load["ramp"]["this_week_load"] == 1500  # 13-19 Nov, today not trained yet
     assert load["ramp"]["last_week_load"] == 1750
     assert load["ramp"]["verdict"] == "ok"
     assert load["today"]["fitness"] > 0

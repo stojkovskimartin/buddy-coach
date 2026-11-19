@@ -40,6 +40,30 @@ def test_typical_effort_when_nothing_is_known(activity: ActivityType, rpe: float
     assert (result.rpe, result.source, result.load) == (rpe, LoadSource.TYPICAL, 30 * rpe)
 
 
+@pytest.mark.parametrize(
+    "activity", [ActivityType.STRENGTH, ActivityType.HIIT, ActivityType.CLIMBING, ActivityType.YOGA]
+)
+def test_heart_rate_does_not_lower_intermittent_work(activity: ActivityType) -> None:
+    with_hr = session_load(activity, 60, rpe=None, avg_hr=110, age_years=28)
+    without_hr = session_load(activity, 60, rpe=None, avg_hr=None, age_years=28)
+    assert with_hr == without_hr
+    assert with_hr.source is LoadSource.TYPICAL
+
+
+def test_swimming_uses_a_lower_maximum_heart_rate() -> None:
+    swim = session_load(ActivityType.SWIMMING, 60, rpe=None, avg_hr=150, age_years=28)
+    run = session_load(ActivityType.RUNNING, 60, rpe=None, avg_hr=150, age_years=28)
+    assert swim.rpe > run.rpe
+
+
+def test_a_measured_maximum_beats_the_age_formula() -> None:
+    measured = session_load(
+        ActivityType.RUNNING, 60, rpe=None, avg_hr=170, age_years=28, max_hr=200
+    )
+    predicted = session_load(ActivityType.RUNNING, 60, rpe=None, avg_hr=170, age_years=28)
+    assert measured.rpe < predicted.rpe
+
+
 def test_heart_rate_needs_an_age() -> None:
     result = session_load(ActivityType.RUNNING, 30, rpe=None, avg_hr=150, age_years=None)
     assert result.source is LoadSource.TYPICAL

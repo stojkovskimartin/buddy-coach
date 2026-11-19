@@ -1,6 +1,6 @@
 # Production-style image for the Buddy Coach API.
-FROM python:3.14-slim AS base
-COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /uvx /bin/
+FROM python:3.13-slim AS base
+COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1
 

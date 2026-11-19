@@ -755,6 +755,11 @@ export interface components {
             acute_chronic_ratio: number | null;
             /** Days */
             days: components["schemas"]["DayLoadOut"][];
+            /**
+             * Excluded Activities
+             * @description Long, easy activities left out of this summary (still stored and listed)
+             */
+            excluded_activities: string[];
             ramp: components["schemas"]["RampOut"];
             today: components["schemas"]["DayLoadOut"];
         };
@@ -849,7 +854,8 @@ export interface components {
         };
         /**
          * RampOut
-         * @description This week's load (last 7 days) against the week before.
+         * @description This week's load (the last 7 days, today included even if it is not over) against the
+         *     7 days before.
          */
         RampOut: {
             /** Last Week Load */

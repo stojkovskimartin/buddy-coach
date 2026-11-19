@@ -97,7 +97,8 @@ class DayLoadOut(BaseModel):
 
 
 class RampOut(BaseModel):
-    """This week's load (last 7 days) against the week before."""
+    """This week's load (the last 7 days, today included even if it is not over) against the
+    7 days before."""
 
     last_week_load: float
     this_week_load: float
@@ -114,3 +115,6 @@ class LoadOut(BaseModel):
     )
     ramp: RampOut
     days: list[DayLoadOut]
+    excluded_activities: list[str] = Field(
+        description="Long, easy activities left out of this summary (still stored and listed)"
+    )

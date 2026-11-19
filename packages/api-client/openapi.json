@@ -796,6 +796,14 @@
             "title": "Days",
             "type": "array"
           },
+          "excluded_activities": {
+            "description": "Long, easy activities left out of this summary (still stored and listed)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Excluded Activities",
+            "type": "array"
+          },
           "ramp": {
             "$ref": "#/components/schemas/RampOut"
           },
@@ -807,7 +815,8 @@
           "today",
           "acute_chronic_ratio",
           "ramp",
-          "days"
+          "days",
+          "excluded_activities"
         ],
         "title": "LoadOut",
         "type": "object"
@@ -991,7 +1000,7 @@
         "type": "object"
       },
       "RampOut": {
-        "description": "This week's load (last 7 days) against the week before.",
+        "description": "This week's load (the last 7 days, today included even if it is not over) against the\n7 days before.",
         "properties": {
           "last_week_load": {
             "title": "Last Week Load",

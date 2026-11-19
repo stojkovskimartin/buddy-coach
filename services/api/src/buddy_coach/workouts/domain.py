@@ -86,6 +86,32 @@ TYPICAL_RPE: dict[ActivityType, float] = {
 """Effort assumed when neither an RPE nor heart rate is known; anything else counts as 4."""
 DEFAULT_TYPICAL_RPE = 4.0
 
+HEART_RATE_ACTIVITIES = frozenset(
+    {
+        ActivityType.RUNNING,
+        ActivityType.TRAIL_RUNNING,
+        ActivityType.CYCLING,
+        ActivityType.INDOOR_CYCLING,
+        ActivityType.ROWING,
+        ActivityType.CROSS_COUNTRY_SKIING,
+        ActivityType.SKI_TOURING,
+        ActivityType.HIKING,
+        ActivityType.WALKING,
+        ActivityType.SWIMMING,
+    }
+)
+"""Steady endurance work, where average heart rate reflects effort. In strength, HIIT,
+climbing or team sports the work is intermittent and average HR under-reports it."""
+
+SWIM_MAX_HR_OFFSET = 10.0
+"""Maximal heart rate in water is about 10-15 bpm lower than on land."""
+
+LOW_INTENSITY_ACTIVITIES = frozenset(
+    {ActivityType.WALKING, ActivityType.ALPINE_SKIING, ActivityType.YOGA}
+)
+"""Long but easy activities: shown and stored, but left out of the training-load summary, so a
+ski weekend or a long walk never makes the weekly ramp look 'too steep'."""
+
 MAX_IMPORT_BATCH = 500
 MAX_RANGE_DAYS = 366
 HISTORY_DAYS_FOR_FITNESS = 120
@@ -109,12 +135,18 @@ def session_load(
     avg_hr: float | None,
     age_years: int | None,
     rest_hr: float | None = None,
+    max_hr: float | None = None,
 ) -> SessionLoad:
     """Load of one session: the athlete's RPE, else heart rate, else the typical effort."""
     if rpe is not None:
         effort, source = rpe, LoadSource.RPE
-    elif avg_hr is not None and age_years is not None:
-        effort = rpe_from_heart_rate(avg_hr, rest_hr or DEFAULT_REST_HR, max_hr_tanaka(age_years))
+    elif avg_hr is not None and age_years is not None and activity in HEART_RATE_ACTIVITIES:
+        predicted = max_hr_tanaka(age_years)
+        if activity is ActivityType.SWIMMING:
+            predicted -= SWIM_MAX_HR_OFFSET
+        # A maximum the athlete actually reached beats the age formula.
+        ceiling = max(predicted, max_hr or 0.0)
+        effort = rpe_from_heart_rate(avg_hr, rest_hr or DEFAULT_REST_HR, ceiling)
         source = LoadSource.HEART_RATE
     else:
         effort, source = TYPICAL_RPE.get(activity, DEFAULT_TYPICAL_RPE), LoadSource.TYPICAL

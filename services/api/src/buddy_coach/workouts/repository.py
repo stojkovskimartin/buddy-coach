@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import date
 
 from sqlalchemy import delete, func, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from buddy_coach.workouts.domain import WorkoutSource
+from buddy_coach.workouts.domain import ActivityType, WorkoutSource
 from buddy_coach.workouts.models import Workout
 
 
@@ -70,11 +70,19 @@ class WorkoutRepository:
         )
         return result.scalars().all()
 
-    async def daily_loads(self, user_id: uuid.UUID, start: date, end: date) -> dict[date, float]:
-        """Sum of loads per day, computed in the database."""
-        result = await self._session.execute(
-            select(Workout.day, func.sum(Workout.load))
-            .where(Workout.user_id == user_id, Workout.day >= start, Workout.day <= end)
-            .group_by(Workout.day)
+    async def daily_loads(
+        self,
+        user_id: uuid.UUID,
+        start: date,
+        end: date,
+        *,
+        exclude: Collection[ActivityType] = (),
+    ) -> dict[date, float]:
+        """Sum of loads per day, computed in the database, leaving out ``exclude``."""
+        query = select(Workout.day, func.sum(Workout.load)).where(
+            Workout.user_id == user_id, Workout.day >= start, Workout.day <= end
         )
+        if exclude:
+            query = query.where(Workout.activity.not_in(list(exclude)))
+        result = await self._session.execute(query.group_by(Workout.day))
         return {day: float(total) for day, total in result.all()}

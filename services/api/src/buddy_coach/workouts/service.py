@@ -11,11 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.core.clock import local_date
 from buddy_coach.core.deps import Clock
-from buddy_coach.core.errors import NotFoundError
+from buddy_coach.core.errors import NotFoundError, ValidationFailedError
 from buddy_coach.core.events import EventBus
 from buddy_coach.profile.domain import AthleteSnapshot, ExperienceLevel, age_on
 from buddy_coach.workouts.domain import (
     HISTORY_DAYS_FOR_FITNESS,
+    LOW_INTENSITY_ACTIVITIES,
     WorkoutSource,
     load_summary,
     session_load,
@@ -33,6 +34,9 @@ from buddy_coach.workouts.schemas import (
     RampOut,
     WorkoutData,
 )
+
+FUTURE_TOLERANCE = timedelta(hours=1)
+"""Clocks drift a little; anything further ahead is a wrong date."""
 
 _DEVICE_FIELDS = (
     "activity",
@@ -70,6 +74,8 @@ class WorkoutService:
         """Create or update workouts by (source, external_id); feedback the athlete gave stays."""
         athlete = await self._athletes.athlete_snapshot(user_id)
         latest = {(w.source, w.external_id): w for w in workouts}  # last one wins in a batch
+        for data in latest.values():
+            self._refuse_future(data)
         await self._repo.lock_user(user_id)
         existing = await self._repo.by_source_ids(user_id, list(latest))
         created = 0
@@ -82,9 +88,10 @@ class WorkoutService:
                 )
                 self._repo.add(workout)
                 created += 1
+                self._apply(workout, data, athlete, keep_feedback=False)
             else:
                 first_day = min(first_day or workout.day, workout.day)
-            self._apply(workout, data, athlete)
+                self._apply(workout, data, athlete, keep_feedback=True)
             first_day = min(first_day or workout.day, workout.day)
         await self._session.commit()
         if first_day is not None:
@@ -93,13 +100,16 @@ class WorkoutService:
 
     async def log_workout(self, user_id: uuid.UUID, data: WorkoutData) -> Workout:
         """A session typed in by the athlete."""
+        self._refuse_future(data)
         workout = Workout(
             user_id=user_id,
             source=WorkoutSource.MANUAL,
             external_id=str(uuid.uuid4()),
             pain=False,
         )
-        self._apply(workout, data, await self._athletes.athlete_snapshot(user_id))
+        self._apply(
+            workout, data, await self._athletes.athlete_snapshot(user_id), keep_feedback=False
+        )
         self._repo.add(workout)
         await self._session.commit()
         await self._events.publish(WorkoutsChanged(user_id=user_id, first_day=workout.day))
@@ -144,7 +154,10 @@ class WorkoutService:
         athlete = await self._athletes.athlete_snapshot(user_id)
         today = local_date(self._now(), athlete.timezone if athlete else None)
         loads = await self._repo.daily_loads(
-            user_id, today - timedelta(days=days + HISTORY_DAYS_FOR_FITNESS), today
+            user_id,
+            today - timedelta(days=days + HISTORY_DAYS_FOR_FITNESS),
+            today,
+            exclude=LOW_INTENSITY_ACTIVITIES,
         )
         experience = athlete.experience if athlete else ExperienceLevel.BEGINNER
         summary = load_summary(loads, today, days, experience.value)
@@ -169,6 +182,7 @@ class WorkoutService:
                 verdict=summary.ramp.verdict,
             ),
             days=series,
+            excluded_activities=sorted(a.value for a in LOW_INTENSITY_ACTIVITIES),
         )
 
     async def _get(self, user_id: uuid.UUID, workout_id: uuid.UUID) -> Workout:
@@ -177,15 +191,28 @@ class WorkoutService:
             raise NotFoundError("Workout not found.")
         return workout
 
-    def _apply(self, workout: Workout, data: WorkoutData, athlete: AthleteSnapshot | None) -> None:
-        """Device fields are replaced; the athlete's own feedback is only replaced when sent."""
+    def _refuse_future(self, data: WorkoutData) -> None:
+        """A wrong device clock must not put load into days that have not happened."""
+        if data.started_at > self._now() + FUTURE_TOLERANCE:
+            raise ValidationFailedError("A workout cannot start in the future.")
+
+    def _apply(
+        self,
+        workout: Workout,
+        data: WorkoutData,
+        athlete: AthleteSnapshot | None,
+        *,
+        keep_feedback: bool,
+    ) -> None:
+        """Device fields are replaced. On a re-sync the athlete's own rating stays: a device's RPE
+        only fills an empty one, and reported pain is never cleared by a device."""
         for name in _DEVICE_FIELDS:
             setattr(workout, name, getattr(data, name))
-        if data.rpe is not None:
+        if data.rpe is not None and not (keep_feedback and workout.rpe is not None):
             workout.rpe = data.rpe
-        if data.feeling is not None:
+        if data.feeling is not None and not (keep_feedback and workout.feeling is not None):
             workout.feeling = data.feeling
-        if data.pain is not None:
+        if data.pain is not None and not (keep_feedback and workout.pain):
             workout.pain = data.pain
         workout.day = local_date(data.started_at, athlete.timezone if athlete else None)
         self._compute_load(workout, athlete)
@@ -198,6 +225,7 @@ class WorkoutService:
             rpe=workout.rpe,
             avg_hr=workout.avg_hr,
             age_years=age,
+            max_hr=workout.max_hr,
         )
         workout.load = result.load
         workout.load_source = result.source

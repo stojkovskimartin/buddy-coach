@@ -35,7 +35,11 @@ def _enum(enum_cls: type, name: str) -> Enum:
 
 
 class Workout(TimestampMixin, Base):
-    """One training session. (user, source, external_id) is unique, so re-imports update."""
+    """One training session. (user, source, external_id) is unique, so re-imports update.
+
+    ``day`` is the athlete's calendar day when the workout was stored; a later change of the
+    profile time zone does not move existing workouts.
+    """
 
     __tablename__ = "workouts_sessions"
     __table_args__ = (
