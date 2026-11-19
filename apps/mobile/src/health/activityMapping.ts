@@ -3,7 +3,9 @@
  * (HealthKit WorkoutActivityType, Health Connect ExerciseType). Anything not listed is "other".
  */
 import type { ImportedWorkout } from "@buddy/api-client";
-// The "./types" entry has the enums without loading the native module (safe in Expo Go).
+// Both imports are safe without the native modules (Expo Go): HealthKit's "./types" entry holds
+// the enums only; Health Connect's entry builds a placeholder that throws only when a function is
+// called (on RN 0.88, which runs bridgeless, it does not insist on the TurboModule at load).
 import { WorkoutActivityType as HK } from "@kingstinct/react-native-healthkit/types";
 import { ExerciseType as HC } from "react-native-health-connect";
 

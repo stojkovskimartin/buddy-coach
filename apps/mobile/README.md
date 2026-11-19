@@ -13,7 +13,8 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
 
 - **Workouts from your watch** (on Today) – reads workouts and heart rate from Apple Health
   (iPhone) or Health Connect (Android) and sends them to the server; syncs when the app opens,
-  when it returns to the foreground and on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP and other apps that write there are
+  when it returns to the foreground and on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP
+  and other apps that write there are
   included. Read only; nothing is written back and no workout is stored on the phone.
 
 Profile setup and new goals are done in the web app for now; the guided mobile onboarding is
