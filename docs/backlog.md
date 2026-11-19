@@ -18,3 +18,6 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Branch protection on `main` requiring the CI checks (needs repository admin settings) | docs review | Before beta |
 | Coach nutrition tool: build on `athlete_snapshot` + `nutrition.domain.targets_for` so the coach and the Today screen give the same numbers (tool still uses training_kcal 0 by default) | #20 review | Next coach PR |
 | Nutrition targets: training energy comes from available time (capped 180 min/day); replace with logged workouts and adaptive maintenance | #20 review | With workout logging |
+| Workout import: skip invalid workouts and return `rejected` instead of failing the whole batch; store `rpe_source` (athlete or device) | #21 review | With phone sync |
+| Workouts: resting HR from the check-in baseline; database checks for HR, distance, kcal | #21 review | Next workouts PR |
+| Walking, alpine skiing and yoga are left out of the training-load summary – product owner to confirm | #21 review | Product decision |
