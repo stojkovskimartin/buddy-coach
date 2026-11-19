@@ -21,3 +21,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Workout import: skip invalid workouts and return `rejected` instead of failing the whole batch; store `rpe_source` (athlete or device) | #21 review | With phone sync |
 | Workouts: resting HR from the check-in baseline; database checks for HR, distance, kcal | #21 review | Next workouts PR |
 | Walking, alpine skiing and yoga are left out of the training-load summary – product owner to confirm | #21 review | Product decision |
+| Store review for health data: App Store privacy policy and health-data consent (guidelines 5.1.2(i), 5.1.3); Google Play Health Connect data declaration and rationale screen | ADR-0007 | Before store builds |
