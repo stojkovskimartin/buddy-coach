@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from buddy_coach import __version__
+from buddy_coach.body.router import router as body_router
 from buddy_coach.checkin.router import router as checkin_router
 from buddy_coach.coach.deps import close_coach, install_coach
 from buddy_coach.coach.llm import LLMProvider
@@ -77,6 +78,7 @@ def create_app(
     api.include_router(checkin_router)
     api.include_router(nutrition_router)
     api.include_router(workouts_router)
+    api.include_router(body_router)
     api.include_router(coach_router)
     app.include_router(health_router)
     app.include_router(api)

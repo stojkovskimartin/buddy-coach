@@ -16,6 +16,7 @@ from buddy_coach.science.nutrition import (
     daily_targets,
     maintenance_kcal,
     session_carbs_g_per_hour,
+    weight_trend,
     weight_trend_kg_per_day,
 )
 
@@ -254,3 +255,17 @@ def test_session_carbs(minutes: int, grams: int) -> None:
 def test_session_carbs_rejects_negative() -> None:
     with pytest.raises(ValueError, match="duration_min"):
         session_carbs_g_per_hour(-5)
+
+
+def test_weight_trend_averages_the_measured_days_of_the_last_week() -> None:
+    d = date(2026, 11, 1)
+    daily = [
+        WeightEntry(d + timedelta(days=offset), kg)
+        for offset, kg in [(6, 79.0), (0, 80.0), (2, 81.0), (9, 77.0)]  # unordered, with gaps
+    ]
+    assert [(t.day.day, t.weight_kg) for t in weight_trend(daily)] == [
+        (1, 80.0),
+        (3, 80.5),
+        (7, 80.0),
+        (10, 78.0),  # the window 4-10 Nov holds 7 and 10 Nov
+    ]
