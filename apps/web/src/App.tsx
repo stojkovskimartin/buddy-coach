@@ -91,15 +91,14 @@ function ProfileEditor() {
     );
   if (profile === undefined) return <p className="muted">Loading…</p>;
   return (
-    <>
-      <OnboardingPage initial={profile} />
+    <OnboardingPage initial={profile}>
       {profile && (
         <section className="card" aria-labelledby="avatar-title">
           <h2 id="avatar-title">Profile picture</h2>
           <PhotoStrip kind="avatar" title="Profile picture" />
         </section>
       )}
-    </>
+    </OnboardingPage>
   );
 }
 

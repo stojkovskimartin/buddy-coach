@@ -160,36 +160,52 @@ async def test_anthropic_network_error_raises_llm_error() -> None:
         await provider.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
 
 
-async def test_dev_provider_calls_argument_free_tool_then_summarises() -> None:
+async def test_dev_provider_calls_every_argument_free_tool_then_lists_them_by_name() -> None:
     dev = DevLLMProvider()
-    first = await dev.complete(
-        LLMRequest(system="s", messages=(Message("user", "x"),), tools=(TOOL,))
+    targets = ToolSpec(name="get_today_targets", description="d", input_schema={"type": "object"})
+    session = ToolSpec(
+        name="session_fuelling",
+        description="d",
+        input_schema={"type": "object", "required": ["duration_min"]},
     )
-    assert first.tool_calls[0].name == "get_profile_summary"
+    first = await dev.complete(
+        LLMRequest(system="s", messages=(Message("user", "x"),), tools=(TOOL, targets, session))
+    )
+    assert [c.name for c in first.tool_calls] == ["get_profile_summary", "get_today_targets"]
+
     second = await dev.complete(
         LLMRequest(
             system="s",
             messages=(
                 Message("user", "x"),
+                Message("assistant", "", tool_calls=first.tool_calls),
                 Message(
                     "tool",
                     '{"onboarding_complete":true,"sex":null,"primary_goal":{"goal_type":"run"}}',
-                    tool_call_id="dev-1",
+                    tool_call_id=first.tool_calls[0].id,
                 ),
+                Message("tool", '{"kcal":2330,"reasons":[]}', tool_call_id=first.tool_calls[1].id),
             ),
         )
     )
     assert second.text == (
-        f"{DEV_NOTICE}\n\n- Onboarding complete: yes\n- Primary goal:\n  - Goal type: run"
+        f"{DEV_NOTICE}\n\nProfile summary:\n- Onboarding complete: yes\n- Primary goal:\n"
+        "  - Goal type: run\n\nToday targets:\n- Kcal: 2330"
     )
 
 
-async def test_dev_provider_keeps_plain_tool_results_and_says_when_empty() -> None:
+async def test_dev_provider_skips_notes_and_empty_data_and_says_when_nothing_is_left() -> None:
     dev = DevLLMProvider()
-    plain = await dev.complete(
-        LLMRequest(system="s", messages=(Message("tool", "plain", tool_call_id="dev-1"),))
+    response = await dev.complete(
+        LLMRequest(
+            system="s",
+            messages=(
+                Message("tool", "Tool limit reached.", tool_call_id="dev-0"),
+                Message("tool", '{"days":[]}', tool_call_id="dev-1"),
+            ),
+        )
     )
-    assert plain.text == f"{DEV_NOTICE}\n\nplain"
+    assert response.text == f"{DEV_NOTICE}\n\nNo data yet."
     empty = await dev.complete(LLMRequest(system="s", messages=(Message("user", "x"),)))
     assert empty.text == f"{DEV_NOTICE}\n\nNo data yet."
 
@@ -207,8 +223,8 @@ async def test_dev_provider_separates_list_items_and_shows_tool_errors() -> None
         )
     )
     assert response.text == (
-        f"{DEV_NOTICE}\n\n- Goals:\n  - Goal type: run\n\n  - Goal type: lose_weight\n"
-        "- Error: unknown tool"
+        f"{DEV_NOTICE}\n\nData:\n- Goals:\n  - Goal type: run\n\n  - Goal type: lose_weight"
+        "\n\nData:\n- Error: unknown tool"
     )
 
 

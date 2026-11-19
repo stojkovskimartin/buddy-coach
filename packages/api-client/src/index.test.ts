@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ApiError, BuddyClient, memoryTokenStore, type TokenPair } from "./index";
+import { ApiError, BuddyClient, SERVER_OUTDATED, memoryTokenStore, type TokenPair } from "./index";
 
 const BASE = "http://api.test";
 const tokens = (n: number): TokenPair => ({
@@ -368,6 +368,16 @@ describe("BuddyClient", () => {
       const url = new URL(api.calls[0]!.url);
       expect(url.searchParams.get("from")).toBe("2026-11-01");
       expect(url.searchParams.get("to")).toBe("2026-11-18");
+    });
+  });
+
+  it("says the server is outdated when an endpoint does not exist there", async () => {
+    const api = fakeApi({ "GET /api/v1/meals/daily": () => json(404, { detail: "Not Found" }) });
+    const client = new BuddyClient({ baseUrl: BASE, tokens: memoryTokenStore(tokens(1)), fetch: api.fetch });
+    await expect(client.listDailyTotals()).rejects.toMatchObject({
+      status: 404,
+      code: "server_outdated",
+      message: SERVER_OUTDATED,
     });
   });
 

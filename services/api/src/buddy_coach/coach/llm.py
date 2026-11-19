@@ -144,26 +144,34 @@ def _scalar(value: Any) -> str:
 class DevLLMProvider:
     """Deterministic stand-in for local development without an API key.
 
-    On the first step it calls the first offered tool that needs no arguments; afterwards it
-    lists the tool results as readable lines. Good enough to exercise the whole stack.
+    On the first step it calls every offered tool that needs no arguments (the agent stops at its
+    tool limit); afterwards it lists each tool's data under the tool's name. Good enough to see
+    the whole stack and the user's data without a model.
     """
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
-        """Call one argument-free tool, then list what it returned."""
+        """Call the argument-free tools, then list what they returned."""
         tool_results = [m for m in request.messages if m.role == "tool"]
         if not tool_results and request.tool_choice == "auto":
-            for tool in request.tools:
-                if not tool.input_schema.get("required"):
-                    return LLMResponse(
-                        tool_calls=(ToolCall(id="dev-1", name=tool.name, arguments={}),)
-                    )
-        lines: list[str] = []
+            calls = tuple(
+                ToolCall(id=f"dev-{i}", name=tool.name, arguments={})
+                for i, tool in enumerate(request.tools)
+                if not tool.input_schema.get("required")
+            )
+            if calls:
+                return LLMResponse(tool_calls=calls)
+        names = {c.id: c.name for m in request.messages for c in m.tool_calls}
+        sections: list[str] = []
         for message in tool_results:
             try:
-                lines += _readable(json.loads(message.content))
+                lines = _readable(json.loads(message.content))
             except ValueError:
-                lines.append(message.content)
-        return LLMResponse(text=f"{DEV_NOTICE}\n\n" + ("\n".join(lines) or "No data yet."))
+                continue  # not data, e.g. the note that the tool limit was reached
+            if lines:
+                title = names.get(message.tool_call_id or "", "").removeprefix("get_")
+                heading = title.replace("_", " ").capitalize() or "Data"
+                sections.append("\n".join([f"{heading}:", *lines]))
+        return LLMResponse(text=f"{DEV_NOTICE}\n\n" + ("\n\n".join(sections) or "No data yet."))
 
 
 class _HttpProvider:
