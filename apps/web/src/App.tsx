@@ -5,6 +5,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
 import { CoachPage } from "./pages/CoachPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { FoodPage } from "./pages/FoodPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 
@@ -48,6 +49,7 @@ function Header() {
       {loggedIn && (
         <nav>
           <Link to="/">Goals</Link>
+          <Link to="/food">Food</Link>
           <Link to="/coach">Coach</Link>
           <Link to="/onboarding">Profile</Link>
           <button type="button" className="link" onClick={() => void logout()}>
@@ -107,6 +109,14 @@ export function AppRoutes() {
           element={
             <RequireProfile>
               <CoachPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/food"
+          element={
+            <RequireProfile>
+              <FoodPage />
             </RequireProfile>
           }
         />

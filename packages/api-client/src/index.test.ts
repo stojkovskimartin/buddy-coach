@@ -235,6 +235,26 @@ describe("BuddyClient", () => {
     });
   });
 
+  describe("food diary", () => {
+    it("adds, reads a day and deletes", async () => {
+      const day = { day: "2026-11-19", entries: [], totals: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 } };
+      const api = fakeApi({
+        "POST /api/v1/meals/entries": () => json(201, { id: "m1" }),
+        "GET /api/v1/meals/entries": () => json(200, day),
+        "DELETE /api/v1/meals/entries/m1": () => new Response(null, { status: 204 }),
+      });
+      const client = new BuddyClient({ baseUrl: BASE, tokens: memoryTokenStore(tokens(1)), fetch: api.fetch });
+      const entry = { meal: "lunch" as const, name: "Rice", grams: 150, kcal: 195, protein_g: 4, carbs_g: 42, fat_g: 0.5 };
+      await client.logMeal(entry);
+      expect(await api.calls[0]?.json()).toEqual(entry);
+      expect(await client.getMealDay("2026-11-18")).toEqual(day);
+      expect(new URL(api.calls[1]!.url).searchParams.get("day")).toBe("2026-11-18");
+      await client.getMealDay();
+      expect(new URL(api.calls[2]!.url).searchParams.has("day")).toBe(false);
+      await expect(client.deleteMeal("m1")).resolves.toBeUndefined();
+    });
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

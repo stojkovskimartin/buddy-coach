@@ -3,6 +3,9 @@ import type {
   Checkin,
   CheckinIn,
   Goal,
+  MealDay,
+  MealEntry,
+  MealEntryIn,
   NutritionTargets,
   Profile,
   ProfileIn,
@@ -11,9 +14,9 @@ import type {
   WeightIn,
 } from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 import type { CoachApi } from "./lib/session";
@@ -84,8 +87,31 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     logWeight: vi.fn(async (w: WeightIn) => weightOf(w.weight_kg)),
     listWeights: vi.fn(async (): Promise<WeightHistory> => ({ weights: [], trend: [] })),
     deleteWeight: vi.fn(async () => undefined),
+    logMeal: vi.fn(async (e: MealEntryIn): Promise<MealEntry> => mealOf(e.name, { grams: e.grams, kcal: e.kcal })),
+    getMealDay: vi.fn(async (): Promise<MealDay> => ({ day: "2026-11-19", entries: [], totals: ZERO })),
+    deleteMeal: vi.fn(async () => undefined),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
+    ...overrides,
+  };
+}
+
+const ZERO = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+
+function mealOf(name: string, overrides: Partial<MealEntry> = {}): MealEntry {
+  return {
+    id: `m-${name}`,
+    eaten_at: "2026-11-19T07:30:00Z",
+    day: "2026-11-19",
+    meal: "breakfast",
+    name,
+    grams: 80,
+    kcal: 300,
+    protein_g: 10.4,
+    carbs_g: 47.2,
+    fat_g: 5.6,
+    source: "manual",
+    barcode: null,
     ...overrides,
   };
 }
@@ -505,6 +531,114 @@ describe("web app", () => {
         await within(card).findByRole("button", { name: "Delete 77.6 kg from 2026-11-19" }),
       );
       expect(api.deleteWeight).toHaveBeenCalledWith("w2");
+    });
+  });
+
+  describe("food diary", () => {
+    const TARGETS: NutritionTargets = {
+      day: "2026-11-19",
+      goal: "maintain",
+      kcal: 2500,
+      protein_g: 150,
+      carbs_g: 300,
+      fat_g: 80,
+      maintenance_kcal: 2500,
+      floor_applied: false,
+      training_kcal_estimated: true,
+      reasons: [],
+    };
+    const OATS = {
+      code: "7610000000017",
+      product_name: "Oat flakes",
+      brands: "Coop",
+      nutriments: { "energy-kcal_100g": 375, proteins_100g: 13, carbohydrates_100g: 59, fat_100g: 7 },
+    };
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("shows the day against today's targets, grouped by meal, and deletes an entry", async () => {
+      const day: MealDay = {
+        day: "2026-11-19",
+        entries: [mealOf("Oat flakes"), mealOf("Rice", { id: "m2", meal: "lunch", kcal: 195 })],
+        totals: { kcal: 495, protein_g: 14.4, carbs_g: 89.2, fat_g: 6.1 },
+      };
+      const api = fakeApi({ getMealDay: vi.fn(async () => day), getTodayTargets: vi.fn(async () => TARGETS) });
+      renderAt("/food", api, true);
+      expect(await screen.findByText("495 / 2500 kcal")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Breakfast" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Lunch" })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Delete Rice" }));
+      expect(api.deleteMeal).toHaveBeenCalledWith("m2");
+    });
+
+    it("searches Open Food Facts and adds the portion eaten", async () => {
+      const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ products: [OATS] }) }));
+      vi.stubGlobal("fetch", fetchMock);
+      const api = fakeApi({ getTodayTargets: vi.fn(async () => TARGETS) });
+      renderAt("/food", api, true);
+      await userEvent.selectOptions(await screen.findByLabelText("Meal"), "breakfast");
+      await userEvent.type(screen.getByRole("textbox", { name: "Search food" }), "oats");
+      await userEvent.click(screen.getByRole("button", { name: "Search" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Choose Oat flakes" }));
+      await userEvent.clear(screen.getByLabelText("Grams eaten"));
+      await userEvent.type(screen.getByLabelText("Grams eaten"), "80");
+      expect(screen.getByText(/300 kcal · protein 10.4 g/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Add to breakfast" }));
+      expect(api.logMeal).toHaveBeenCalledWith({
+        meal: "breakfast",
+        name: "Oat flakes",
+        grams: 80,
+        kcal: 300,
+        protein_g: 10.4,
+        carbs_g: 47.2,
+        fat_g: 5.6,
+        source: "open_food_facts",
+        barcode: "7610000000017",
+      });
+      expect(screen.getByText(/Open Food Facts \(ODbL\)/)).toBeInTheDocument();
+    });
+
+    it("shows an earlier day read-only, without today's targets", async () => {
+      const getMealDay = vi.fn(async (day?: string): Promise<MealDay> => ({
+        day: day ?? "2026-11-19",
+        entries: [],
+        totals: { ...ZERO, kcal: day ? 1800 : 0 },
+      }));
+      const api = fakeApi({ getMealDay, getTodayTargets: vi.fn(async () => TARGETS) });
+      renderAt("/food", api, true);
+      expect(await screen.findByText("0 / 2500 kcal")).toBeInTheDocument();
+      const picker = screen.getByLabelText("Day");
+      expect(picker).toHaveAttribute("max", "2026-11-19");
+      expect(screen.getByRole("heading", { name: "Add food" })).toBeInTheDocument();
+
+      fireEvent.change(picker, { target: { value: "2026-11-18" } });
+      expect(await screen.findByText("1800 kcal")).toBeInTheDocument();
+      expect(getMealDay).toHaveBeenLastCalledWith("2026-11-18");
+      expect(screen.queryByRole("heading", { name: "Add food" })).not.toBeInTheDocument();
+    });
+
+    it("says when a barcode is unknown", async () => {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ status: 0 }) })));
+      renderAt("/food", fakeApi(), true);
+      await userEvent.type(await screen.findByLabelText("Barcode"), "7610000000017");
+      await userEvent.click(screen.getByRole("button", { name: "Find" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/No food with this barcode/);
+    });
+
+    it("adds a typed-in food and checks the input first", async () => {
+      const api = fakeApi();
+      renderAt("/food", api, true);
+      await userEvent.click(await screen.findByRole("button", { name: "Type in a food instead" }));
+      const form = screen.getByRole("form", { name: "Type in a food" });
+      await userEvent.type(within(form).getByLabelText("Food"), "Homemade soup");
+      await userEvent.click(within(form).getByRole("button", { name: /Add to/ }));
+      expect(within(form).getByRole("alert")).toHaveTextContent(/grams/);
+      await userEvent.type(within(form).getByLabelText("Grams eaten"), "350");
+      await userEvent.type(within(form).getByLabelText("Calories (kcal)"), "210");
+      await userEvent.click(within(form).getByRole("button", { name: /Add to/ }));
+      expect(api.logMeal).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Homemade soup", grams: 350, kcal: 210, protein_g: 0 }),
+      );
     });
   });
 });
