@@ -85,9 +85,9 @@ pull request numbers.
 | #43 | Direct accounts: connect a Withings account on the Connections page (OAuth, tokens encrypted, sign-in bound to the user), the last year of weigh-ins on connect, "Sync now" every 10 minutes, disconnect – ADR-0008 | +20, +7 frontend (shared 1, web 6) |
 | #44 | WHOOP account: workouts of the last year on connect, then from a week before the last sync (WHOOP rescores late); unusable records skipped; providers share one client interface | +8, +1 frontend (web 1) |
 | #46 | Mobile Food tab: the day's diary against today's targets, earlier days, Open Food Facts search, barcode scan with the camera, typed-in food | +7 frontend (mobile 7) |
-| #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +3 frontend (shared 1, mobile 2) |
+| #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +5 frontend (shared 1, mobile 4) |
 
-Totals: backend 578 tests, frontend 225 tests (shared 34, client 28, web 48, mobile 115); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 578 tests, frontend 227 tests (shared 34, client 28, web 48, mobile 117); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

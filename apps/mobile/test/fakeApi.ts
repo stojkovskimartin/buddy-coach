@@ -77,7 +77,7 @@ export function trainingLoad(days: TrainingLoad["days"]): TrainingLoad {
     acute_chronic_ratio: null,
     excluded_activities: [],
     ramp: { last_week_load: 0, this_week_load: 0, max_allowed_load: 0, verdict: "ok" },
-  } as TrainingLoad;
+  } satisfies TrainingLoad;
 }
 
 export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = {}) {

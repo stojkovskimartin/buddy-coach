@@ -22,7 +22,8 @@ function shortDay(day: string): string {
 }
 
 function Axes({ days, top, bottom, unit }: { days: readonly [string, string]; top: number; bottom?: number; unit: string }) {
-  const value = (v: number) => `${Math.round(v)} ${unit}`.trim();
+  const precise = bottom !== undefined && top - bottom < 5;
+  const value = (v: number) => `${precise ? v.toFixed(1) : Math.round(v)} ${unit}`.trim();
   return (
     <>
       <SvgText x={2} y={PAD + 4} fontSize={10} fill={colors.muted}>
@@ -78,7 +79,7 @@ export function LineChart({
           <Path key={s.name} d={s.path} stroke={TONE[s.tone]} strokeWidth={2} fill="none" />
         ))}
         {scaled.map((s) =>
-          s.points.length <= 31
+          s.points.length <= 60
             ? s.points.map((p) => <Circle key={`${s.name}${p.day}`} cx={p.x} cy={p.y} r={2.5} fill={TONE[s.tone]} />)
             : null,
         )}
@@ -86,8 +87,8 @@ export function LineChart({
       {series.length > 1 && (
         <View style={styles.legend} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {series.map((s) => (
-            <Text key={s.name} style={[styles.legendText, { color: TONE[s.tone] }]}>
-              ― {s.name}
+            <Text key={s.name} style={styles.legendText}>
+              <Text style={{ color: TONE[s.tone] }}>―</Text> {s.name}
             </Text>
           ))}
         </View>
@@ -111,11 +112,11 @@ export function BarChart({
   unit: string;
 }) {
   if (points.length === 0) return null;
-  const top = Math.max(target ?? 0, ...points.map((p) => p.value));
+  const top = Math.max(1, target ?? 0, ...points.map((p) => p.value));
   const options = { padding: PAD, days, values: [0, top] as const };
   const scaled = scaleSeries(points, WIDTH, HEIGHT, options);
   const totalDays = Math.max(1, (Date.parse(days[1]) - Date.parse(days[0])) / DAY_MS + 1);
-  const barWidth = Math.max(1, ((WIDTH - 2 * PAD) / totalDays) * 0.7);
+  const barWidth = Math.max(1.5, ((WIDTH - 2 * PAD) / totalDays) * 0.7);
   const base = HEIGHT - PAD;
   const targetY = target === null ? null : scaleSeries([{ day: days[0], value: target }], WIDTH, HEIGHT, options).points[0]!.y;
   return (
@@ -141,5 +142,5 @@ export function BarChart({
 const styles = StyleSheet.create({
   figure: { gap: space.xs },
   legend: { flexDirection: "row", gap: space.lg },
-  legendText: { fontSize: font.small, fontWeight: "600" },
+  legendText: { fontSize: font.small, fontWeight: "600", color: colors.text },
 });

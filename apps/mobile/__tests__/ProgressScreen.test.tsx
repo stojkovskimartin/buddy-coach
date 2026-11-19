@@ -50,4 +50,30 @@ describe("ProgressScreen", () => {
     expect(api.getTrainingLoad).toHaveBeenLastCalledWith(365);
     expect(await screen.findByText("No workouts in this period yet.")).toBeTruthy();
   });
+
+  it("reloads each time the tab is shown again", async () => {
+    const api = fakeApi();
+    await openProgress(api);
+    await screen.findByText("No weights in this period yet.");
+    await fireEvent.press(screen.getByRole("tab", { name: "Food" }));
+    await fireEvent.press(screen.getByRole("tab", { name: "Progress" }));
+    expect(api.getTrainingLoad).toHaveBeenCalledTimes(2);
+  });
+
+  it("never shows an older period's answer after a newer one", async () => {
+    let answerFirst: (value: unknown) => void = () => undefined;
+    const api = fakeApi({
+      listDailyTotals: jest
+        .fn()
+        .mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)))
+        .mockResolvedValue([{ day: "2026-11-18", kcal: 2000, protein_g: 100, carbs_g: 200, fat_g: 60 }]),
+    });
+    await openProgress(api);
+    await fireEvent.press(screen.getByRole("radio", { name: "1 year" }));
+    expect(await screen.findByText(/on average 2000 kcal/)).toBeTruthy();
+
+    answerFirst([{ day: "2026-11-18", kcal: 3000, protein_g: 100, carbs_g: 200, fat_g: 60 }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText(/on average 3000 kcal/)).toBeNull();
+  });
 });
