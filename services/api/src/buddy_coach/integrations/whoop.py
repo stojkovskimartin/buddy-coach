@@ -12,6 +12,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+from pydantic import ValidationError
 
 from buddy_coach.integrations.clients import Pulled, Tokens
 from buddy_coach.integrations.domain import (
@@ -159,7 +160,7 @@ class WhoopClient:
             )
         except httpx.HTTPError as exc:
             raise ProviderError("WHOOP did not answer. Try again later.") from exc
-        if response.status_code == httpx.codes.UNAUTHORIZED:
+        if response.status_code in (httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN):
             raise ReconnectRequiredError("WHOOP no longer accepts this connection.")
         return _json(response)
 
@@ -186,13 +187,10 @@ def workout_from_whoop(record: dict[str, Any], now: datetime) -> ImportedWorkout
     except (KeyError, ValueError):
         return None
     workout_id = record.get("id")
-    minutes = (end - start).total_seconds() / 60
-    if (
-        not workout_id
-        or start.tzinfo is None
-        or not 0 < minutes <= 24 * 60
-        or start > now + FUTURE_TOLERANCE
-    ):
+    if not workout_id or start.tzinfo is None or end.tzinfo is None:
+        return None
+    minutes = round((end - start).total_seconds() / 60, 1)
+    if not 0 < minutes <= 24 * 60 or start > now + FUTURE_TOLERANCE:
         return None
     score = record.get("score") if record.get("score_state") == "SCORED" else None
     score = score if isinstance(score, dict) else {}
@@ -200,21 +198,24 @@ def workout_from_whoop(record: dict[str, Any], now: datetime) -> ImportedWorkout
     max_hr = _within(score.get("max_heart_rate"), 30, 240)
     if avg_hr is not None and max_hr is not None and max_hr < avg_hr:
         max_hr = None
+    sport = str(record.get("sport_name") or "").lower().replace("-", "_").replace(" ", "_")
     distance_m = _within(score.get("distance_meter"), 0, 1_000_000)
     kilojoule = _within(score.get("kilojoule"), 0, 20_000 * KJ_PER_KCAL)
-    sport = str(record.get("sport_name") or "").lower().replace("-", "_").replace(" ", "_")
-    return ImportedWorkout(
-        source=WorkoutSource.WHOOP,
-        external_id=str(workout_id)[:128],
-        activity=_SPORTS.get(sport, ActivityType.OTHER),
-        started_at=start,
-        duration_min=round(minutes, 1),
-        distance_km=round(distance_m / 1000, 3) if distance_m else None,
-        elevation_gain_m=_within(score.get("altitude_gain_meter"), 0, 10_000),
-        avg_hr=avg_hr,
-        max_hr=max_hr,
-        kcal=round(kilojoule / KJ_PER_KCAL) if kilojoule else None,
-    )
+    try:
+        return ImportedWorkout(
+            source=WorkoutSource.WHOOP,
+            external_id=str(workout_id)[:128],
+            activity=_SPORTS.get(sport, ActivityType.OTHER),
+            started_at=start,
+            duration_min=minutes,
+            distance_km=round(distance_m / 1000, 3) if distance_m else None,
+            elevation_gain_m=_within(score.get("altitude_gain_meter"), 0, 10_000),
+            avg_hr=avg_hr,
+            max_hr=max_hr,
+            kcal=round(kilojoule / KJ_PER_KCAL) if kilojoule else None,
+        )
+    except ValidationError:  # anything else implausible: leave the record out, never the sync
+        return None
 
 
 def _within(value: Any, low: float, high: float) -> float | None:

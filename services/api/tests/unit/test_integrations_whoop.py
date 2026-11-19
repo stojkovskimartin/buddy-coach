@@ -76,5 +76,7 @@ def test_unusable_workouts_are_skipped() -> None:
         _record(end="2026-11-18T16:00:00Z"),  # ends before it starts
         _record(end="2026-11-20T18:00:00Z"),  # longer than a day
         _record(start="2026-11-19T09:00:00Z", end="2026-11-19T10:00:00Z"),  # in the future
+        _record(end="2026-11-18T17:00:02Z"),  # 2 seconds
+        _record(end="2026-11-18T18:00:00"),  # time zone on one end only
     ]
     assert [workout_from_whoop(r, NOW) for r in unusable] == [None] * len(unusable)
