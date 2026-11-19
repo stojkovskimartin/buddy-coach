@@ -55,6 +55,14 @@ class ImportResult(BaseModel):
     updated: int
 
 
+class WorkoutSourceOut(BaseModel):
+    """A source the athlete has workouts from: how many and the latest one."""
+
+    source: WorkoutSource
+    workouts: int
+    last_at: datetime
+
+
 class FeedbackIn(BaseModel):
     """How the session felt. Only the fields sent are changed."""
 

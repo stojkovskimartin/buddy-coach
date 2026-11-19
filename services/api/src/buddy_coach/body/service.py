@@ -20,6 +20,7 @@ from buddy_coach.body.schemas import (
     WeightImportResult,
     WeightIn,
     WeightOut,
+    WeightSourceOut,
 )
 from buddy_coach.core.clock import local_date
 from buddy_coach.core.deps import Clock
@@ -134,6 +135,13 @@ class BodyService:
                 if t.day >= start
             ],
         )
+
+    async def sources(self, user_id: uuid.UUID) -> list[WeightSourceOut]:
+        """Where the weights come from, latest first (the connections overview)."""
+        return [
+            WeightSourceOut(source=s, weights=n, last_at=last)
+            for s, n, last in await self._repo.sources(user_id)
+        ]
 
     async def today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone."""

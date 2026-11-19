@@ -1834,6 +1834,30 @@
         "title": "WeightSource",
         "type": "string"
       },
+      "WeightSourceOut": {
+        "description": "A source the athlete has weights from (a smart scale via the phone, or typed in).",
+        "properties": {
+          "last_at": {
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WeightSource"
+          },
+          "weights": {
+            "title": "Weights",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source",
+          "weights",
+          "last_at"
+        ],
+        "title": "WeightSourceOut",
+        "type": "object"
+      },
       "WorkoutData": {
         "description": "What a device, an app or the athlete reports about a session.",
         "properties": {
@@ -2123,6 +2147,30 @@
         ],
         "title": "WorkoutSource",
         "type": "string"
+      },
+      "WorkoutSourceOut": {
+        "description": "A source the athlete has workouts from: how many and the latest one.",
+        "properties": {
+          "last_at": {
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WorkoutSource"
+          },
+          "workouts": {
+            "title": "Workouts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source",
+          "workouts",
+          "last_at"
+        ],
+        "title": "WorkoutSourceOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -2459,6 +2507,37 @@
           }
         ],
         "summary": "Import Weights",
+        "tags": [
+          "body"
+        ]
+      }
+    },
+    "/api/v1/body/weights/sources": {
+      "get": {
+        "description": "Where the weights come from (smart scale via the phone, or typed in): count and latest.",
+        "operationId": "weight_sources_api_v1_body_weights_sources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WeightSourceOut"
+                  },
+                  "title": "Response Weight Sources Api V1 Body Weights Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Weight Sources",
         "tags": [
           "body"
         ]
@@ -3396,7 +3475,7 @@
             "description": "Successful Response"
           },
           "413": {
-            "description": "A photo can be at most 10 MB."
+            "description": "The file can be at most 10 MB."
           },
           "422": {
             "content": {
@@ -3805,6 +3884,47 @@
         ]
       }
     },
+    "/api/v1/workouts/fit": {
+      "post": {
+        "description": "Import a FIT activity file from a watch (max 10 MB). Uploading it again updates it.",
+        "operationId": "upload_fit_api_v1_workouts_fit_post",
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "description": "Larger than 10 MB"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Fit",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
     "/api/v1/workouts/import": {
       "post": {
         "description": "Sync workouts from a device or app. Safe to repeat: known workouts are updated.",
@@ -3847,6 +3967,37 @@
           }
         ],
         "summary": "Import Workouts",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/api/v1/workouts/sources": {
+      "get": {
+        "description": "Where the workouts come from (phone health app, watch files, manual): count and latest.",
+        "operationId": "workout_sources_api_v1_workouts_sources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkoutSourceOut"
+                  },
+                  "title": "Response Workout Sources Api V1 Workouts Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Workout Sources",
         "tags": [
           "workouts"
         ]

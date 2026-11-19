@@ -1,5 +1,4 @@
-"""HTTP endpoints for photos. Uploads are the raw image bytes (no multipart), read with a hard
-size cap while streaming, so an oversized upload never reaches memory or disk."""
+"""HTTP endpoints for photos. Uploads are the raw image bytes, read with a hard size cap."""
 
 from __future__ import annotations
 
@@ -11,7 +10,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.core.db import get_session
-from buddy_coach.core.errors import PayloadTooLargeError
+from buddy_coach.core.uploads import read_capped
 from buddy_coach.identity.deps import CurrentUserDep
 from buddy_coach.media.deps import PhotoServiceDep
 from buddy_coach.media.domain import MAX_UPLOAD_BYTES, PhotoKind
@@ -30,21 +29,7 @@ _UPLOAD_BODY: dict[str, Any] = {
         "content": {"image/jpeg": _BINARY, "image/png": _BINARY, "image/webp": _BINARY},
     }
 }
-_TOO_LARGE = f"A photo can be at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
-
-
-async def _read_capped(request: Request) -> bytes:
-    declared = request.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
-        raise PayloadTooLargeError(_TOO_LARGE)
-    chunks: list[bytes] = []
-    received = 0
-    async for chunk in request.stream():
-        received += len(chunk)
-        if received > MAX_UPLOAD_BYTES:
-            raise PayloadTooLargeError(_TOO_LARGE)
-        chunks.append(chunk)
-    return b"".join(chunks)
+_TOO_LARGE = f"The file can be at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
 
 
 @router.post(
@@ -66,7 +51,7 @@ async def upload_photo(
     # The login check opened a transaction; end it so no database connection waits idle while
     # a slow upload streams in and the photo is processed.
     await session.commit()
-    data = await _read_capped(request)
+    data = await read_capped(request, MAX_UPLOAD_BYTES)
     return PhotoOut.model_validate(await service.upload(current.id, kind, data))
 
 

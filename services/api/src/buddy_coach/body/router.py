@@ -15,6 +15,7 @@ from buddy_coach.body.schemas import (
     WeightImportResult,
     WeightIn,
     WeightOut,
+    WeightSourceOut,
 )
 from buddy_coach.identity.deps import CurrentUserDep
 
@@ -40,6 +41,12 @@ async def import_weights(
     Deletions in the phone's health store are not mirrored; delete here instead.
     """
     return await service.import_weights(current.id, body.weights)
+
+
+@router.get("/sources", response_model=list[WeightSourceOut])
+async def weight_sources(current: CurrentUserDep, service: BodyServiceDep) -> list[WeightSourceOut]:
+    """Where the weights come from (smart scale via the phone, or typed in): count and latest."""
+    return await service.sources(current.id)
 
 
 @router.get("", response_model=WeightHistoryOut)

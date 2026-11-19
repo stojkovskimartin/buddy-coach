@@ -49,7 +49,7 @@ athlete's time zone (`core.clock.local_date`).
 ```
 Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐  (ADR-0007)
 Watch / app ──► vendor cloud API (WHOOP, Garmin, Fitbit, ...) ──► integrations ────┤  (planned)
-FIT file upload ───────────────────────────────────────────────────────────────────┤  (planned)
+FIT file upload ──► POST /workouts/fit (Garmin FIT SDK) ───────────────────────────┤
                                                                                     ▼
                                                                         POST /workouts/import
 Athlete ──► manual log ──► POST /workouts                                           │

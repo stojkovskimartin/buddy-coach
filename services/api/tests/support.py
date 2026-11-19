@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+from garmin_fit_sdk import Encoder, Profile
 
 from buddy_coach.core.config import Environment, Settings
 from buddy_coach.core.events import DomainEvent, Handler, InProcessEventBus
@@ -77,4 +79,41 @@ VALID_PROFILE: dict[str, Any] = {
     "minutes_per_session": 60,
     "timezone": "Europe/Zurich",
     "locale": "en",
+}
+
+
+FIT_START = datetime(2026, 11, 18, 7, 0, tzinfo=UTC)
+
+
+def fit_file(*sessions: dict[str, Any]) -> bytes:
+    """A FIT activity file, written with Garmin's SDK."""
+    encoder = Encoder()
+    encoder.on_mesg(
+        Profile["mesg_num"]["FILE_ID"],
+        {
+            "type": "activity",
+            "manufacturer": "garmin",
+            "product": 1,
+            "time_created": FIT_START,
+            "serial_number": 1,
+        },
+    )
+    for session in sessions:
+        encoder.on_mesg(Profile["mesg_num"]["SESSION"], session)
+    data: bytes = encoder.close()
+    return data
+
+
+FIT_RUN = {
+    "start_time": FIT_START,
+    "timestamp": FIT_START + timedelta(minutes=50),
+    "sport": "running",
+    "sub_sport": "trail",
+    "total_elapsed_time": 3000.0,
+    "total_timer_time": 2952.0,
+    "total_distance": 10200.0,
+    "total_ascent": 120,
+    "avg_heart_rate": 152,
+    "max_heart_rate": 175,
+    "total_calories": 720,
 }

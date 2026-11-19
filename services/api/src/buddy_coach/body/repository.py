@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import delete, select, text, tuple_
+from sqlalchemy import delete, func, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.body.domain import WeightSource
@@ -65,6 +65,16 @@ class BodyWeightRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def sources(self, user_id: uuid.UUID) -> list[tuple[WeightSource, int, datetime]]:
+        """(source, number of weights, latest measurement) for each source with data."""
+        result = await self._session.execute(
+            select(BodyWeight.source, func.count(), func.max(BodyWeight.measured_at))
+            .where(BodyWeight.user_id == user_id)
+            .group_by(BodyWeight.source)
+            .order_by(func.max(BodyWeight.measured_at).desc())
+        )
+        return [(source, int(count), last) for source, count, last in result.all()]
 
     async def between(self, user_id: uuid.UUID, start: date, end: date) -> Sequence[BodyWeight]:
         """Measurements from ``start`` to ``end`` inclusive, newest first."""

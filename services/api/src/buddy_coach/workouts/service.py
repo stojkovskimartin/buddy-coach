@@ -33,6 +33,7 @@ from buddy_coach.workouts.schemas import (
     LoadOut,
     RampOut,
     WorkoutData,
+    WorkoutSourceOut,
 )
 
 FUTURE_TOLERANCE = timedelta(hours=1)
@@ -143,6 +144,13 @@ class WorkoutService:
         """Workouts in a date range, newest first."""
         validate_range(start, end)
         return await self._repo.between(user_id, start, end)
+
+    async def sources(self, user_id: uuid.UUID) -> list[WorkoutSourceOut]:
+        """Where the athlete's workouts come from, latest first (the connections overview)."""
+        return [
+            WorkoutSourceOut(source=s, workouts=n, last_at=last)
+            for s, n, last in await self._repo.sources(user_id)
+        ]
 
     async def today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone."""

@@ -13,7 +13,8 @@ from fastapi import FastAPI
 
 from buddy_coach.core.deps import get_clock
 from buddy_coach.workouts.events import WorkoutsChanged
-from tests.support import VALID_PROFILE, RecordingEventBus, register_and_login
+from tests.support import FIT_RUN as RUN_SESSION
+from tests.support import VALID_PROFILE, RecordingEventBus, fit_file, register_and_login
 
 pytestmark = pytest.mark.integration
 
@@ -266,3 +267,51 @@ async def test_workouts_need_authentication(
     client: httpx.AsyncClient, method: str, path: str
 ) -> None:
     assert (await client.request(method, path, json={})).status_code == 401
+
+
+async def test_a_fit_file_from_a_watch_is_imported_once(client: httpx.AsyncClient) -> None:
+    headers = await _athlete(client)
+    data = fit_file({**RUN_SESSION})
+    upload = {**headers, "Content-Type": "application/octet-stream"}
+    first = await client.post("/api/v1/workouts/fit", content=data, headers=upload)
+    assert first.json() == {"created": 1, "updated": 0}
+    again = await client.post("/api/v1/workouts/fit", content=data, headers=upload)
+    assert again.json() == {"created": 0, "updated": 1}
+    [run] = (await client.get("/api/v1/workouts", headers=headers)).json()
+    assert (run["source"], run["activity"], run["day"]) == (
+        "fit_file",
+        "trail_running",
+        "2026-11-18",
+    )
+    bad = await client.post("/api/v1/workouts/fit", content=b"not fit", headers=upload)
+    assert bad.status_code == 422
+
+
+async def test_the_connections_overview_lists_sources_latest_first(
+    client: httpx.AsyncClient,
+) -> None:
+    headers = await _athlete(client)
+    assert (await client.get("/api/v1/workouts/sources", headers=headers)).json() == []
+    await client.post(
+        "/api/v1/workouts/import", json={"workouts": [_garmin_run()]}, headers=headers
+    )
+    await client.post(
+        "/api/v1/workouts/fit",
+        content=fit_file({**RUN_SESSION}),
+        headers={**headers, "Content-Type": "application/octet-stream"},
+    )
+    sources = (await client.get("/api/v1/workouts/sources", headers=headers)).json()
+    assert [(s["source"], s["workouts"]) for s in sources] == [("garmin", 1), ("fit_file", 1)]
+
+    reading = {
+        "source": "apple_health",
+        "external_id": "w",
+        "measured_at": "2026-11-18T06:00:00+00:00",
+    }
+    await client.post(
+        "/api/v1/body/weights/import",
+        json={"weights": [{**reading, "weight_kg": 78}]},
+        headers=headers,
+    )
+    weights = (await client.get("/api/v1/body/weights/sources", headers=headers)).json()
+    assert weights == [{"source": "apple_health", "weights": 1, "last_at": "2026-11-18T06:00:00Z"}]

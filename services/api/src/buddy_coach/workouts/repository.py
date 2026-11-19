@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection, Sequence
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import delete, func, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,6 +69,16 @@ class WorkoutRepository:
             .order_by(Workout.started_at.desc())
         )
         return result.scalars().all()
+
+    async def sources(self, user_id: uuid.UUID) -> list[tuple[WorkoutSource, int, datetime]]:
+        """(source, number of workouts, latest start) for each source the user has data from."""
+        result = await self._session.execute(
+            select(Workout.source, func.count(), func.max(Workout.started_at))
+            .where(Workout.user_id == user_id)
+            .group_by(Workout.source)
+            .order_by(func.max(Workout.started_at).desc())
+        )
+        return [(source, int(count), last) for source, count, last in result.all()]
 
     async def daily_loads(
         self,

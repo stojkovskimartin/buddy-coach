@@ -130,6 +130,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/body/weights/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weight Sources
+         * @description Where the weights come from (smart scale via the phone, or typed in): count and latest.
+         */
+        get: operations["weight_sources_api_v1_body_weights_sources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/body/weights/{weight_id}": {
         parameters: {
             query?: never;
@@ -523,6 +543,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workouts/fit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Fit
+         * @description Import a FIT activity file from a watch (max 10 MB). Uploading it again updates it.
+         */
+        post: operations["upload_fit_api_v1_workouts_fit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workouts/import": {
         parameters: {
             query?: never;
@@ -537,6 +577,26 @@ export interface paths {
          * @description Sync workouts from a device or app. Safe to repeat: known workouts are updated.
          */
         post: operations["import_workouts_api_v1_workouts_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workout Sources
+         * @description Where the workouts come from (phone health app, watch files, manual): count and latest.
+         */
+        get: operations["workout_sources_api_v1_workouts_sources_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1474,6 +1534,20 @@ export interface components {
          */
         WeightSource: "manual" | "apple_health" | "health_connect";
         /**
+         * WeightSourceOut
+         * @description A source the athlete has weights from (a smart scale via the phone, or typed in).
+         */
+        WeightSourceOut: {
+            /**
+             * Last At
+             * Format: date-time
+             */
+            last_at: string;
+            source: components["schemas"]["WeightSource"];
+            /** Weights */
+            weights: number;
+        };
+        /**
          * WorkoutData
          * @description What a device, an app or the athlete reports about a session.
          */
@@ -1563,6 +1637,20 @@ export interface components {
          * @enum {string}
          */
         WorkoutSource: "manual" | "fit_file" | "apple_health" | "health_connect" | "garmin" | "fitbit" | "whoop" | "polar" | "suunto" | "coros" | "huawei" | "xiaomi" | "strava";
+        /**
+         * WorkoutSourceOut
+         * @description A source the athlete has workouts from: how many and the latest one.
+         */
+        WorkoutSourceOut: {
+            /**
+             * Last At
+             * Format: date-time
+             */
+            last_at: string;
+            source: components["schemas"]["WorkoutSource"];
+            /** Workouts */
+            workouts: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1796,6 +1884,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weight_sources_api_v1_body_weights_sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightSourceOut"][];
                 };
             };
         };
@@ -2369,7 +2477,7 @@ export interface operations {
                     "application/json": components["schemas"]["PhotoOut"];
                 };
             };
-            /** @description A photo can be at most 10 MB. */
+            /** @description The file can be at most 10 MB. */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -2632,6 +2740,37 @@ export interface operations {
             };
         };
     };
+    upload_fit_api_v1_workouts_fit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Larger than 10 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     import_workouts_api_v1_workouts_import_post: {
         parameters: {
             query?: never;
@@ -2661,6 +2800,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    workout_sources_api_v1_workouts_sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutSourceOut"][];
                 };
             };
         };
