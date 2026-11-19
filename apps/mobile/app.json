@@ -54,7 +54,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Buddy Coach uses the camera to read barcodes on food packages. Nothing is recorded.",
+          "cameraPermission": "Buddy Coach uses the camera for meal and progress photos and to read food barcodes.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

@@ -176,7 +176,7 @@ function Sections({ data }: { data: Data }) {
         <Text accessibilityRole="header" style={styles.heading}>
           Progress photos
         </Text>
-        <PhotoStrip kind="progress" title="Progress photos" range={{ from: range[0], to: range[1] }} />
+        <PhotoStrip kind="progress" title="Progress photos" one="progress photo" range={{ from: range[0], to: range[1] }} />
         <Text style={styles.muted}>Only you can see them. They are stored without location data.</Text>
       </Card>
 

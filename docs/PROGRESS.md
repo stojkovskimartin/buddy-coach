@@ -86,8 +86,9 @@ pull request numbers.
 | #44 | WHOOP account: workouts of the last year on connect, then from a week before the last sync (WHOOP rescores late); unusable records skipped; providers share one client interface | +8, +1 frontend (web 1) |
 | #46 | Mobile Food tab: the day's diary against today's targets, earlier days, Open Food Facts search, barcode scan with the camera, typed-in food | +7 frontend (mobile 7) |
 | #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +5 frontend (shared 1, mobile 4) |
+| #48 | Mobile photos and Connect tab: meal, progress and profile photos taken with the camera or picked (shrunk on the phone, no metadata); data sources and Withings/WHOOP sync and disconnect | +7 frontend (mobile 7) |
 
-Totals: backend 578 tests, frontend 227 tests (shared 34, client 28, web 48, mobile 117); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 578 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -98,7 +99,7 @@ Totals: backend 578 tests, frontend 227 tests (shared 34, client 28, web 48, mob
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
 1. Polar account for workouts on the `integrations` module (ADR-0008) [7.3.5].
-2. Mobile app catches up with web: photo camera, connections [7.1.5].
+2. Mobile: guided setup and goals on the phone, connect accounts from the phone, workout logging [3.2.2, 7.1.5, 6.4.1].
 3. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
 4. Today screen: session card [4.2.4].
 5. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].

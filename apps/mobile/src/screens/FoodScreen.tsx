@@ -138,7 +138,7 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
           <Text accessibilityRole="header" style={styles.heading}>
             Meal photos
           </Text>
-          <PhotoStrip kind="meal" title="Meal photos" range={{ from: day.day, to: day.day }} canAdd={isToday} />
+          <PhotoStrip kind="meal" title="Meal photos" one="meal photo" range={{ from: day.day, to: day.day }} canAdd={isToday} />
           <Text style={styles.muted}>Meal photos are removed after 90 days; what you ate stays.</Text>
         </Card>
       )}

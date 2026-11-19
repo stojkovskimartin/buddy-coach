@@ -115,7 +115,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
           <Text accessibilityRole="header" style={styles.heading}>
             Profile picture
           </Text>
-          <PhotoStrip key={reloads} kind="avatar" title="Profile picture" />
+          <PhotoStrip kind="avatar" title="Profile picture" one="profile picture" reloadKey={reloads} />
         </Card>
       )}
       <Button label="Ask your coach" onPress={onOpenCoach} />

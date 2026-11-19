@@ -28,12 +28,11 @@ function PhotoImage({ photo, size, label }: { photo: Photo; size: "full" | "thum
   const style = size === "thumb" ? styles.thumb : styles.full;
   if (uri && uri !== "failed")
     return <Image source={{ uri }} style={style} resizeMode={size === "thumb" ? "cover" : "contain"} accessible accessibilityLabel={label} />;
+  const state = uri === "failed" ? "could not be loaded" : "loading";
   return (
-    <View
-      style={[style, styles.placeholder]}
-      accessible
-      accessibilityLabel={`${label} (${uri === "failed" ? "could not be loaded" : "loading"})`}
-    />
+    <View style={[style, styles.placeholder]} accessible accessibilityLabel={`${label} (${state})`}>
+      {size === "full" && <Text style={styles.state}>{uri === "failed" ? "The photo could not be loaded." : "Loading…"}</Text>}
+    </View>
   );
 }
 
@@ -42,18 +41,24 @@ function PhotoImage({ photo, size, label }: { photo: Photo; size: "full" | "thum
 export function PhotoStrip({
   kind,
   title,
+  one,
   range,
   canAdd = true,
+  reloadKey = 0,
 }: {
   kind: PhotoKind;
   title: string;
+  /** Item name for one photo, e.g. "meal photo". */
+  one: string;
   range?: { from: string; to: string };
   canAdd?: boolean;
+  /** A new value reloads the list. */
+  reloadKey?: number;
 }) {
   const { api } = useSession();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState<Photo | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<PhotoSource | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
   const from = range?.from;
@@ -63,7 +68,9 @@ export function PhotoStrip({
     const id = ++request.current;
     try {
       const list = await api.listPhotos({ kind, ...(from && to ? { from, to } : {}) });
-      if (id === request.current) setPhotos(list);
+      if (id !== request.current) return;
+      setPhotos(list);
+      setError(null);
     } catch (e) {
       if (id === request.current) setError(errorMessage(e));
     }
@@ -71,37 +78,48 @@ export function PhotoStrip({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadKey]);
 
-  async function change(action: () => Promise<unknown>) {
-    setBusy(true);
+  async function change(what: PhotoSource | "delete", action: () => Promise<boolean>) {
+    setBusy(what);
     setError(null);
     try {
-      await action();
-      setOpen(null);
-      await load();
+      if (await action()) {
+        setOpen(null);
+        await load();
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   const add = (source: PhotoSource) =>
-    void change(async () => {
+    void change(source, async () => {
       const image = await pickPhoto(source);
-      if (image) await api.uploadPhoto(kind, image);
+      if (!image) return false; // cancelled
+      await api.uploadPhoto(kind, image);
+      return true;
     });
 
   const remove = (photo: Photo) =>
     Alert.alert("Delete this photo?", undefined, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void change(() => api.deletePhoto(photo.id)) },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          void change("delete", async () => {
+            await api.deletePhoto(photo.id);
+            return true;
+          }),
+      },
     ]);
 
   const avatar = kind === "avatar";
   return (
-    <View style={styles.strip} accessibilityLabel={title}>
+    <View style={styles.strip}>
       <ErrorBanner message={error} />
       {photos.length > 0 && (
         <View style={styles.grid}>
@@ -109,7 +127,7 @@ export function PhotoStrip({
             <Pressable
               key={p.id}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${title.toLowerCase()} from ${p.day}`}
+              accessibilityLabel={`Open ${one} from ${p.day}`}
               onPress={() => setOpen(p)}
             >
               <PhotoImage photo={p} size="thumb" label={`${title} from ${p.day}`} />
@@ -122,13 +140,15 @@ export function PhotoStrip({
           <Button
             variant="secondary"
             label={avatar ? "Take a profile picture" : "Take a photo"}
-            busy={busy}
+            busy={busy === "camera"}
+            disabled={busy !== null}
             onPress={() => add("camera")}
           />
           <Button
             variant="secondary"
             label={avatar ? "Choose a profile picture" : "Choose from photos"}
-            disabled={busy}
+            busy={busy === "library"}
+            disabled={busy !== null}
             onPress={() => add("library")}
           />
         </View>
@@ -137,8 +157,9 @@ export function PhotoStrip({
         <SafeAreaView style={styles.viewer}>
           {open && <PhotoImage photo={open} size="full" label={`${title} from ${open.day}`} />}
           {open && <Text style={styles.day}>{open.day}</Text>}
+          <ErrorBanner message={error} />
           <Button label="Close" onPress={() => setOpen(null)} />
-          {open && <Button variant="secondary" label="Delete photo" disabled={busy} onPress={() => remove(open)} />}
+          {open && <Button variant="secondary" label="Delete photo" busy={busy === "delete"} onPress={() => remove(open)} />}
         </SafeAreaView>
       </Modal>
     </View>
@@ -154,4 +175,5 @@ const styles = StyleSheet.create({
   actions: { gap: space.sm },
   viewer: { flex: 1, padding: space.lg, gap: space.md, backgroundColor: colors.background },
   day: { fontSize: font.body, color: colors.text, textAlign: "center" },
+  state: { margin: space.lg, fontSize: font.body, color: colors.text },
 });

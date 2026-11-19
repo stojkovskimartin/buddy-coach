@@ -19,7 +19,6 @@ const PROVIDER: Record<IntegrationProvider, { name: string; what: string; data: 
 
 const SOURCE_LABEL: Record<WorkoutSourceSummary["source"], string> = {
   ...WEIGHT_SOURCE_LABEL,
-  manual: "Typed in",
   fit_file: "Watch files",
   garmin: "Garmin",
   fitbit: "Fitbit",
@@ -42,7 +41,7 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
   const [weights, setWeights] = useState<WeightSourceSummary[]>([]);
   const [accounts, setAccounts] = useState<ProviderStatus[]>([]);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<IntegrationProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -66,7 +65,7 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
   }, [active, load]);
 
   async function act(provider: IntegrationProvider, action: "sync" | "disconnect") {
-    setBusy(true);
+    setBusy(provider);
     setError(null);
     setMessage(null);
     try {
@@ -76,7 +75,7 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
     } catch (e) {
       setError(errorMessage(e));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -106,8 +105,8 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
           Accounts
         </Text>
         <Text style={styles.muted}>
-          Connecting an account opens its sign-in page, so it is done once in the web app on a computer
-          (Connections → Accounts). Here you can sync or disconnect it. If that app already sends the same data
+          Connecting an account opens its sign-in page, so it is done once in the Buddy Coach web app in a
+          browser (Connections → Accounts). Here you can sync or disconnect it. If that app already sends the same data
           to Apple Health or Health Connect, use one of the two, or everything shows up twice.
         </Text>
         {accounts.map((a) => (
@@ -128,13 +127,14 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
               <>
                 <Button
                   label={`Sync ${PROVIDER[a.provider].name} now`}
-                  busy={busy}
+                  busy={busy === a.provider}
+                  disabled={busy !== null}
                   onPress={() => void act(a.provider, "sync")}
                 />
                 <Button
                   variant="secondary"
                   label={`Disconnect ${PROVIDER[a.provider].name}`}
-                  disabled={busy}
+                  disabled={busy !== null}
                   onPress={() => disconnect(a.provider)}
                 />
               </>

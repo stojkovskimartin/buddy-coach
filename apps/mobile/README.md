@@ -11,6 +11,11 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
   add food by Open Food Facts search, by scanning the barcode with the camera, or typed in.
 - **Progress** – weight, food against the target, fitness and fatigue, readiness over 4 weeks,
   3 months or a year, as charts described in words for screen readers.
+- **Photos** – meal photos on Food, progress photos on Progress, the profile picture on Today:
+  taken with the camera or picked from the phone's photos, shrunk to 1600 px JPEG without
+  metadata on the phone before upload.
+- **Connect** – where the data comes from, and sync or disconnect a Withings or WHOOP account
+  (connecting one is done once in the web app).
 - **Coach** – chat with the coach network; one-tap suggestions, specialist label,
   safety escalations and failed calls shown as alerts and read out by screen readers. The
   conversation stays when you switch tabs.

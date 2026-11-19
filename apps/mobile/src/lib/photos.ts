@@ -31,11 +31,20 @@ export async function pickPhoto(source: PhotoSource): Promise<Blob | null> {
   const asset = result.canceled ? null : result.assets[0];
   if (!asset) return null;
   const context = ImageManipulator.manipulate(asset.uri);
-  if (Math.max(asset.width, asset.height) > LONG_EDGE) {
-    context.resize(asset.width >= asset.height ? { width: LONG_EDGE } : { height: LONG_EDGE });
+  let saved;
+  try {
+    if (Math.max(asset.width, asset.height) > LONG_EDGE) {
+      context.resize(asset.width >= asset.height ? { width: LONG_EDGE } : { height: LONG_EDGE });
+    }
+    const image = await context.renderAsync();
+    try {
+      saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.8 });
+    } finally {
+      image.release(); // native memory, freed at once rather than by the garbage collector
+    }
+  } finally {
+    context.release();
   }
-  const image = await context.renderAsync();
-  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.8 });
   const blob = await (await fetch(saved.uri)).blob();
   return blob.type === "image/jpeg" ? blob : new Blob([blob], { type: "image/jpeg" });
 }
