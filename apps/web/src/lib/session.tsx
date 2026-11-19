@@ -10,6 +10,7 @@ import {
   type CheckinIn,
   type Goal,
   type GoalIn,
+  type ImportResult,
   type MealDay,
   type MealEntry,
   type MealEntryIn,
@@ -22,6 +23,8 @@ import {
   type TokenStore,
   type TrainingLoad,
   type Weight,
+  type WeightSourceSummary,
+  type WorkoutSourceSummary,
   type WeightHistory,
   type WeightIn,
 } from "@buddy/api-client";
@@ -52,6 +55,9 @@ export interface CoachApi {
   listPhotos(query?: { kind?: PhotoKind; from?: string; to?: string }): Promise<Photo[]>;
   photoImage(id: string, size?: "full" | "thumb"): Promise<Blob>;
   deletePhoto(id: string): Promise<void>;
+  uploadFit(file: Blob): Promise<ImportResult>;
+  workoutSources(): Promise<WorkoutSourceSummary[]>;
+  weightSources(): Promise<WeightSourceSummary[]>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }

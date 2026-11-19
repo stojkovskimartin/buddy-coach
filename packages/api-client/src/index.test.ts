@@ -290,6 +290,20 @@ describe("BuddyClient", () => {
     await expect(client.deletePhoto("p1")).resolves.toBeUndefined();
   });
 
+  it("uploads a FIT file and reads where data comes from", async () => {
+    const api = fakeApi({
+      "POST /api/v1/workouts/fit": () => json(200, { created: 1, updated: 0 }),
+      "GET /api/v1/workouts/sources": () => json(200, [{ source: "fit_file", workouts: 1, last_at: "x" }]),
+      "GET /api/v1/body/weights/sources": () => json(200, []),
+    });
+    const client = new BuddyClient({ baseUrl: BASE, tokens: memoryTokenStore(tokens(1)), fetch: api.fetch });
+    expect(await client.uploadFit(new Blob(["fit-bytes"]))).toEqual({ created: 1, updated: 0 });
+    expect(api.calls[0]!.headers.get("Content-Type")).toBe("application/octet-stream");
+    expect(await api.calls[0]!.text()).toBe("fit-bytes");
+    expect(await client.workoutSources()).toHaveLength(1);
+    expect(await client.weightSources()).toEqual([]);
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

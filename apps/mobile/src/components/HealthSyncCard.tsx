@@ -1,3 +1,4 @@
+import { importText } from "@buddy/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, StyleSheet, Text, View } from "react-native";
 
@@ -16,9 +17,7 @@ type View_ =
   | { kind: "connected"; lastSync: string | null };
 
 function summary(outcome: SyncOutcome): string {
-  const added = outcome.created === 1 ? "1 new workout" : `${outcome.created} new workouts`;
-  const parts = [added];
-  if (outcome.updated) parts.push(`${outcome.updated} updated`);
+  const parts = [importText(outcome)];
   if (outcome.skipped) parts.push(`${outcome.skipped} skipped (incomplete data)`);
   if (outcome.weights) parts.push(outcome.weights === 1 ? "1 new weight" : `${outcome.weights} new weights`);
   return `${parts.join(", ")}.`;

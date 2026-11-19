@@ -78,8 +78,9 @@ pull request numbers.
 | #36 | Photos API: meal, progress and profile photos, shrunk to 1280 px without EXIF/GPS, private, meal photos expire after 90 days | +13 |
 | #37 | Photos on web: meal photos on the food page, progress photos on the progress page, profile picture on the profile page; the current avatar is returned however old | +4 frontend (client 1, web 3) |
 | #38 | Watch files and connections API: FIT activity upload (Garmin, Coros, Polar, Suunto, Wahoo), sources of workouts and weights | +8 |
+| #39 | Connections page on web: phone health app, watch-file upload, typed-in data, planned direct accounts | +4 frontend (shared 1, client 1, web 2) |
 
-Totals: backend 547 tests, frontend 202 tests (shared 31, client 26, web 39, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 547 tests, frontend 206 tests (shared 32, client 27, web 41, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

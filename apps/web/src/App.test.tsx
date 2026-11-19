@@ -16,6 +16,8 @@ import type {
   Weight,
   WeightHistory,
   WeightIn,
+  WeightSourceSummary,
+  WorkoutSourceSummary,
 } from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -101,6 +103,9 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     listPhotos: vi.fn(async (): Promise<Photo[]> => []),
     photoImage: vi.fn(async () => new Blob(["jpeg"], { type: "image/jpeg" })),
     deletePhoto: vi.fn(async () => undefined),
+    uploadFit: vi.fn(async () => ({ created: 1, updated: 0 })),
+    workoutSources: vi.fn(async (): Promise<WorkoutSourceSummary[]> => []),
+    weightSources: vi.fn(async (): Promise<WeightSourceSummary[]> => []),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
@@ -752,6 +757,41 @@ describe("web app", () => {
       await userEvent.upload(within(strip).getByLabelText("Choose a profile picture"), jpeg());
       expect(api.uploadPhoto).toHaveBeenCalledWith("avatar", expect.any(File));
       expect(api.listPhotos).toHaveBeenCalledWith({ kind: "avatar" });
+    });
+  });
+
+  describe("connections", () => {
+    it("shows where data comes from and imports a watch file", async () => {
+      const api = fakeApi({
+        workoutSources: vi.fn(async () => [
+          { source: "health_connect" as const, workouts: 12, last_at: "2026-11-18T07:00:00Z" },
+        ]),
+        weightSources: vi.fn(async () => [
+          { source: "health_connect" as const, weights: 30, last_at: "2026-11-19T06:00:00Z" },
+        ]),
+      });
+      renderAt("/connections", api, true);
+      expect(await screen.findByText(/12 workouts, latest .* · 30 weights, latest/)).toBeInTheDocument();
+
+      const fit = screen.getByRole("region", { name: "Watch files (FIT)" });
+      await userEvent.upload(within(fit).getByLabelText("Upload a .fit file"), new File(["fit"], "run.fit"));
+      expect(api.uploadFit).toHaveBeenCalledWith(expect.any(File));
+      expect(await within(fit).findByText("1 new workout.")).toBeInTheDocument();
+
+      vi.mocked(api.uploadFit).mockRejectedValueOnce(new Error("The FIT file is damaged."));
+      await userEvent.upload(within(fit).getByLabelText("Upload a .fit file"), new File(["x"], "bad.FIT"));
+      expect(await screen.findByRole("alert")).toHaveTextContent("damaged");
+    });
+
+    it("refuses other files", async () => {
+      const api = fakeApi();
+      renderAt("/connections", api, true);
+      const fit = await screen.findByRole("region", { name: "Watch files (FIT)" });
+      await userEvent.upload(within(fit).getByLabelText("Upload a .fit file"), new File(["x"], "run.gpx"), {
+        applyAccept: false,
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent(".fit file");
+      expect(api.uploadFit).not.toHaveBeenCalled();
     });
   });
 });

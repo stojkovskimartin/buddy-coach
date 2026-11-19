@@ -4,6 +4,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
 import { CoachPage } from "./pages/CoachPage";
+import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FoodPage } from "./pages/FoodPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -53,6 +54,7 @@ function Header() {
           <Link to="/">Goals</Link>
           <Link to="/food">Food</Link>
           <Link to="/progress">Progress</Link>
+          <Link to="/connections">Connections</Link>
           <Link to="/coach">Coach</Link>
           <Link to="/onboarding">Profile</Link>
           <button type="button" className="link" onClick={() => void logout()}>
@@ -138,6 +140,14 @@ export function AppRoutes() {
           element={
             <RequireProfile>
               <ProgressPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/connections"
+          element={
+            <RequireProfile>
+              <ConnectionsPage />
             </RequireProfile>
           }
         />
