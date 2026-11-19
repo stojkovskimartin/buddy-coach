@@ -15,6 +15,7 @@ from typing import Protocol
 
 import jwt
 from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.body.domain import MAX_IMPORT_BATCH, WeightSource
@@ -28,6 +29,7 @@ from buddy_coach.integrations.domain import (
     REFRESH_MARGIN,
     SYNC_INTERVAL,
     Provider,
+    ProviderError,
     Reading,
     ReconnectRequiredError,
 )
@@ -92,15 +94,25 @@ class IntegrationsService:
         self._check_state(state, user_id, provider)
         now = self._now()
         tokens = await self._client(provider).exchange(code, now)
-        connection = await self._repo.get(user_id, provider, lock=True)
-        if connection is None:
-            connection = Connection(user_id=user_id, provider=provider)
-            self._repo.add(connection)
-        connection.cursor = None  # possibly another account: start over
-        connection.last_sync_at = None
-        self._store(connection, tokens)
-        await self._session.commit()
-        return await self.sync(user_id, provider)
+        for attempt in range(2):  # a second tab may insert the same connection at the same time
+            connection = await self._repo.get(user_id, provider, lock=True)
+            if connection is None:
+                connection = Connection(user_id=user_id, provider=provider)
+                self._repo.add(connection)
+            connection.cursor = None  # possibly another account: start over
+            connection.last_sync_at = None
+            self._store(connection, tokens)
+            try:
+                await self._session.commit()
+                break
+            except IntegrityError:
+                await self._session.rollback()
+                if attempt:
+                    raise
+        try:
+            return await self.sync(user_id, provider)
+        except ProviderError:  # connected; the athlete can sync again at once
+            return SyncOut(synced=False, last_sync_at=None, created=0, updated=0, skipped=0)
 
     async def sync(self, user_id: uuid.UUID, provider: Provider) -> SyncOut:
         """Bring in what changed since the last sync; at most one sync every 10 minutes."""
@@ -118,11 +130,11 @@ class IntegrationsService:
             if connection.access_expires_at - now < REFRESH_MARGIN:
                 refresh_token = self._decrypt(connection.refresh_token)
                 self._store(connection, await client.refresh(refresh_token, now))
+            access_token = self._decrypt(connection.access_token)
         except ReconnectRequiredError:
             await self._repo.remove(connection)
             await self._session.commit()
             raise
-        access_token = self._decrypt(connection.access_token)
         connection.last_sync_at = now  # claims this sync; the lock ends with the commit
         await self._session.commit()
         try:
@@ -176,6 +188,8 @@ class IntegrationsService:
                 )
             if not page.more:
                 return total, new_cursor
+            if page.offset <= offset:
+                raise ProviderError("Withings did not answer as expected. Try again later.")
             offset = page.offset
         # Too many pages: keep the old cursor so the next sync continues where this one began.
         return total, cursor

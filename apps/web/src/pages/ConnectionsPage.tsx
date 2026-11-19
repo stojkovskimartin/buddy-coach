@@ -6,7 +6,7 @@ import type {
 } from "@buddy/api-client";
 import { WEIGHT_SOURCE_LABEL, importText, weightSyncText } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { errorMessage, useSession } from "../lib/session";
 
@@ -207,14 +207,16 @@ function accountStatus(a: ProviderStatus): string {
 /** Where the provider sends the browser back to: finishes connecting and shows the result. */
 export function ConnectionCallback() {
   const { api } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const started = useRef(false);
 
   useEffect(() => {
     if (started.current) return; // the code works once; React may run effects twice in development
     started.current = true;
-    const query = new URLSearchParams(window.location.search);
-    window.history.replaceState(null, "", window.location.pathname); // keep the code out of history
+    const query = new URLSearchParams(location.search);
+    void navigate(location.pathname, { replace: true }); // keep the code out of the history
     const provider = sessionStorage.getItem(PENDING_PROVIDER) as IntegrationProvider | null;
     sessionStorage.removeItem(PENDING_PROVIDER);
     const code = query.get("code");
@@ -223,11 +225,17 @@ export function ConnectionCallback() {
       setResult({ ok: false, text: "The account was not connected. Try again from Connections." });
       return;
     }
+    const name = PROVIDER[provider].name;
     api.finishIntegration(provider, code, state).then(
-      (r) => setResult({ ok: true, text: `${PROVIDER[provider].name} is connected: ${weightSyncText(r)}.` }),
+      (r) =>
+        setResult(
+          r.synced
+            ? { ok: true, text: `${name} is connected: ${weightSyncText(r)}.` }
+            : { ok: true, text: `${name} is connected. Bringing in the data failed; use Sync now in Connections.` },
+        ),
       (e: unknown) => setResult({ ok: false, text: errorMessage(e) }),
     );
-  }, [api]);
+  }, [api, location, navigate]);
 
   return (
     <main className="stack">

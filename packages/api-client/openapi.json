@@ -1588,7 +1588,7 @@
         "type": "string"
       },
       "SyncOut": {
-        "description": "Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago.",
+        "description": "Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago, or\nwhen the first sync right after connecting failed (the account is connected).",
         "properties": {
           "created": {
             "title": "Created",

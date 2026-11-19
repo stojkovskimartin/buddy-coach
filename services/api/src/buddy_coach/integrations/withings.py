@@ -27,6 +27,10 @@ MEASURE_URL = "https://wbsapi.withings.net/measure"
 SCOPE = "user.metrics"
 REAL_MEASURES = 1
 """``category`` 1: real measurements (2 would be the user's goals)."""
+REFUSED = frozenset({100, 101, 102, 200, 343, 401})
+"""Statuses meaning Withings no longer accepts the token; any other error is passing."""
+REFUSED_GRANT = REFUSED | {304, 503}
+"""On the token endpoint also a bad or used code and an invalid refresh token."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +102,7 @@ class WithingsClient:
             MEASURE_URL, params, headers={"Authorization": f"Bearer {access_token}"}
         )
         status = payload.get("status")
-        if status in (401, 343):
+        if status in REFUSED:
             raise ReconnectRequiredError("Withings no longer accepts this connection.")
         if status != 0:
             raise ProviderError("Withings could not return the weights. Try again later.")
@@ -117,8 +121,11 @@ class WithingsClient:
                 **params,
             },
         )
-        if payload.get("status") != 0:
+        status = payload.get("status")
+        if status in REFUSED_GRANT:
             raise ReconnectRequiredError(on_error)
+        if status != 0:
+            raise ProviderError("Withings could not sign in right now. Try again later.")
         return _body(payload)
 
     async def _post(

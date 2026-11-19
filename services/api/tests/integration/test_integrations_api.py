@@ -12,6 +12,7 @@ import httpx
 import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
+from pydantic import SecretStr
 from sqlalchemy import text
 
 from buddy_coach.core.deps import get_clock
@@ -46,7 +47,9 @@ class FakeWithings:
     groups: list[dict[str, Any]] = field(default_factory=list)
     update_time: int = 1_800_000_000
     refresh_ok: bool = True
+    token_status: int = 0  # a passing error on the token endpoint
     measure_status: int = 0
+    page_size: int = 0  # > 0: answer in pages of this many groups
     issued: int = 0
     calls: list[dict[str, str]] = field(default_factory=list)
 
@@ -55,6 +58,8 @@ class FakeWithings:
         url = str(request.url)
         self.calls.append({"url": url, **form})
         if url == TOKEN_URL:
+            if self.token_status:
+                return httpx.Response(200, json={"status": self.token_status})
             if form["grant_type"] == "refresh_token" and (
                 not self.refresh_ok or form["refresh_token"] != f"refresh-{self.issued}"
             ):
@@ -73,12 +78,16 @@ class FakeWithings:
         assert request.headers["Authorization"] == f"Bearer access-{self.issued}"
         if self.measure_status:
             return httpx.Response(200, json={"status": self.measure_status})
+        offset = int(form.get("offset", 0))
+        size = self.page_size or len(self.groups) or 1
+        groups = self.groups[offset : offset + size]
+        more = offset + size < len(self.groups)
         body = {
             "updatetime": self.update_time,
             "timezone": "Europe/Zurich",
-            "measuregrps": self.groups,
-            "more": 0,
-            "offset": 0,
+            "measuregrps": groups,
+            "more": int(more),
+            "offset": offset + size if more else 0,
         }
         return httpx.Response(200, json={"status": 0, "body": body})
 
@@ -329,3 +338,95 @@ async def test_phones_cannot_import_weights_as_withings(client: httpx.AsyncClien
     )
 
     assert response.status_code == 422
+
+
+async def test_a_passing_error_while_refreshing_keeps_the_account(
+    client: httpx.AsyncClient, fake: FakeWithings, clock: Clock
+) -> None:
+    headers = await _athlete(client)
+    assert (await _connect(client, headers)).status_code == 200
+    clock.now += timedelta(hours=4)
+    fake.token_status = 601  # too many requests
+
+    response = await client.post(f"{URL}/withings/sync", headers=headers)
+
+    assert response.status_code == 502
+    assert (await client.get(URL, headers=headers)).json()[0]["connected"] is True
+
+
+async def test_a_refused_token_during_the_sync_disconnects(
+    client: httpx.AsyncClient, fake: FakeWithings, clock: Clock
+) -> None:
+    headers = await _athlete(client)
+    assert (await _connect(client, headers)).status_code == 200
+    clock.now += timedelta(minutes=20)
+    fake.measure_status = 401
+
+    response = await client.post(f"{URL}/withings/sync", headers=headers)
+
+    assert response.json()["code"] == "reconnect_required"
+    assert (await client.get(URL, headers=headers)).json()[0]["connected"] is False
+
+
+async def test_a_new_encryption_key_asks_to_connect_again(
+    client: httpx.AsyncClient, app: FastAPI, clock: Clock
+) -> None:
+    headers = await _athlete(client)
+    assert (await _connect(client, headers)).status_code == 200
+    app.state.settings = app.state.settings.model_copy(
+        update={"integrations_key": SecretStr(Fernet.generate_key().decode())}
+    )
+    clock.now += timedelta(minutes=20)
+
+    response = await client.post(f"{URL}/withings/sync", headers=headers)
+
+    assert response.json()["code"] == "reconnect_required"
+    assert (await client.get(URL, headers=headers)).json()[0]["connected"] is False
+
+
+async def test_every_page_is_imported(client: httpx.AsyncClient, fake: FakeWithings) -> None:
+    fake.groups = [_group(i, START - timedelta(days=i), 78_000 + i * 10) for i in range(1, 6)]
+    fake.page_size = 2
+    headers = await _athlete(client)
+
+    body = (await _connect(client, headers)).json()
+
+    assert body["created"] == 5
+    assert [c.get("offset") for c in fake.calls if c["url"] == MEASURE_URL] == [None, "2", "4"]
+
+
+async def test_a_failed_code_exchange_connects_nothing(
+    client: httpx.AsyncClient, fake: FakeWithings
+) -> None:
+    fake.token_status = 503  # the code was used or expired
+    headers = await _athlete(client)
+
+    response = await _connect(client, headers)
+
+    assert response.json()["code"] == "reconnect_required"
+    assert (await client.get(URL, headers=headers)).json()[0]["connected"] is False
+
+
+async def test_a_failed_first_sync_still_connects(
+    client: httpx.AsyncClient, fake: FakeWithings
+) -> None:
+    fake.measure_status = 601
+    headers = await _athlete(client)
+
+    response = await _connect(client, headers)
+
+    assert response.status_code == 200
+    assert response.json()["synced"] is False
+    fake.measure_status = 0
+    assert (await client.post(f"{URL}/withings/sync", headers=headers)).json()["synced"] is True
+
+
+async def test_every_endpoint_needs_a_login(client: httpx.AsyncClient) -> None:
+    responses = [
+        await client.get(URL),
+        await client.post(f"{URL}/withings/connect"),
+        await client.post(f"{URL}/withings/callback", json={"code": "c", "state": "s"}),
+        await client.post(f"{URL}/withings/sync"),
+        await client.delete(f"{URL}/withings"),
+    ]
+    assert [r.status_code for r in responses] == [401] * 5

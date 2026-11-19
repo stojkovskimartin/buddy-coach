@@ -1500,7 +1500,8 @@ export interface components {
         Sport: "running" | "cycling" | "swimming" | "triathlon" | "hiking" | "ski_touring" | "alpine_skiing" | "climbing" | "strength" | "other";
         /**
          * SyncOut
-         * @description Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago.
+         * @description Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago, or
+         *     when the first sync right after connecting failed (the account is connected).
          */
         SyncOut: {
             /** Created */

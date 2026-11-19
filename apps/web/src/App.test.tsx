@@ -843,6 +843,15 @@ describe("web app", () => {
       expect(sessionStorage.getItem("buddy.connecting")).toBeNull();
     });
 
+    it("says when the account is connected but the first sync failed", async () => {
+      sessionStorage.setItem("buddy.connecting", "withings");
+      const api = fakeApi({
+        finishIntegration: vi.fn(async () => ({ synced: false, last_sync_at: null, created: 0, updated: 0, skipped: 0 })),
+      });
+      renderAt("/connections/callback?code=abc&state=xyz", api, true);
+      expect(await screen.findByRole("status")).toHaveTextContent("Withings is connected. Bringing in the data failed");
+    });
+
     it("explains a cancelled sign-in", async () => {
       const api = fakeApi();
       renderAt("/connections/callback?error=access_denied", api, true);

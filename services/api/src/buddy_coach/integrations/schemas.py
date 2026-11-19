@@ -32,7 +32,8 @@ class CallbackIn(BaseModel):
 
 
 class SyncOut(BaseModel):
-    """Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago."""
+    """Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago, or
+    when the first sync right after connecting failed (the account is connected)."""
 
     synced: bool
     last_sync_at: datetime | None
