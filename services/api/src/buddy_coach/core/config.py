@@ -25,6 +25,7 @@ class LLMProviderName(StrEnum):
 
     DEV = "dev"  # deterministic stand-in, no API key, never in production
     ANTHROPIC = "anthropic"
+    OPENAI_COMPATIBLE = "openai_compatible"  # Ollama, LM Studio, Groq, Gemini, OpenRouter
 
 
 class Settings(BaseSettings):
@@ -46,6 +47,8 @@ class Settings(BaseSettings):
     llm_provider: LLMProviderName = LLMProviderName.DEV
     llm_model: str = "claude-sonnet-5-5"
     anthropic_api_key: SecretStr | None = None
+    llm_base_url: str | None = None  # openai_compatible, e.g. http://localhost:11434/v1
+    llm_api_key: SecretStr | None = None  # openai_compatible; local servers need none
 
     @field_validator("jwt_secret")
     @classmethod
@@ -61,6 +64,13 @@ class Settings(BaseSettings):
         key = self.anthropic_api_key.get_secret_value().strip() if self.anthropic_api_key else ""
         if self.llm_provider is LLMProviderName.ANTHROPIC and not key:
             msg = "anthropic_api_key is required when llm_provider is 'anthropic'"
+            raise ValueError(msg)
+        if self.llm_provider is LLMProviderName.OPENAI_COMPATIBLE and (
+            not self.llm_base_url
+            or "llm_model" not in self.model_fields_set
+            or not self.llm_model.strip()
+        ):
+            msg = "llm_base_url and llm_model are required when llm_provider is 'openai_compatible'"
             raise ValueError(msg)
         if self.is_production and self.llm_provider is LLMProviderName.DEV:
             msg = "the dev LLM provider must not run in production"

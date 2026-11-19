@@ -59,6 +59,7 @@ Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,0
 | --- | --- |
 | `dev` | Local development without a key; calls one tool and lists its result as readable lines, with a note on how to switch on real answers. Refused in production. |
 | `anthropic` | Real answers via the Anthropic Messages API, with retries on overload and graceful degradation. |
+| `openai_compatible` | Real answers from any OpenAI-compatible Chat Completions server with tools: free local models (Ollama, LM Studio) or hosted free tiers (Groq, Gemini, OpenRouter). Same retries and degradation. |
 
 ## Adding an agent or tool
 

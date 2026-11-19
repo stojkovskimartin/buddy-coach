@@ -13,8 +13,7 @@ docker compose -f infra/docker-compose.yml up --build
 ```
 
 Open http://localhost:8000/docs and follow "Try it in 5 minutes" in the README.
-Real AI answers: create `infra/.env` with `BUDDY_LLM_PROVIDER=anthropic` and
-`BUDDY_ANTHROPIC_API_KEY=...`, then start again.
+Real AI answers, free with a local model or paid: docs/running.md, "Real AI answers".
 
 **Web app (needs Node 22 + pnpm, with the API running):** `pnpm install`, then
 `pnpm --filter @buddy/web dev` and open http://localhost:5173.
@@ -67,8 +66,9 @@ pull request numbers.
 | #23 | Workouts from Apple Health and Health Connect on the phone (read only, foreground sync, incremental) – ADR-0007 | +47 frontend (mobile 46, client 1) |
 | #25 | Readable offline coach answers that say how to switch on the real AI; web favicon | +2 |
 | #26 | The coach reads stored data on the athlete's day: today's targets, check-in readiness and training load (same numbers as the app) | +2 |
+| #27 | Free AI for the coach: any OpenAI-compatible model (Ollama or LM Studio on your computer, Groq, Gemini, OpenRouter) | +9 |
 
-Totals: backend 490 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 499 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

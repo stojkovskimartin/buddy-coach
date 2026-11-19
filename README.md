@@ -40,14 +40,17 @@ Then open **http://localhost:8000/docs** (interactive API page) and try, in this
 6. `POST /api/v1/coach/chat` – `{"message": "How many calories should I eat?"}`.
 
 Without an API key the coach runs in **development mode**: it calls the real tools and engines
-and shows their raw results. For real AI answers, create a file `infra/.env` (never committed) with:
+and lists their results. For real AI answers, create a file `infra/.env` (never committed); a
+free model that runs on your own computer with [Ollama](https://ollama.com) (`ollama pull qwen3:8b`):
 
 ```
-BUDDY_LLM_PROVIDER=anthropic
-BUDDY_ANTHROPIC_API_KEY=sk-ant-...
+BUDDY_LLM_PROVIDER=openai_compatible
+BUDDY_LLM_BASE_URL=http://host.docker.internal:11434/v1
+BUDDY_LLM_MODEL=qwen3:8b
 ```
 
-and start the same command again. This works the same on Windows, macOS and Linux.
+On Linux, start Ollama with `OLLAMA_HOST=0.0.0.0`. Free cloud tiers and Anthropic:
+docs/running.md, "Real AI answers". Then start the same command again.
 
 Stop with `Ctrl+C`; `docker compose -f infra/docker-compose.yml down -v` also deletes the local data.
 
