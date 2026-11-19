@@ -7,6 +7,8 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
 - **Login / register** – same password rule as the API (10 to 128 characters); a notice when
   the session expired.
 - **Today** – main goal with countdown, other goals, pull to refresh, log out.
+- **Food** – the food diary of a day against today's targets, entries per meal, earlier days;
+  add food by Open Food Facts search, by scanning the barcode with the camera, or typed in.
 - **Coach** – chat with the coach network; one-tap suggestions, specialist label,
   safety escalations and failed calls shown as alerts and read out by screen readers. The
   conversation stays when you switch tabs.

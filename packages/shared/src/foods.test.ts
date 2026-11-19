@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { foodByBarcode, mealForHour, parseGrams, portion, searchFoods, toFood } from "./foods";
+import { foodByBarcode, mealForHour, parseAmount, parseGrams, portion, searchFoods, toFood } from "./foods";
 
 const OATS = {
   code: "7610000000017",
@@ -74,6 +74,8 @@ describe("portions", () => {
   it("parses grams with comma or point within 1-5000 g", () => {
     expect(parseGrams("80,5")).toBe(80.5);
     for (const text of ["", "0", "5001", "1e2"]) expect(parseGrams(text)).toBeNull();
+    expect(parseAmount(" 12,5 ")).toBe(12.5);
+    for (const text of ["", "-1", "1e2", "12 g"]) expect(parseAmount(text)).toBeNull();
   });
 
   it("suggests the meal by the hour", () => {

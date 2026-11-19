@@ -103,6 +103,12 @@ export function parseGrams(text: string): number | null {
   return value >= 1 && value <= 5000 ? value : null;
 }
 
+/** "12" or "12,5" → number (for typed-in nutrients); null when it is not a plain number. */
+export function parseAmount(text: string): number | null {
+  const trimmed = text.trim();
+  return /^\d+([.,]\d+)?$/.test(trimmed) ? Number(trimmed.replace(",", ".")) : null;
+}
+
 export const MEAL_LABEL: Record<"breakfast" | "lunch" | "dinner" | "snack", string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",

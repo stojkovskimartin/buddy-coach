@@ -13,6 +13,9 @@ import {
   type ImportedWeight,
   type ImportedWorkout,
   type ImportResult,
+  type MealDay,
+  type MealEntry,
+  type MealEntryIn,
   type NutritionTargets,
   type Profile,
   type ProfileIn,
@@ -53,6 +56,9 @@ export interface CoachApi {
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
   importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult>;
   importWeights(weights: ImportedWeight[]): Promise<WeightImportResult>;
+  getMealDay(day?: string): Promise<MealDay>;
+  logMeal(entry: MealEntryIn): Promise<MealEntry>;
+  deleteMeal(id: string): Promise<void>;
 }
 
 /** "loading" while the stored session is checked on start. */

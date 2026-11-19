@@ -7,11 +7,12 @@ import type { TokenStore } from "@buddy/api-client";
 
 import { SessionProvider, useSession, type CreateApi } from "./src/lib/session";
 import { CoachScreen } from "./src/screens/CoachScreen";
+import { FoodScreen } from "./src/screens/FoodScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { TOUCH_TARGET, colors, font, space } from "./src/theme";
 
-type Tab = "home" | "coach";
+type Tab = "home" | "food" | "coach";
 
 /** Root component. The props are for tests; the app uses the real client and secure storage. */
 export default function App({
@@ -52,7 +53,8 @@ function Root() {
   return <LoggedIn />;
 }
 
-/** Both tabs stay mounted, so the chat survives switching tabs; logging out resets them. */
+/** Tabs stay mounted, so the chat survives switching tabs; logging out resets them. Screens load
+ * when first shown. */
 function LoggedIn() {
   const [tab, setTab] = useState<Tab>("home");
   return (
@@ -60,11 +62,15 @@ function LoggedIn() {
       <View style={[styles.fill, tab !== "home" && styles.hidden]}>
         <HomeScreen active={tab === "home"} onOpenCoach={() => setTab("coach")} />
       </View>
+      <View style={[styles.fill, tab !== "food" && styles.hidden]}>
+        <FoodScreen active={tab === "food"} />
+      </View>
       <View style={[styles.fill, tab !== "coach" && styles.hidden]}>
         <CoachScreen />
       </View>
       <View accessibilityRole="tablist" style={styles.tabs}>
         <TabButton label="Today" active={tab === "home"} onPress={() => setTab("home")} />
+        <TabButton label="Food" active={tab === "food"} onPress={() => setTab("food")} />
         <TabButton label="Coach" active={tab === "coach"} onPress={() => setTab("coach")} />
       </View>
     </SafeAreaView>
@@ -87,7 +93,9 @@ function TabButton({
       onPress={onPress}
       style={styles.tab}
     >
-      <Text style={[styles.tabText, active && styles.tabActive]}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.tabText, active && styles.tabActive]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
