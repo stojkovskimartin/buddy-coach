@@ -11,7 +11,7 @@ describe("appleHealthSource", () => {
         workoutActivityType: 13,
         startDate: new Date("2026-11-18T07:00:00Z"),
         duration: { quantity: 3600, unit: "s" },
-        totalDistance: { quantity: 30000, unit: "m" },
+        totalDistance: { quantity: 30000, unit: "meters" },
         totalEnergyBurned: { quantity: 800, unit: "kcal" },
         metadata: { HKIndoorWorkout: true },
       }),
@@ -74,6 +74,20 @@ describe("appleHealthSource", () => {
     expect(module.queryWorkoutSamplesWithAnchor).toHaveBeenLastCalledWith({ limit: 0, anchor: "anchor-2" });
   });
 
+  it("releases every native workout object even when a statistic query fails", async () => {
+    const { module, proxy } = fakeHealthKit();
+    const second = { ...proxy, dispose: jest.fn() };
+    proxy.getStatistic.mockRejectedValueOnce(new Error("HealthKit busy"));
+    module.queryWorkoutSamplesWithAnchor.mockResolvedValueOnce({
+      workouts: [proxy, second],
+      deletedSamples: [],
+      newAnchor: "a",
+    });
+    await expect(appleHealthSource(module as never).readSince(null, SINCE)).rejects.toThrow("busy");
+    expect(proxy.dispose).toHaveBeenCalled();
+    expect(second.dispose).toHaveBeenCalled();
+  });
+
   it("is unavailable without the native module (Expo Go)", async () => {
     const source = appleHealthSource(null);
     expect(await source.availability()).toBe("unavailable");
@@ -113,7 +127,7 @@ describe("healthConnectSource", () => {
       aggregateRecord: jest.fn(async ({ recordType }: { recordType: string }) => {
         if (recordType === "HeartRate") return { BPM_AVG: 152, BPM_MAX: 171, BPM_MIN: 90, MEASUREMENTS_COUNT: 300 };
         if (recordType === "Distance") return { DISTANCE: { inKilometers: 9.1 } };
-        throw new Error("permission not granted");
+        throw Object.assign(new Error("permission not granted"), { code: "PERMISSION_ERROR" });
       }),
       ...overrides,
     };
@@ -143,6 +157,19 @@ describe("healthConnectSource", () => {
     expect(hc.aggregateRecord).toHaveBeenCalledWith(
       expect.objectContaining({ dataOriginFilter: ["com.garmin.android.apps.connectmobile"] }),
     );
+  });
+
+  it("fails the sync on errors other than a missing permission", async () => {
+    const hc = fakeHealthConnect({
+      aggregateRecord: jest.fn().mockRejectedValue(Object.assign(new Error("busy"), { code: "SERVICE_UNAVAILABLE" })),
+    });
+    await expect(healthConnectSource(hc as never).readSince(null, SINCE)).rejects.toThrow("busy");
+
+    const denied = fakeHealthConnect({
+      aggregateRecord: jest.fn().mockRejectedValue(Object.assign(new Error("no"), { code: "PERMISSION_ERROR" })),
+    });
+    const result = await healthConnectSource(denied as never).readSince(null, SINCE);
+    expect(result.workouts[0]).toMatchObject({ avg_hr: null, distance_km: null, kcal: null });
   });
 
   it("follows the changes token and re-reads the window when it expired", async () => {

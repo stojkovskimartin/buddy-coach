@@ -89,6 +89,21 @@ describe("HealthSync", () => {
     expect(src.readSince).toHaveBeenCalledTimes(1);
   });
 
+  it("disconnect waits for a running sync, so nothing is written afterwards", async () => {
+    let finish: (r: ReadResult) => void = () => undefined;
+    const src = source(() => new Promise((resolve) => (finish = resolve)));
+    const state = memoryState({ "buddy-coach.health.health_connect.connected": "true" });
+    const sync = new HealthSync(src, { importWorkouts: jest.fn().mockResolvedValue({ created: 1, updated: 0 }) }, state, () => NOW);
+
+    const running = sync.sync();
+    while ((src.readSince as jest.Mock).mock.calls.length === 0) await Promise.resolve();
+    const stopped = sync.disconnect();
+    finish({ workouts: [run("1")], nextCursor: "t" });
+    await running;
+    await stopped;
+    expect(state.data.size).toBe(0);
+  });
+
   it("connect remembers access; disconnect forgets the cursor", async () => {
     const state = memoryState();
     const sync = new HealthSync(source(async () => ({ workouts: [], nextCursor: "t" })), { importWorkouts: jest.fn() }, state, () => NOW);

@@ -17,6 +17,7 @@ export function toMinutes(quantity: number, unit: string): number | null {
 export function toKilometers(quantity: number, unit: string): number | null {
   switch (unit) {
     case "m":
+    case "meters": // HealthKit's totalDistance unit
       return quantity / 1000;
     case "km":
       return quantity;

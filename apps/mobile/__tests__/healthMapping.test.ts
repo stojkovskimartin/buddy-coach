@@ -1,3 +1,6 @@
+import { WorkoutActivityType as HK } from "@kingstinct/react-native-healthkit/types";
+import { ExerciseType as HC } from "react-native-health-connect";
+
 import { healthConnectActivity, healthKitActivity } from "../src/health/activityMapping";
 import { chunk, prepareWorkout } from "../src/health/prepare";
 import type { RawWorkout } from "../src/health/types";
@@ -21,27 +24,31 @@ function raw(overrides: Partial<RawWorkout> = {}): RawWorkout {
 
 describe("activity mapping", () => {
   it.each([
-    [37, false, "running"],
-    [13, false, "cycling"],
-    [13, true, "indoor_cycling"],
-    [61, false, "alpine_skiing"],
-    [60, false, "cross_country_skiing"],
-    [50, false, "strength"],
-    [82, false, "other"], // swimBikeRun has no single activity
-    [9999, false, "other"],
+    [HK.running, false, "running"],
+    [HK.cycling, false, "cycling"],
+    [HK.cycling, true, "indoor_cycling"],
+    [HK.downhillSkiing, false, "alpine_skiing"],
+    [HK.crossCountrySkiing, false, "cross_country_skiing"],
+    [HK.traditionalStrengthTraining, false, "strength"],
+    [HK.swimBikeRun, false, "other"], // multisport has no single activity
+    [HK.other, false, "other"],
   ])("HealthKit %i (indoor %s) -> %s", (type, indoor, expected) => {
     expect(healthKitActivity(type, indoor)).toBe(expected);
   });
 
   it.each([
-    [56, "running"],
-    [57, "running"],
-    [9, "indoor_cycling"],
-    [74, "swimming"],
-    [61, "other"], // SKIING does not say alpine, cross-country or touring
-    [0, "other"],
+    [HC.RUNNING, "running"],
+    [HC.RUNNING_TREADMILL, "running"],
+    [HC.BIKING_STATIONARY, "indoor_cycling"],
+    [HC.SWIMMING_POOL, "swimming"],
+    [HC.SKIING, "other"], // does not say alpine, cross-country or touring
+    [HC.OTHER_WORKOUT, "other"],
   ])("Health Connect %i -> %s", (type, expected) => {
     expect(healthConnectActivity(type)).toBe(expected);
+  });
+
+  it("uses the stores' real values", () => {
+    expect([HK.running, HC.RUNNING, HC.SKIING]).toEqual([37, 56, 61]);
   });
 });
 
@@ -50,6 +57,7 @@ describe("units", () => {
     expect(toMinutes(3000, "s")).toBe(50);
     expect(toMinutes(1.5, "hr")).toBe(90);
     expect(toKilometers(10200, "m")).toBe(10.2);
+    expect(toKilometers(10200, "meters")).toBe(10.2); // HealthKit's unit
     expect(toKilometers(1, "mi")).toBeCloseTo(1.609, 3);
     expect(toKilocalories(4184, "kJ")).toBeCloseTo(1000, 0);
     expect(toMinutes(1, "fortnight")).toBeNull();
@@ -84,6 +92,11 @@ describe("prepareWorkout", () => {
       NOW,
     );
     expect(prepared).toMatchObject({ avg_hr: null, max_hr: null, distance_km: null, kcal: null });
+  });
+
+  it("drops a workout that rounds to zero minutes (an accidental start)", () => {
+    expect(prepareWorkout(raw({ duration_min: 0.03 }), "apple_health", NOW)).toBeNull();
+    expect(prepareWorkout(raw({ duration_min: 0.06 }), "apple_health", NOW)?.duration_min).toBe(0.1);
   });
 
   it("keeps a little clock drift", () => {

@@ -12,8 +12,8 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
   conversation stays when you switch tabs.
 
 - **Workouts from your watch** (on Today) – reads workouts and heart rate from Apple Health
-  (iPhone) or Health Connect (Android) and sends them to the server; syncs when the app opens and
-  on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP and other apps that write there are
+  (iPhone) or Health Connect (Android) and sends them to the server; syncs when the app opens,
+  when it returns to the foreground and on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP and other apps that write there are
   included. Read only; nothing is written back and no workout is stored on the phone.
 
 Profile setup and new goals are done in the web app for now; the guided mobile onboarding is
@@ -50,7 +50,8 @@ syncing needs the installed app. To test health sync, build the app once:
 
 Limits of this version: sync runs in the foreground only (no background sync yet); a workout
 deleted in Apple Health or Health Connect stays in Buddy Coach; Health Connect can read at most
-30 days before access was first granted.
+30 days before access was first granted; heart rate, distance or calories that an app writes to
+Health Connect after its session was already synced are not picked up.
 
 ## Security
 

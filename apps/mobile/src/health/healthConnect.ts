@@ -47,11 +47,14 @@ export function healthConnectSource(hc: HealthConnect | null = load()): HealthSo
       },
       ...(session.metadata?.dataOrigin ? { dataOriginFilter: [session.metadata.dataOrigin] } : {}),
     };
+    // Only a missing permission leaves a field empty; any other error fails the sync, which then
+    // repeats with the same cursor instead of overwriting good values with empty ones.
     const safe = async <T,>(read: () => Promise<T>): Promise<T | null> => {
       try {
         return await read();
-      } catch {
-        return null; // permission not granted or no data: leave the field empty
+      } catch (error) {
+        if ((error as { code?: string }).code === "PERMISSION_ERROR") return null;
+        throw error;
       }
     };
     const [hr, distance, energy] = await Promise.all([
@@ -147,9 +150,12 @@ export function healthConnectSource(hc: HealthConnect | null = load()): HealthSo
         nextCursor = await freshToken();
         sessions = await readWindow(api, since);
       }
-      const workouts = (await Promise.all(sessions.map((s) => toWorkout(api, s)))).filter(
-        (w): w is RawWorkout => w !== null,
-      );
+      // One session at a time: three aggregate calls each, without flooding Health Connect.
+      const workouts: RawWorkout[] = [];
+      for (const session of sessions) {
+        const workout = await toWorkout(api, session);
+        if (workout) workouts.push(workout);
+      }
       return { workouts, nextCursor };
     },
   };

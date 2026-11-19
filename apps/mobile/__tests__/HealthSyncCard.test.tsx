@@ -1,5 +1,6 @@
 import { memoryTokenStore } from "@buddy/api-client";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { HealthSyncCard } from "../src/components/HealthSyncCard";
 import type { SyncState } from "../src/health/sync";
@@ -74,6 +75,30 @@ describe("HealthSyncCard", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Stop syncing Apple Health" }));
     expect(await screen.findByRole("button", { name: "Connect Apple Health" })).toBeTruthy();
+  });
+
+  it("syncs again when the app returns to the foreground and stops listening when gone", async () => {
+    let listener: ((state: AppStateStatus) => void) | undefined;
+    const remove = jest.fn();
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_, handler) => {
+      listener = handler;
+      return { remove } as never;
+    });
+    const api = fakeApi({ importWorkouts: jest.fn().mockResolvedValue({ created: 0, updated: 2 }) });
+    await renderCard(
+      fakeSource(),
+      memoryState({ "buddy-coach.health.apple_health.connected": "true" }),
+      api,
+    );
+    await screen.findByText("0 new workouts, 2 updated.");
+    expect(api.importWorkouts).toHaveBeenCalledTimes(1);
+
+    await act(async () => listener?.("active"));
+    await waitFor(() => expect(api.importWorkouts).toHaveBeenCalledTimes(2));
+
+    await screen.unmount();
+    expect(remove).toHaveBeenCalled();
+    jest.restoreAllMocks();
   });
 
   it("shows a failed sync as an alert", async () => {

@@ -17,7 +17,10 @@ type View_ =
 
 function summary(outcome: SyncOutcome): string {
   const added = outcome.created === 1 ? "1 new workout" : `${outcome.created} new workouts`;
-  return outcome.updated ? `${added}, ${outcome.updated} updated.` : `${added}.`;
+  const parts = [added];
+  if (outcome.updated) parts.push(`${outcome.updated} updated`);
+  if (outcome.skipped) parts.push(`${outcome.skipped} skipped (incomplete data)`);
+  return `${parts.join(", ")}.`;
 }
 
 /**
@@ -53,7 +56,7 @@ export function HealthSyncCard({
     try {
       const outcome = await sync.sync();
       setMessage(summary(outcome));
-      setView({ kind: "connected", lastSync: outcome.finishedAt });
+      setView({ kind: "connected", lastSync: outcome.syncedAt });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -122,14 +125,19 @@ export function HealthSyncCard({
             onPress={() => {
               if (!sync) return;
               setError(null);
+              setBusy(true); // one permission request at a time
               sync
                 .connect()
                 .then((granted) => {
+                  setBusy(false);
                   if (!granted) return setError(`${store} access was not granted.`);
                   setView({ kind: "connected", lastSync: null });
                   return runSync();
                 })
-                .catch((e: unknown) => setError(errorMessage(e)));
+                .catch((e: unknown) => {
+                  setBusy(false);
+                  setError(errorMessage(e));
+                });
             }}
           />
         </>
@@ -151,11 +159,15 @@ export function HealthSyncCard({
           <Button
             variant="secondary"
             label={`Stop syncing ${store}`}
+            disabled={busy}
             onPress={() => {
-              void sync?.disconnect().then(() => {
-                setMessage(null);
-                setView({ kind: "disconnected" });
-              });
+              sync
+                ?.disconnect()
+                .then(() => {
+                  setMessage(null);
+                  setView({ kind: "disconnected" });
+                })
+                .catch((e: unknown) => setError(errorMessage(e)));
             }}
           />
         </>

@@ -23,7 +23,9 @@ export function prepareWorkout(
   if (Number.isNaN(start.getTime()) || start.getTime() > now.getTime() + FUTURE_TOLERANCE_MS) {
     return null;
   }
-  if (!(raw.duration_min > 0 && raw.duration_min <= 1440)) return null;
+  // Rounded first: a 2-second accidental start would otherwise round to 0 and be refused.
+  const duration = Math.round(raw.duration_min * 10) / 10;
+  if (!(duration > 0 && duration <= 1440)) return null;
   let avgHr = within(raw.avg_hr, 30, 230);
   let maxHr = within(raw.max_hr, 30, 240);
   if (avgHr !== null && maxHr !== null && maxHr < avgHr) {
@@ -35,7 +37,7 @@ export function prepareWorkout(
     external_id: raw.external_id,
     activity: raw.activity,
     started_at: start.toISOString(),
-    duration_min: Math.round(raw.duration_min * 10) / 10,
+    duration_min: duration,
     distance_km: within(raw.distance_km, 0, 1000),
     elevation_gain_m: within(raw.elevation_gain_m, 0, 10000),
     avg_hr: avgHr,

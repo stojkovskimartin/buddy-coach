@@ -30,7 +30,7 @@ export interface SyncOutcome {
   created: number;
   updated: number;
   skipped: number;
-  finishedAt: string;
+  syncedAt: string;
 }
 
 const key = (platform: HealthPlatform, name: "cursor" | "connected" | "last_sync") =>
@@ -76,6 +76,7 @@ export class HealthSync {
 
   /** Stops syncing here. Access itself is withdrawn in the phone's health settings. */
   async disconnect(): Promise<void> {
+    await this.running?.catch(() => undefined); // a running sync must not write after this
     const platform = this.source.platform;
     await Promise.all([
       this.state.remove(key(platform, "connected")),
@@ -110,8 +111,8 @@ export class HealthSync {
       updated += result.updated;
     }
     if (nextCursor) await this.state.set(key(platform, "cursor"), nextCursor);
-    const finishedAt = now.toISOString();
-    await this.state.set(key(platform, "last_sync"), finishedAt);
-    return { created, updated, skipped: workouts.length - ready.length, finishedAt };
+    const syncedAt = this.now().toISOString();
+    await this.state.set(key(platform, "last_sync"), syncedAt);
+    return { created, updated, skipped: workouts.length - ready.length, syncedAt };
   }
 }
