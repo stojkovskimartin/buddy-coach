@@ -44,6 +44,14 @@
       ],
       "react-native-health-connect",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Buddy Coach uses the camera to read barcodes on food packages. Nothing is recorded.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

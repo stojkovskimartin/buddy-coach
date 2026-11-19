@@ -5,6 +5,7 @@ import {
   OFF_ATTRIBUTION,
   foodByBarcode,
   mealForHour,
+  parseAmount,
   parseGrams,
   portion,
   searchFoods,
@@ -352,17 +353,15 @@ function ManualFood({
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const number = (text: string) =>
-    /^\d+([.,]\d+)?$/.test(text.trim()) ? Number(text.trim().replace(",", ".")) : null;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const grams = parseGrams(fields.grams);
     const values = {
-      kcal: number(fields.kcal),
-      protein_g: number(fields.protein_g || "0"),
-      carbs_g: number(fields.carbs_g || "0"),
-      fat_g: number(fields.fat_g || "0"),
+      kcal: parseAmount(fields.kcal),
+      protein_g: parseAmount(fields.protein_g || "0"),
+      carbs_g: parseAmount(fields.carbs_g || "0"),
+      fat_g: parseAmount(fields.fat_g || "0"),
     };
     if (!fields.name.trim() || grams === null || Object.values(values).some((v) => v === null)) {
       return setError(

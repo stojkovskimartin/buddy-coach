@@ -87,6 +87,13 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     saveCheckin: jest.fn(async (day: string, c: CheckinIn) => checkin(day, c)),
     importWorkouts: jest.fn().mockResolvedValue({ created: 0, updated: 0 }),
     importWeights: jest.fn().mockResolvedValue({ created: 0, updated: 0, skipped: 0 }),
+    getMealDay: jest.fn().mockResolvedValue({
+      day: "2026-11-19",
+      entries: [],
+      totals: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+    }),
+    logMeal: jest.fn().mockResolvedValue({}),
+    deleteMeal: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   return api satisfies Record<keyof CoachApi, jest.Mock>;

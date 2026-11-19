@@ -14,3 +14,19 @@ jest.mock("react-native-health-connect", () => ({
   ...jest.requireActual("react-native-health-connect/lib/commonjs/constants"),
   getSdkStatus: async () => 1,
 }));
+
+// The camera never opens in tests: pressing the fake camera "scans" globalThis.fakeBarcode.
+jest.mock("expo-camera", () => {
+  const { Pressable } = jest.requireActual("react-native");
+  const { createElement } = jest.requireActual("react");
+  return {
+    useCameraPermissions: () => [{ granted: true, canAskAgain: true }, jest.fn()],
+    CameraView: ({ onBarcodeScanned }: { onBarcodeScanned: (r: { data: string }) => void }) =>
+      createElement(Pressable, {
+        accessibilityRole: "button",
+        accessibilityLabel: "Fake camera",
+        onPress: () =>
+          onBarcodeScanned({ data: (globalThis as { fakeBarcode?: string }).fakeBarcode ?? "4000417025005" }),
+      }),
+  };
+});
