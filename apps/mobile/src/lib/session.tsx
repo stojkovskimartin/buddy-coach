@@ -14,18 +14,25 @@ import {
   type ImportedWeight,
   type ImportedWorkout,
   type ImportResult,
+  type IntegrationProvider,
   type MealDay,
   type MealEntry,
   type MealEntryIn,
   type NutritionTargets,
+  type Photo,
+  type PhotoKind,
   type Profile,
   type ProfileIn,
+  type ProviderStatus,
+  type SyncResult,
   type TokenStore,
   type TrainingLoad,
   type Weight,
   type WeightHistory,
   type WeightImportResult,
   type WeightIn,
+  type WeightSourceSummary,
+  type WorkoutSourceSummary,
 } from "@buddy/api-client";
 import {
   createContext,
@@ -64,6 +71,15 @@ export interface CoachApi {
   listDailyTotals(range?: { from?: string; to?: string }): Promise<DailyTotals[]>;
   getTrainingLoad(days?: number): Promise<TrainingLoad>;
   listCheckins(range?: { from?: string; to?: string }): Promise<Checkin[]>;
+  uploadPhoto(kind: PhotoKind, image: Blob): Promise<Photo>;
+  listPhotos(query?: { kind?: PhotoKind; from?: string; to?: string }): Promise<Photo[]>;
+  photoImage(id: string, size?: "full" | "thumb"): Promise<Blob>;
+  deletePhoto(id: string): Promise<void>;
+  workoutSources(): Promise<WorkoutSourceSummary[]>;
+  weightSources(): Promise<WeightSourceSummary[]>;
+  integrations(): Promise<ProviderStatus[]>;
+  syncIntegration(provider: IntegrationProvider): Promise<SyncResult>;
+  disconnectIntegration(provider: IntegrationProvider): Promise<void>;
 }
 
 /** "loading" while the stored session is checked on start. */

@@ -109,6 +109,15 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     listDailyTotals: jest.fn().mockResolvedValue([]),
     getTrainingLoad: jest.fn().mockResolvedValue(trainingLoad([])),
     listCheckins: jest.fn().mockResolvedValue([]),
+    uploadPhoto: jest.fn().mockResolvedValue({}),
+    listPhotos: jest.fn().mockResolvedValue([]),
+    photoImage: jest.fn().mockResolvedValue(new Blob(["jpeg"], { type: "image/jpeg" })),
+    deletePhoto: jest.fn().mockResolvedValue(undefined),
+    workoutSources: jest.fn().mockResolvedValue([]),
+    weightSources: jest.fn().mockResolvedValue([]),
+    integrations: jest.fn().mockResolvedValue([]),
+    syncIntegration: jest.fn().mockResolvedValue({ synced: true, last_sync_at: null, created: 0, updated: 0, skipped: 0 }),
+    disconnectIntegration: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   return api satisfies Record<keyof CoachApi, jest.Mock>;

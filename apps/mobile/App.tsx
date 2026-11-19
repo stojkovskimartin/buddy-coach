@@ -7,13 +7,14 @@ import type { TokenStore } from "@buddy/api-client";
 
 import { SessionProvider, useSession, type CreateApi } from "./src/lib/session";
 import { CoachScreen } from "./src/screens/CoachScreen";
+import { ConnectionsScreen } from "./src/screens/ConnectionsScreen";
 import { FoodScreen } from "./src/screens/FoodScreen";
 import { ProgressScreen } from "./src/screens/ProgressScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { TOUCH_TARGET, colors, font, space } from "./src/theme";
 
-type Tab = "home" | "food" | "progress" | "coach";
+type Tab = "home" | "food" | "progress" | "coach" | "connections";
 
 /** Root component. The props are for tests; the app uses the real client and secure storage. */
 export default function App({
@@ -72,11 +73,15 @@ function LoggedIn() {
       <View style={[styles.fill, tab !== "coach" && styles.hidden]}>
         <CoachScreen />
       </View>
+      <View style={[styles.fill, tab !== "connections" && styles.hidden]}>
+        <ConnectionsScreen active={tab === "connections"} />
+      </View>
       <View accessibilityRole="tablist" style={styles.tabs}>
         <TabButton label="Today" active={tab === "home"} onPress={() => setTab("home")} />
         <TabButton label="Food" active={tab === "food"} onPress={() => setTab("food")} />
         <TabButton label="Progress" active={tab === "progress"} onPress={() => setTab("progress")} />
         <TabButton label="Coach" active={tab === "coach"} onPress={() => setTab("coach")} />
+        <TabButton label="Connect" active={tab === "connections"} onPress={() => setTab("connections")} />
       </View>
     </SafeAreaView>
   );

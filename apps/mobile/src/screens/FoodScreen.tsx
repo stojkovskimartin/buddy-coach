@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BarcodeScanner } from "../components/BarcodeScanner";
+import { PhotoStrip } from "../components/PhotoStrip";
 import { Button, Card, ErrorBanner, Field } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
@@ -130,6 +131,15 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
             );
           })}
           {day.entries.length === 0 && <Text style={styles.muted}>Nothing logged for this day yet.</Text>}
+        </Card>
+      )}
+      {day && (
+        <Card>
+          <Text accessibilityRole="header" style={styles.heading}>
+            Meal photos
+          </Text>
+          <PhotoStrip kind="meal" title="Meal photos" range={{ from: day.day, to: day.day }} canAdd={isToday} />
+          <Text style={styles.muted}>Meal photos are removed after 90 days; what you ate stays.</Text>
         </Card>
       )}
       {day && isToday && <AddFood onAdded={load} />}
