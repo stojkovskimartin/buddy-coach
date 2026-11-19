@@ -1,4 +1,12 @@
-import type { ChatReply, Checkin, CheckinIn, Goal, Profile, ProfileIn } from "@buddy/api-client";
+import type {
+  ChatReply,
+  Checkin,
+  CheckinIn,
+  Goal,
+  NutritionTargets,
+  Profile,
+  ProfileIn,
+} from "@buddy/api-client";
 import { ApiError } from "@buddy/api-client";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -69,6 +77,7 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
       }),
     ),
     getTodayCheckin: vi.fn(async () => null),
+    getTodayTargets: vi.fn(async () => null),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
@@ -380,4 +389,47 @@ describe("web app", () => {
     });
   });
 
+  describe("today's food targets", () => {
+    const TARGETS: NutritionTargets = {
+      day: "2026-11-19",
+      goal: "lose",
+      kcal: 2450,
+      protein_g: 158,
+      carbs_g: 290,
+      fat_g: 70,
+      maintenance_kcal: 2900,
+      floor_applied: false,
+      training_kcal_estimated: true,
+      reasons: ["Training energy is estimated from your available training time."],
+    };
+
+    it("shows calories, macros and why", async () => {
+      renderAt("/", fakeApi({ getTodayTargets: vi.fn(async () => TARGETS) }), true);
+      const card = await screen.findByRole("region", { name: "Today's food targets" });
+      expect(await within(card).findByText("2,450")).toBeInTheDocument();
+      expect(within(card).getByText(/Losing weight/)).toBeInTheDocument();
+      expect(within(card).getByText("158 g")).toBeInTheDocument();
+      expect(within(card).getByText("290 g")).toBeInTheDocument();
+      expect(within(card).getByText("70 g")).toBeInTheDocument();
+      expect(within(card).getByText(TARGETS.reasons[0] as string)).toBeInTheDocument();
+    });
+
+    it("asks for the profile when there are no targets yet", async () => {
+      renderAt("/", fakeApi(), true);
+      const card = await screen.findByRole("region", { name: "Today's food targets" });
+      expect(await within(card).findByText(/Complete your profile/)).toBeInTheDocument();
+    });
+
+    it("shows the error when loading fails, and can try again", async () => {
+      const getTodayTargets = vi
+        .fn<CoachApi["getTodayTargets"]>()
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce(TARGETS);
+      renderAt("/", fakeApi({ getTodayTargets }), true);
+      const card = await screen.findByRole("region", { name: "Today's food targets" });
+      expect(await within(card).findByRole("alert")).toHaveTextContent("Network error");
+      await userEvent.click(within(card).getByRole("button", { name: "Try again" }));
+      expect(await within(card).findByText("2,450")).toBeInTheDocument();
+    });
+  });
 });

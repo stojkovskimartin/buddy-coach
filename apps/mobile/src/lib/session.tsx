@@ -12,6 +12,7 @@ import {
   type GoalIn,
   type ImportedWorkout,
   type ImportResult,
+  type NutritionTargets,
   type Profile,
   type ProfileIn,
   type TokenStore,
@@ -39,6 +40,7 @@ export interface CoachApi {
   createGoal(goal: GoalIn): Promise<Goal>;
   chat(message: string): Promise<ChatReply>;
   getTodayCheckin(): Promise<Checkin | null>;
+  getTodayTargets(): Promise<NutritionTargets | null>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
   importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult>;
