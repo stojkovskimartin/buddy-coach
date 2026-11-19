@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-19, 01:57
+Last update: 2026-11-19, 02:38
 
 ## How to run it
 
@@ -63,8 +63,10 @@ pull request numbers.
 | #19 | Web and mobile only: desktop app removed everywhere (ADR-0006) | – |
 | #20 | Today's calorie and macro targets API, training energy estimated from available time | +21, +1 frontend |
 | #21 | Workouts from every source (import, manual, feedback) and training load: fitness, fatigue, form, weekly ramp | +40 |
+| #22 | Docs in sync after #18-#21 (architecture, API, progress) | – |
+| #23 | Workouts from Apple Health and Health Connect on the phone (read only, foreground sync, incremental) – ADR-0007 | +46 frontend |
 
-Totals: backend 486 tests, frontend 99 tests (shared 13, client 19, web 22, mobile 45); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 486 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -74,11 +76,10 @@ Totals: backend 486 tests, frontend 99 tests (shared 13, client 19, web 22, mobi
 
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
-1. Phone sync: Apple Health and Health Connect into `/workouts/import` [7.2.1-7.2.3, 9.2.3].
-2. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
-3. Today screen: targets and session cards; the coach uses the same numbers [4.2.3, 4.2.4, 8.2.3, 8.2.4].
-4. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
-5. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
+1. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
+2. Today screen: targets and session cards; the coach uses the same numbers [4.2.3, 4.2.4, 8.2.3, 8.2.4].
+3. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
+4. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
 
 ## Open decisions for the product owner
 

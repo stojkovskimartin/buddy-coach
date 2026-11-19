@@ -47,7 +47,7 @@ athlete's time zone (`core.clock.local_date`).
 ## Device data flow
 
 ```
-Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐  (planned)
+Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐  (ADR-0007)
 Watch / app ──► vendor cloud API (WHOOP, Garmin, Fitbit, ...) ──► integrations ────┤  (planned)
 FIT file upload ───────────────────────────────────────────────────────────────────┤  (planned)
                                                                                     ▼
@@ -60,8 +60,8 @@ Athlete ──► manual log ──► POST /workouts                           
 ```
 
 Imports are idempotent by (source, external_id); the athlete's own rating is never overwritten
-by a re-sync. Phone sync, cloud connections (`integrations`) and FIT upload are planned; the
-import and manual endpoints exist.
+by a re-sync. Phone sync exists (ADR-0007); cloud connections (`integrations`) and FIT upload
+are planned.
 
 ## Decisions
 
