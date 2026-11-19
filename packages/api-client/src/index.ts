@@ -33,6 +33,7 @@ export type MealEntryIn = Schemas["MealEntryIn"];
 export type MealEntry = Schemas["MealEntryOut"];
 export type MealDay = Schemas["MealDayOut"];
 export type DailyTotals = Schemas["DailyTotalsOut"];
+export type TrainingLoad = Schemas["LoadOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -207,6 +208,16 @@ export class BuddyClient {
       params: { path: { entry_id: id } },
     });
     if (!result.response.ok) unwrap(result);
+  }
+
+  /** Calories and macros per day with diary entries, oldest first (default: 28 days). */
+  async listDailyTotals(range: { from?: string; to?: string } = {}): Promise<DailyTotals[]> {
+    return unwrap(await this.raw.GET("/api/v1/meals/daily", { params: { query: range } }));
+  }
+
+  /** Fitness, fatigue and form for the last `days` days (7-366) and this week's ramp. */
+  async getTrainingLoad(days = 42): Promise<TrainingLoad> {
+    return unwrap(await this.raw.GET("/api/v1/training/load", { params: { query: { days } } }));
   }
 
   async chat(message: string): Promise<ChatReply> {
