@@ -87,9 +87,9 @@ pull request numbers.
 | #46 | Mobile Food tab: the day's diary against today's targets, earlier days, Open Food Facts search, barcode scan with the camera, typed-in food | +7 frontend (mobile 7) |
 | #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +5 frontend (shared 1, mobile 4) |
 | #48 | Mobile photos and Connect tab: meal, progress and profile photos taken with the camera or picked (shrunk on the phone, no metadata); data sources and Withings/WHOOP sync and disconnect | +7 frontend (mobile 7) |
-| #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +1 |
+| #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +2 |
 
-Totals: backend 579 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 580 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -100,27 +100,26 @@ Totals: backend 579 tests, frontend 234 tests (shared 34, client 28, web 48, mob
 The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, each challenged
 before coding and reviewed after (tracker 12.x):
 
-1. Demo data: a dev-only command fills a demo athlete with 120 days through the API [12.1].
-2. Fake providers for clicking without keys or internet: dev OAuth provider, dev food recognizer,
+1. Fake providers for clicking without keys or internet: dev OAuth provider, dev food recognizer,
    Mailpit for e-mail in Docker [12.2].
-3. Languages: English and Macedonian, every text translated, dates and numbers per language;
+2. Languages: English and Macedonian, every text translated, dates and numbers per language;
    the coach answers in Macedonian once its safety rules cover it [12.3].
-4. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
-5. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
-6. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
-7. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
-8. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
+3. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
+4. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
+5. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
+6. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
+7. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
    secure cookies on the web [12.8].
-9. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
+8. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
    e-mail, device list; a reset still asks for the second factor. SMS codes left out: they cost
    money [12.9].
-10. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
-11. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
+9. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
+10. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
     and grams, nutrients come from the food database; free local model by default [12.11].
-12. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
+11. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
     phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
-13. Web parity: workout logging, goals, check-in history [12.13].
-14. Click-through tests of every feature in the browser, in CI [12.14].
+12. Web parity: workout logging, goals, check-in history [12.13].
+13. Click-through tests of every feature in the browser, in CI [12.14].
 
 After that: mobile setup and goals on the phone, quick actions, today's session card, latest
 stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].

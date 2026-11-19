@@ -110,7 +110,8 @@ uv run --env-file .env python -m buddy_coach.demo
 
 With Docker: `docker compose -f infra/docker-compose.yml exec api python -m buddy_coach.demo`.
 Then log in with `demo@example.com` / `demo-password-2026`. Running it again leaves the existing
-demo athlete as it is; `--email` creates another one.
+demo athlete as it is; `--email` creates another one (also the way out if a run stopped
+halfway). Nothing is dated after the moment you run it.
 
 ## Connect a Withings account
 

@@ -11,22 +11,25 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import random
 import sys
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import FastAPI
 
-from buddy_coach.core.config import get_settings
+from buddy_coach.core.config import Environment, get_settings
 from buddy_coach.core.deps import get_clock
 from buddy_coach.main import API_PREFIX, create_app
 
 DEFAULT_EMAIL = "demo@example.com"
 DEFAULT_PASSWORD = "demo-password-2026"  # noqa: S105  # a public demo login, dev only
 DAYS = 120
+ZURICH = ZoneInfo("Europe/Zurich")
 
 PROFILE = {
     "birth_year": 1998,
@@ -84,15 +87,19 @@ def _at(day: date, hour: int, minute: int = 0) -> datetime:
 class Demo:
     """Writes the demo athlete through the API, moving the clock day by day."""
 
-    def __init__(self, app: FastAPI, client: httpx.AsyncClient, today: date, days: int) -> None:
+    def __init__(
+        self, app: FastAPI, client: httpx.AsyncClient, now: datetime, today: date, days: int
+    ) -> None:
         self._app = app
+        self._now = now  # nothing is dated after the real time
         self._days = days
         self._client = client
         self._today = today
         self._rng = random.Random(2026)  # noqa: S311  # the same demo data every time, not security
         self._headers: dict[str, str] = {}
 
-    def _clock(self, now: datetime) -> None:
+    def _clock(self, at: datetime) -> None:
+        now = min(at, self._now)
         clock: Callable[[], datetime] = lambda: now  # noqa: E731
         self._app.dependency_overrides[get_clock] = lambda: clock
 
@@ -150,6 +157,8 @@ class Demo:
     async def day(self, day: date, index: int) -> None:
         rng = self._rng
         progress = index / max(1, self._days - 1)  # 0 at the start, 1 today
+        if _at(day, 7, 30) > self._now:  # seeded before this morning's check-in
+            return
         self._clock(_at(day, 7, 30))
         sleep = rng.choice([3, 4, 4, 4, 5])
         await self._call(
@@ -175,29 +184,32 @@ class Demo:
         if session and rng.random() < 0.9:
             activity, minutes, hr, km_per_min = session
             minutes = round(minutes * rng.uniform(0.85, 1.15))
-            self._clock(_at(day, 20))
-            await self._call(
-                "POST",
-                "/workouts/import",
-                json={
-                    "workouts": [
-                        {
-                            "source": "apple_health",
-                            "external_id": f"demo-{day.isoformat()}",
-                            "activity": activity,
-                            "started_at": _at(day, 18).isoformat(),
-                            "duration_min": minutes,
-                            "distance_km": round(minutes * km_per_min, 1) if km_per_min else None,
-                            "avg_hr": hr + rng.randint(-6, 6),
-                            "max_hr": hr + 25 + rng.randint(-5, 5),
-                            "rpe": rng.choice([4, 5, 6, 7]),
-                        }
-                    ]
-                },
-            )
+            if _at(day, 18) + timedelta(minutes=minutes) <= self._now:  # not later than now
+                self._clock(_at(day, 20))
+                await self._call(
+                    "POST",
+                    "/workouts/import",
+                    json={
+                        "workouts": [
+                            {
+                                "source": "apple_health",
+                                "external_id": f"demo-{day.isoformat()}",
+                                "activity": activity,
+                                "started_at": _at(day, 18).isoformat(),
+                                "duration_min": minutes,
+                                "distance_km": round(minutes * km_per_min, 1)
+                                if km_per_min
+                                else None,
+                                "avg_hr": hr + rng.randint(-6, 6),
+                                "max_hr": hr + 25 + rng.randint(-5, 5),
+                                "rpe": rng.choice([4, 5, 6, 7]),
+                            }
+                        ]
+                    },
+                )
         self._clock(_at(day, 22))
         for meal, hour in (("breakfast", 7), ("lunch", 12), ("dinner", 19), ("snack", 16)):
-            if meal == "snack" and rng.random() < 0.4:
+            if (meal == "snack" and rng.random() < 0.4) or _at(day, hour) > self._now:
                 continue
             name, grams, kcal, protein, carbs, fat = rng.choice(MEALS[meal])
             await self._call(
@@ -217,16 +229,21 @@ class Demo:
 
 
 async def seed(
-    email: str, password: str, today: date, *, days: int = DAYS, app: FastAPI | None = None
+    email: str, password: str, now: datetime, *, days: int = DAYS, app: FastAPI | None = None
 ) -> bool:
-    """Create the demo athlete with ``days`` days of data; False when it exists already. Tests
-    pass their own app."""
+    """Create the demo athlete with ``days`` days of data up to ``now``; False when it exists
+    already. Tests pass their own app."""
     own = app is None
     app = app or create_app()
+    if app.state.settings.environment not in (Environment.DEVELOPMENT, Environment.TEST):
+        msg = "Demo data is for development only."
+        raise RuntimeError(msg)
+    today = now.astimezone(ZURICH).date()
+    previous = app.dependency_overrides.get(get_clock)
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://demo") as client:
-            demo = Demo(app, client, today, days)
+            demo = Demo(app, client, now, today, days)
             if not await demo.account(email, password):
                 return False
             await demo.profile_and_goals()
@@ -234,7 +251,10 @@ async def seed(
                 await demo.day(today - timedelta(days=days - 1 - index), index)
         return True
     finally:
-        app.dependency_overrides.pop(get_clock, None)
+        if previous is None:
+            app.dependency_overrides.pop(get_clock, None)
+        else:
+            app.dependency_overrides[get_clock] = previous
         if own:
             await app.state.http.aclose()
             await app.state.db.dispose()
@@ -246,10 +266,11 @@ def main() -> None:
     parser.add_argument("--email", default=DEFAULT_EMAIL)
     parser.add_argument("--password", default=DEFAULT_PASSWORD)
     args = parser.parse_args()
-    if get_settings().is_production:
-        sys.exit("Demo data is for development only.")
-    today = datetime.now(UTC).date()
-    if asyncio.run(seed(args.email, args.password, today)):
+    if get_settings().environment is not Environment.DEVELOPMENT:
+        sys.exit("Demo data is for development only (BUDDY_ENVIRONMENT=development).")
+    for noisy in ("httpx", "buddy_coach.access"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    if asyncio.run(seed(args.email, args.password, datetime.now(UTC))):
         print(f"Demo athlete ready. Log in with {args.email} / {args.password}")
     else:
         print(f"{args.email} exists already: log in with it, or pass another --email.")
