@@ -64,7 +64,7 @@ pull request numbers.
 | #20 | Today's calorie and macro targets API, training energy estimated from available time | +21, +1 frontend |
 | #21 | Workouts from every source (import, manual, feedback) and training load: fitness, fatigue, form, weekly ramp | +40 |
 | #22 | Docs in sync after #18-#21 (architecture, API, progress) | – |
-| #23 | Workouts from Apple Health and Health Connect on the phone (read only, foreground sync, incremental) – ADR-0007 | +46 frontend |
+| #23 | Workouts from Apple Health and Health Connect on the phone (read only, foreground sync, incremental) – ADR-0007 | +47 frontend (mobile 46, client 1) |
 
 Totals: backend 486 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
 
