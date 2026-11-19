@@ -12,10 +12,12 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
+from buddy_coach.body.schemas import WeightHistoryOut
 from buddy_coach.checkin.schemas import CheckinOut
 from buddy_coach.coach.contracts import AgentContract
 from buddy_coach.coach.llm import ToolCall, ToolSpec
 from buddy_coach.core.errors import DomainError
+from buddy_coach.meals.schemas import DailyTotalsOut, MealDayOut
 from buddy_coach.nutrition.schemas import TargetsOut
 from buddy_coach.profile.service import ProfileService
 from buddy_coach.workouts.schemas import LoadOut
@@ -41,6 +43,22 @@ class LoadReader(Protocol):
     async def load(self, user_id: uuid.UUID, days: int) -> LoadOut: ...
 
 
+class WeightReader(Protocol):
+    """Reads body weights and their trend (implemented by the body module)."""
+
+    async def history(self, user_id: uuid.UUID, start: date, end: date) -> WeightHistoryOut: ...
+
+
+class MealReader(Protocol):
+    """Reads the food diary (implemented by the meals module)."""
+
+    async def day(self, user_id: uuid.UUID, day: date) -> MealDayOut: ...
+
+    async def daily_totals(
+        self, user_id: uuid.UUID, start: date, end: date
+    ) -> list[DailyTotalsOut]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ToolContext:
     """What a tool may use. Tools never see the user's email or name.
@@ -54,6 +72,8 @@ class ToolContext:
     checkins: CheckinReader
     targets: TargetsReader
     training: LoadReader
+    weights: WeightReader
+    meals: MealReader
 
 
 ToolHandler = Callable[[ToolContext, Any], Awaitable[BaseModel]]

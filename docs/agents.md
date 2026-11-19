@@ -18,10 +18,10 @@ Code: `services/api/src/buddy_coach/coach/`.
 | Agent | Answers | Tools | Max tool calls |
 | --- | --- | --- | --- |
 | Head Coach | General questions, motivation, next steps | profile, goals | 2 |
-| Nutrition | Calories, macros, meals, vitamins, recovery food, supplements, fuelling | profile, nutrition targets, session fuelling, recovery nutrition, supplement guidance, micronutrient reference | 4 |
-| Training | Sessions, load, progression | profile, goals, session load, weekly ramp | 4 |
-| Recovery | Readiness, rest days, refuelling | profile, readiness, recovery nutrition | 3 |
-| Progress | Progress towards goals | profile, goals | 3 |
+| Nutrition | Calories, macros, meals, vitamins, recovery food, supplements, fuelling | profile, today's targets, food today, food last 7 days, weight trend, session fuelling, recovery nutrition, supplement guidance, micronutrient reference | 4 |
+| Training | Sessions, load, progression | profile, goals, training load, today's readiness, session load, weekly ramp | 4 |
+| Recovery | Readiness, rest days, refuelling | profile, today's readiness, training load, recovery nutrition | 3 |
+| Progress | Progress towards goals, weight trend | profile, goals, training load, weight trend, food last 7 days | 3 |
 | Motivation | Encouragement | profile, goals | 2 |
 
 Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,000-token budget.
@@ -32,8 +32,9 @@ Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,0
 - Not a doctor: no diagnoses or medication; medical topics go to a professional.
 - Supplements only from `supplement_guidance`; iron and high-dose vitamin D need a blood test.
 - Data sent to the model: age, sex, height, weight, experience, availability, structured goal
-  fields, today's check-in answers and readiness, today's targets and the training load. Never
-  names, emails, ids or user-written free text.
+  fields, today's check-in answers and readiness, today's targets, the training load, food-diary
+  totals and the weight trend. Never names, emails, ids or user-written free text (food names
+  included).
 - Tools that read stored data use the user's local calendar day (injected clock + profile
   timezone), so the coach gives the same numbers as the app.
 
@@ -44,6 +45,9 @@ Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,0
 | `get_profile_summary` | profile service | body data, experience, primary goal |
 | `list_goals` | profile service | active goals with days to target |
 | `get_today_targets` | nutrition service | today's kcal, protein, carbs, fat and reasons, as the app shows them |
+| `get_food_today` | meals service | today's calories and macros, per meal (no food names: they can be user-written text) |
+| `get_food_last_days` | meals service | calories and macros per day over the last 7 days |
+| `get_weight_trend` | body service | latest weight and the 7-day trend over 4 weeks |
 | `session_fuelling` | `science/nutrition.py` | carbs per hour during a session |
 | `recovery_nutrition` | `science/recovery.py` | recovery meal, fluids, protein per meal |
 | `supplement_guidance` | `science/supplements.py` | catalogue entries, professional referrals, doping note |

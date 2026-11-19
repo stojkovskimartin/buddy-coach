@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 
+from buddy_coach.body.deps import BodyServiceDep
 from buddy_coach.checkin.deps import CheckinServiceDep
 from buddy_coach.coach.builtin_tools import build_default_registry
 from buddy_coach.coach.llm import (
@@ -20,6 +21,7 @@ from buddy_coach.core.clock import local_date
 from buddy_coach.core.config import LLMProviderName, Settings
 from buddy_coach.core.deps import Clock, get_clock
 from buddy_coach.identity.deps import CurrentUserDep
+from buddy_coach.meals.deps import MealServiceDep
 from buddy_coach.nutrition.deps import NutritionServiceDep
 from buddy_coach.profile.deps import ProfileServiceDep
 from buddy_coach.workouts.deps import WorkoutServiceDep
@@ -63,6 +65,8 @@ async def get_tool_context(
     checkins: CheckinServiceDep,
     nutrition: NutritionServiceDep,
     workouts: WorkoutServiceDep,
+    body: BodyServiceDep,
+    meals: MealServiceDep,
     clock: Annotated[Clock, Depends(get_clock)],
 ) -> ToolContext:
     """Per-request tool context for the authenticated user, on their local calendar day."""
@@ -73,6 +77,8 @@ async def get_tool_context(
         checkins=checkins,
         targets=nutrition,
         training=workouts,
+        weights=body,
+        meals=meals,
     )
 
 

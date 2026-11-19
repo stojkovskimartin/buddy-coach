@@ -109,6 +109,9 @@ _KEYWORDS: dict[AgentName, tuple[str, ...]] = {
     AgentName.PROGRESS: (
         "progress",
         "trend",
+        "weight",
+        "weigh",
+        "gewicht",
         "review",
         "result",
         "improve*",

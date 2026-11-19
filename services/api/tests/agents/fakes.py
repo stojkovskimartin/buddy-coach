@@ -8,7 +8,14 @@ from datetime import date
 from typing import Any, cast
 
 from buddy_coach.coach.llm import LLMResponse, ToolCall
-from buddy_coach.coach.tools import CheckinReader, LoadReader, TargetsReader, ToolContext
+from buddy_coach.coach.tools import (
+    CheckinReader,
+    LoadReader,
+    MealReader,
+    TargetsReader,
+    ToolContext,
+    WeightReader,
+)
 from buddy_coach.profile.service import ProfileService
 
 
@@ -36,6 +43,8 @@ def tool_context(profiles: FakeProfiles | None = None) -> ToolContext:
         checkins=cast(CheckinReader, None),
         targets=cast(TargetsReader, None),
         training=cast(LoadReader, None),
+        weights=cast(WeightReader, None),
+        meals=cast(MealReader, None),
     )
 
 

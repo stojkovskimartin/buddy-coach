@@ -62,11 +62,15 @@ CONTRACTS: dict[AgentName, AgentContract] = {
         name=AgentName.NUTRITION,
         role="You are the nutrition specialist. Help with calorie and macro targets, meals, "
         "vitamins and minerals, recovery nutrition, supplements and fuelling for training. "
-        "Use get_today_targets for any target.",
+        "Use get_today_targets for any target, get_food_today / get_food_last_days for what the "
+        "user ate and get_weight_trend for how their weight moves.",
         allowed_tools=frozenset(
             {
                 PROFILE,
                 "get_today_targets",
+                "get_food_today",
+                "get_food_last_days",
+                "get_weight_trend",
                 "session_fuelling",
                 "recovery_nutrition",
                 "supplement_guidance",
@@ -104,7 +108,9 @@ CONTRACTS: dict[AgentName, AgentContract] = {
         name=AgentName.PROGRESS,
         role="You are the progress analyst. Summarise progress towards the user's goals "
         "honestly and suggest one focus for next week.",
-        allowed_tools=frozenset({PROFILE, GOALS, "get_training_load"}),
+        allowed_tools=frozenset(
+            {PROFILE, GOALS, "get_training_load", "get_weight_trend", "get_food_last_days"}
+        ),
         max_tool_calls=3,
     ),
     AgentName.MOTIVATION: AgentContract(

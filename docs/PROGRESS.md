@@ -74,8 +74,9 @@ pull request numbers.
 | #32 | Food diary API: entries per meal with the portion's nutrients, day totals, daily totals for charts, plausibility checks | +12 |
 | #33 | Food page on web: day totals against today's targets, entries per meal, Open Food Facts search and barcode, typed-in food, earlier days | +14 frontend (shared 8, client 1, web 5) |
 | #34 | Progress page on web: weight, food against today's target, fitness and fatigue, readiness over 4 weeks, 3 months or a year | +7 frontend (shared 4, client 1, web 2) |
+| #35 | The coach knows what you ate and how your weight moves: food today, food over 7 days, weight trend (totals only, no food names) | +2 |
 
-Totals: backend 524 tests, frontend 198 tests (shared 31, client 25, web 36, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 526 tests, frontend 198 tests (shared 31, client 25, web 36, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
