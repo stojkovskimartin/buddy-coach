@@ -30,7 +30,8 @@ masking a medical problem, or contaminated products for tested athletes.
      entry from suggestions and point to a professional.
    - Melatonin and other medicines are out of scope.
    - Tested athletes are told to use batch-tested products (e.g. Kölner Liste, Informed Sport).
-4. **Micronutrient intake** is only judged from logged food (food module, later). Until then
+4. **Micronutrient intake** is only judged from logged food. The `meals` food diary stores
+   calories and macros but no micronutrients yet; until it does,
    the tools return reference values and food sources, never a "you are deficient" statement.
 5. **Safety Guard** blocks supplement doses above the catalogue maxima in agent output.
 
