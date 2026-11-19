@@ -11,6 +11,12 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
   safety escalations and failed calls shown as alerts and read out by screen readers. The
   conversation stays when you switch tabs.
 
+- **Workouts from your watch** (on Today) – reads workouts and heart rate from Apple Health
+  (iPhone) or Health Connect (Android) and sends them to the server; syncs when the app opens,
+  when it returns to the foreground and on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP
+  and other apps that write there are
+  included. Read only; nothing is written back and no workout is stored on the phone.
+
 Profile setup and new goals are done in the web app for now; the guided mobile onboarding is
 tracked as P-05.
 
@@ -31,6 +37,23 @@ tracked as P-05.
    code with the camera (iOS) or Expo Go (Android). Phone and computer must be on the same Wi-Fi;
    allow port 8000 in the Windows firewall if the phone cannot connect.
 
+## Health sync needs a development build
+
+Expo Go runs every screen, but it cannot load the native health modules: the card then says that
+syncing needs the installed app. To test health sync, build the app once:
+
+- **Android** (Windows, macOS or Linux, with Android Studio and a phone or emulator):
+  `pnpm --filter @buddy/mobile exec expo run:android`. Health Connect must be installed and up to
+  date on the device (Android 14+ has it built in).
+- **iPhone** needs an Apple Developer account (HealthKit entitlement) and a Mac with Xcode:
+  `pnpm --filter @buddy/mobile exec expo run:ios` (cloud builds with EAS come later). The
+  simulator has Apple Health but no watch data; add a workout in the Health app to test.
+
+Limits of this version: sync runs in the foreground only (no background sync yet); a workout
+deleted in Apple Health or Health Connect stays in Buddy Coach; Health Connect can read at most
+30 days before access was first granted; heart rate, distance or calories that an app writes to
+Health Connect after its session was already synced are not picked up.
+
 ## Security
 
 - Tokens live in the iOS Keychain / Android Keystore via `expo-secure-store`, readable only while
@@ -41,7 +64,8 @@ tracked as P-05.
   deletes any old tokens, so a reinstall always starts logged out.
 - Release builds refuse a non-https `EXPO_PUBLIC_API_BASE_URL`, so tokens never travel in
   clear text. Plain http is only accepted in development.
-- No health data is stored on the device yet. When it is, it must be encrypted (AGENTS.md).
+- No health data is stored on the device: only the sync position (an opaque cursor), whether
+  sync is connected and the last sync time.
 - `EXPO_PUBLIC_*` values are bundled into the app: never put secrets there.
 
 ## Tests

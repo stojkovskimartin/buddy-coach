@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { CheckinCard } from "../components/CheckinCard";
+import { HealthSyncCard } from "../components/HealthSyncCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
@@ -75,6 +76,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       </Text>
       <ErrorBanner message={error} />
       <CheckinCard reloadKey={reloads} />
+      <HealthSyncCard />
       {!loading && !error && !profile && (
         <Card>
           <Text style={styles.heading}>Set up your profile</Text>

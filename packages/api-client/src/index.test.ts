@@ -159,6 +159,27 @@ describe("BuddyClient", () => {
     expect((await client.getTodayTargets())?.kcal).toBe(2700);
   });
 
+  it("imports workouts in one batch", async () => {
+    const api = fakeApi({
+      "POST /api/v1/workouts/import": () => json(200, { created: 1, updated: 0 }),
+    });
+    const client = new BuddyClient({
+      baseUrl: BASE,
+      tokens: memoryTokenStore(tokens(1)),
+      fetch: api.fetch,
+    });
+    const run = {
+      source: "apple_health" as const,
+      external_id: "A1",
+      activity: "running" as const,
+      started_at: "2026-11-18T07:00:00.000Z",
+      duration_min: 50,
+    };
+
+    expect(await client.importWorkouts([run])).toEqual({ created: 1, updated: 0 });
+    expect(await api.calls[0]?.json()).toEqual({ workouts: [run] });
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

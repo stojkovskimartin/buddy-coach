@@ -10,6 +10,8 @@ import {
   type CheckinIn,
   type Goal,
   type GoalIn,
+  type ImportedWorkout,
+  type ImportResult,
   type Profile,
   type ProfileIn,
   type TokenStore,
@@ -39,6 +41,7 @@ export interface CoachApi {
   getTodayCheckin(): Promise<Checkin | null>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
+  importWorkouts(workouts: ImportedWorkout[]): Promise<ImportResult>;
 }
 
 /** "loading" while the stored session is checked on start. */
