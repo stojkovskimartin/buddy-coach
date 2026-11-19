@@ -51,3 +51,18 @@ def test_openai_compatible_from_the_environment(monkeypatch: pytest.MonkeyPatch)
         "qwen3:8b",
     )
     assert settings.llm_api_key is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "http://localhost:5173,https://app.example.ch",
+        '["http://localhost:5173", "https://app.example.ch"]',
+        "[http://localhost:5173,https://app.example.ch]",  # what `uv run --env-file` passes on
+    ],
+)
+def test_cors_origins_accept_a_list_in_any_common_form(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("BUDDY_CORS_ORIGINS", value)
+    assert make_settings().cors_origins == ["http://localhost:5173", "https://app.example.ch"]

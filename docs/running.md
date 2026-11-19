@@ -171,7 +171,7 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `BUDDY_JWT_SECRET` | – (required) | at least 32 characters |
 | `BUDDY_ACCESS_TOKEN_TTL_MINUTES` | 15 | |
 | `BUDDY_REFRESH_TOKEN_TTL_DAYS` | 30 | |
-| `BUDDY_CORS_ORIGINS` | `["http://localhost:5173"]` | JSON list |
+| `BUDDY_CORS_ORIGINS` | `http://localhost:5173` | comma-separated (a JSON list works too) |
 | `BUDDY_LLM_PROVIDER` | `dev` | `dev`, `anthropic` or `openai_compatible` (see "Real AI answers") |
 | `BUDDY_ANTHROPIC_API_KEY` | – | required for `anthropic` |
 | `BUDDY_LLM_MODEL` | `claude-sonnet-5-5` | required for `openai_compatible` |
