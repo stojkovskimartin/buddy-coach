@@ -14,11 +14,16 @@ MAX_RANGE_DAYS = 366
 
 class WeightSource(StrEnum):
     """Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)
-    write to the phone's health store, which the app reads."""
+    write to the phone's health store, which the app reads; a Withings account can also be
+    connected directly."""
 
     MANUAL = "manual"
     APPLE_HEALTH = "apple_health"
     HEALTH_CONNECT = "health_connect"
+    WITHINGS = "withings"
+
+
+PHONE_SOURCES = frozenset({WeightSource.APPLE_HEALTH, WeightSource.HEALTH_CONNECT})
 
 
 def is_plausible(weight_kg: float) -> bool:

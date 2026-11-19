@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
-from buddy_coach.body.domain import MAX_IMPORT_BATCH, WeightSource
+from buddy_coach.body.domain import MAX_IMPORT_BATCH, PHONE_SOURCES, WeightSource
 from buddy_coach.profile.domain import MAX_WEIGHT_KG, MIN_WEIGHT_KG
 
 
@@ -44,6 +44,13 @@ class WeightImportIn(BaseModel):
     """A batch from one sync. Sending the same weights again updates them, never duplicates."""
 
     weights: list[ImportedWeight] = Field(min_length=1, max_length=MAX_IMPORT_BATCH)
+
+    @field_validator("weights")
+    @classmethod
+    def _from_the_phone(cls, weights: list[ImportedWeight]) -> list[ImportedWeight]:
+        if any(w.source not in PHONE_SOURCES for w in weights):
+            raise ValueError("only Apple Health and Health Connect weights are imported here")
+        return weights
 
 
 class WeightImportResult(BaseModel):

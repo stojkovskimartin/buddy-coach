@@ -32,8 +32,9 @@ export function trendChangeText(trend: readonly { day: string; weight_kg: number
   return `${sign}${Math.abs(change).toFixed(1)} kg since ${shortDate(first.day)}`;
 }
 
-export const WEIGHT_SOURCE_LABEL: Record<"manual" | "apple_health" | "health_connect", string> = {
+export const WEIGHT_SOURCE_LABEL: Record<"manual" | "apple_health" | "health_connect" | "withings", string> = {
   manual: "Entered",
   apple_health: "Apple Health",
   health_connect: "Health Connect",
+  withings: "Withings",
 };

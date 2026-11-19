@@ -38,6 +38,9 @@ export type Photo = Schemas["PhotoOut"];
 export type PhotoKind = Schemas["PhotoKind"];
 export type WorkoutSourceSummary = Schemas["WorkoutSourceOut"];
 export type WeightSourceSummary = Schemas["WeightSourceOut"];
+export type IntegrationProvider = Schemas["Provider"];
+export type ProviderStatus = Schemas["ProviderOut"];
+export type SyncResult = Schemas["SyncOut"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -276,6 +279,42 @@ export class BuddyClient {
   /** Where weights come from, latest first. */
   async weightSources(): Promise<WeightSourceSummary[]> {
     return unwrap(await this.raw.GET("/api/v1/body/weights/sources"));
+  }
+
+  /** Accounts that can be connected directly, and which are. */
+  async integrations(): Promise<ProviderStatus[]> {
+    return unwrap(await this.raw.GET("/api/v1/integrations"));
+  }
+
+  /** The provider's sign-in page to send the browser to. */
+  async connectIntegration(provider: IntegrationProvider): Promise<string> {
+    const result = unwrap(
+      await this.raw.POST("/api/v1/integrations/{provider}/connect", { params: { path: { provider } } }),
+    );
+    return result.authorize_url;
+  }
+
+  /** Finish connecting with what the provider sent back to the callback page; runs the first sync. */
+  async finishIntegration(provider: IntegrationProvider, code: string, state: string): Promise<SyncResult> {
+    return unwrap(
+      await this.raw.POST("/api/v1/integrations/{provider}/callback", {
+        params: { path: { provider } },
+        body: { code, state },
+      }),
+    );
+  }
+
+  /** Bring in new data; at most once every 10 minutes (else `synced` is false). */
+  async syncIntegration(provider: IntegrationProvider): Promise<SyncResult> {
+    return unwrap(
+      await this.raw.POST("/api/v1/integrations/{provider}/sync", { params: { path: { provider } } }),
+    );
+  }
+
+  /** Disconnect; data already brought in stays. */
+  async disconnectIntegration(provider: IntegrationProvider): Promise<void> {
+    const result = await this.raw.DELETE("/api/v1/integrations/{provider}", { params: { path: { provider } } });
+    if (!result.response.ok) unwrap(result);
   }
 
   async chat(message: string): Promise<ChatReply> {

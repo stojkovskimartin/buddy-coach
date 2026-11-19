@@ -38,6 +38,43 @@
         "title": "AgentName",
         "type": "string"
       },
+      "AuthorizeOut": {
+        "description": "Where to send the browser to sign in at the provider.",
+        "properties": {
+          "authorize_url": {
+            "title": "Authorize Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url"
+        ],
+        "title": "AuthorizeOut",
+        "type": "object"
+      },
+      "CallbackIn": {
+        "description": "What the provider sent back to the web app's callback page.",
+        "properties": {
+          "code": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state"
+        ],
+        "title": "CallbackIn",
+        "type": "object"
+      },
       "ChatReply": {
         "description": "The coach's answer.",
         "properties": {
@@ -1356,6 +1393,50 @@
         "title": "ProfileOut",
         "type": "object"
       },
+      "Provider": {
+        "description": "Accounts that can be connected directly.",
+        "enum": [
+          "withings"
+        ],
+        "title": "Provider",
+        "type": "string"
+      },
+      "ProviderOut": {
+        "description": "An account type: offered on this server (set up by the operator) and connected or not.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          }
+        },
+        "required": [
+          "provider",
+          "available",
+          "connected",
+          "last_sync_at"
+        ],
+        "title": "ProviderOut",
+        "type": "object"
+      },
       "RampOut": {
         "description": "This week's load (the last 7 days, today included even if it is not over) against the\n7 days before.",
         "properties": {
@@ -1505,6 +1586,48 @@
         ],
         "title": "Sport",
         "type": "string"
+      },
+      "SyncOut": {
+        "description": "Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "synced": {
+            "title": "Synced",
+            "type": "boolean"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "synced",
+          "last_sync_at",
+          "created",
+          "updated",
+          "skipped"
+        ],
+        "title": "SyncOut",
+        "type": "object"
       },
       "TargetsOut": {
         "description": "Today's energy and macro targets and why they are what they are.",
@@ -1825,11 +1948,12 @@
         "type": "object"
       },
       "WeightSource": {
-        "description": "Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)\nwrite to the phone's health store, which the app reads.",
+        "description": "Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)\nwrite to the phone's health store, which the app reads; a Withings account can also be\nconnected directly.",
         "enum": [
           "manual",
           "apple_health",
-          "health_connect"
+          "health_connect",
+          "withings"
         ],
         "title": "WeightSource",
         "type": "string"
@@ -3079,6 +3203,228 @@
         "tags": [
           "profile",
           "goals"
+        ]
+      }
+    },
+    "/api/v1/integrations": {
+      "get": {
+        "description": "Accounts that can be connected, and which are.",
+        "operationId": "list_providers_api_v1_integrations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderOut"
+                  },
+                  "title": "Response List Providers Api V1 Integrations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Providers",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{provider}": {
+      "delete": {
+        "description": "Disconnect. Weights already brought in stay.",
+        "operationId": "disconnect_api_v1_integrations__provider__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Provider"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Disconnect",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{provider}/callback": {
+      "post": {
+        "description": "Finish connecting (only the user who started it can) and bring in the last year.",
+        "operationId": "callback_api_v1_integrations__provider__callback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Provider"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Callback",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{provider}/connect": {
+      "post": {
+        "description": "Start connecting: send the browser to ``authorize_url``. The provider returns to the web\napp's /connections/callback page, which posts the code to ``/callback``.",
+        "operationId": "connect_api_v1_integrations__provider__connect_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Connect",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{provider}/sync": {
+      "post": {
+        "description": "Bring in new weigh-ins. At most once every 10 minutes; earlier calls return\n``synced: false``.",
+        "operationId": "sync_api_v1_integrations__provider__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync",
+        "tags": [
+          "integrations"
         ]
       }
     },

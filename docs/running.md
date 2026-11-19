@@ -98,6 +98,27 @@ BUDDY_ANTHROPIC_API_KEY=sk-ant-...
 Small local models follow the coach's rules less reliably than large hosted ones; the safety
 checks and the tools behave the same with every provider.
 
+## Connect a Withings account
+
+Withings scales can send weights straight to Buddy Coach, without the phone app. The server needs
+its own (free) Withings developer app:
+
+1. Sign in at https://developer.withings.com, open the Developer Dashboard and create an
+   application of type Public API. Callback URL: `http://localhost:5173/connections/callback`.
+2. Generate the encryption key for the stored tokens:
+   `uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+3. Add to `services/api/.env` (keep these values private; `.env` is never committed):
+   ```
+   BUDDY_INTEGRATIONS_KEY=<the key from step 2>
+   BUDDY_WITHINGS_CLIENT_ID=<client id from the dashboard>
+   BUDDY_WITHINGS_CLIENT_SECRET=<client secret from the dashboard>
+   ```
+4. Restart the API. In the web app, Connections → Accounts → Connect Withings.
+
+Changing the key later disconnects every account; they connect again with one click. If the
+Withings app already sends weights to Apple Health or Health Connect, use one of the two paths,
+or each weigh-in appears twice.
+
 ## Update after `git pull`
 
 New code often brings new libraries and database tables, and a running API keeps the old code
@@ -179,6 +200,9 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `BUDDY_LLM_API_KEY` | – | for `openai_compatible` providers that need a key |
 | `BUDDY_MEDIA_DIR` | `./media` | where photos are stored, relative to the API's folder (Docker: the `media` volume at `/app/media`) |
 | `BUDDY_MEAL_PHOTO_RETENTION_DAYS` | 90 | meal photos older than this are removed; food entries stay |
+| `BUDDY_INTEGRATIONS_KEY` | – | Fernet key that encrypts connected accounts' tokens; needed for any direct account (see "Connect a Withings account") |
+| `BUDDY_OAUTH_REDIRECT_URL` | `http://localhost:5173/connections/callback` | where providers send the browser back; https in production |
+| `BUDDY_WITHINGS_CLIENT_ID`, `BUDDY_WITHINGS_CLIENT_SECRET` | – | from your Withings developer app |
 | `BUDDY_LOG_LEVEL` | `INFO` | logs are JSON lines |
 
 ## Troubleshooting
@@ -192,3 +216,4 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | Coach answers "I cannot reach my coaching brain right now" with `openai_compatible` | The model server is not running: start Ollama (or LM Studio), or switch back to `dev` |
 | Coach answers start with "(development coach)" | Expected without an API key; see "Real AI answers" |
 | Integration tests are skipped | Set `BUDDY_TEST_DATABASE_URL` |
+| Accounts says "Not set up on this server yet" | Set the Withings variables and the key, then restart the API (see "Connect a Withings account") |

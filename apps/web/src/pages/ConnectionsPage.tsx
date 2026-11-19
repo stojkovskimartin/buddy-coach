@@ -1,8 +1,21 @@
-import type { WeightSourceSummary, WorkoutSourceSummary } from "@buddy/api-client";
-import { WEIGHT_SOURCE_LABEL, importText } from "@buddy/shared";
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import type {
+  IntegrationProvider,
+  ProviderStatus,
+  WeightSourceSummary,
+  WorkoutSourceSummary,
+} from "@buddy/api-client";
+import { WEIGHT_SOURCE_LABEL, importText, weightSyncText } from "@buddy/shared";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Link } from "react-router-dom";
 
 import { errorMessage, useSession } from "../lib/session";
+
+/** The provider being connected, kept for the callback page (the provider does not send it). */
+const PENDING_PROVIDER = "buddy.connecting";
+
+const PROVIDER: Record<IntegrationProvider, { name: string; what: string }> = {
+  withings: { name: "Withings", what: "weight from Withings smart scales" },
+};
 
 const MAX_FIT_BYTES = 10 * 1024 * 1024;
 
@@ -15,6 +28,7 @@ function when(iso: string): string {
 export function ConnectionsPage() {
   const { api } = useSession();
   const [workouts, setWorkouts] = useState<WorkoutSourceSummary[] | null>(null);
+  const [accounts, setAccounts] = useState<ProviderStatus[]>([]);
   const [weights, setWeights] = useState<WeightSourceSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -22,9 +36,10 @@ export function ConnectionsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [w, s] = await Promise.all([api.workoutSources(), api.weightSources()]);
+      const [w, s, a] = await Promise.all([api.workoutSources(), api.weightSources(), api.integrations()]);
       setWorkouts(w);
       setWeights(s);
+      setAccounts(a);
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -46,6 +61,26 @@ export function ConnectionsPage() {
     setError(null);
     try {
       setMessage(`${importText(await api.uploadFit(file))}.`);
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function act(provider: IntegrationProvider, action: "connect" | "sync" | "disconnect") {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      if (action === "connect") {
+        sessionStorage.setItem(PENDING_PROVIDER, provider);
+        window.location.assign(await api.connectIntegration(provider));
+        return;
+      }
+      if (action === "sync") setMessage(`${weightSyncText(await api.syncIntegration(provider))}.`);
+      else await api.disconnectIntegration(provider);
       await load();
     } catch (e) {
       setError(errorMessage(e));
@@ -128,12 +163,83 @@ export function ConnectionsPage() {
         </p>
       </section>
 
-      <section className="card" aria-labelledby="c-next">
-        <h2 id="c-next">Direct accounts</h2>
+      <section className="card" aria-labelledby="c-accounts">
+        <h2 id="c-accounts">Accounts</h2>
         <p className="muted">
-          Connecting a Garmin, WHOOP, Fitbit, Polar or Strava account directly is planned. Until then, the
-          phone health app and watch files bring in the same workouts.
+          Connect an account directly, without the phone. If that app already sends the same data to Apple
+          Health or Health Connect, use only one of the two, or every weigh-in shows up twice. Garmin, WHOOP,
+          Polar and Strava come next.
         </p>
+        <ul className="entries">
+          {accounts.map((a) => (
+            <li key={a.provider}>
+              <strong>{PROVIDER[a.provider].name}</strong>
+              <span className="muted"> · {PROVIDER[a.provider].what} · </span>
+              <span className="muted">{accountStatus(a)}</span>{" "}
+              {a.available && !a.connected && (
+                <button type="button" disabled={busy} onClick={() => void act(a.provider, "connect")}>
+                  Connect {PROVIDER[a.provider].name}
+                </button>
+              )}
+              {a.connected && (
+                <>
+                  <button type="button" disabled={busy} onClick={() => void act(a.provider, "sync")}>
+                    Sync {PROVIDER[a.provider].name} now
+                  </button>{" "}
+                  <button type="button" className="link" disabled={busy} onClick={() => void act(a.provider, "disconnect")}>
+                    Disconnect {PROVIDER[a.provider].name}
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </main>
+  );
+}
+
+function accountStatus(a: ProviderStatus): string {
+  if (a.connected) return a.last_sync_at ? `Connected, last sync ${when(a.last_sync_at)}` : "Connected";
+  return a.available ? "Not connected" : "Not set up on this server yet";
+}
+
+/** Where the provider sends the browser back to: finishes connecting and shows the result. */
+export function ConnectionCallback() {
+  const { api } = useSession();
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return; // the code works once; React may run effects twice in development
+    started.current = true;
+    const query = new URLSearchParams(window.location.search);
+    window.history.replaceState(null, "", window.location.pathname); // keep the code out of history
+    const provider = sessionStorage.getItem(PENDING_PROVIDER) as IntegrationProvider | null;
+    sessionStorage.removeItem(PENDING_PROVIDER);
+    const code = query.get("code");
+    const state = query.get("state");
+    if (!provider || !(provider in PROVIDER) || !code || !state) {
+      setResult({ ok: false, text: "The account was not connected. Try again from Connections." });
+      return;
+    }
+    api.finishIntegration(provider, code, state).then(
+      (r) => setResult({ ok: true, text: `${PROVIDER[provider].name} is connected: ${weightSyncText(r)}.` }),
+      (e: unknown) => setResult({ ok: false, text: errorMessage(e) }),
+    );
+  }, [api]);
+
+  return (
+    <main className="stack">
+      <section className="card">
+        <h1>Connecting your account</h1>
+        {!result && <p>Bringing in your data…</p>}
+        {result && (
+          <p role={result.ok ? "status" : "alert"} className={result.ok ? undefined : "error"}>
+            {result.text}
+          </p>
+        )}
+        <Link to="/connections">Back to Connections</Link>
       </section>
     </main>
   );

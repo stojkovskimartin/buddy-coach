@@ -12,6 +12,7 @@ import type {
   PhotoKind,
   Profile,
   ProfileIn,
+  ProviderStatus,
   TrainingLoad,
   Weight,
   WeightHistory,
@@ -106,6 +107,13 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     uploadFit: vi.fn(async () => ({ created: 1, updated: 0 })),
     workoutSources: vi.fn(async (): Promise<WorkoutSourceSummary[]> => []),
     weightSources: vi.fn(async (): Promise<WeightSourceSummary[]> => []),
+    integrations: vi.fn(async (): Promise<ProviderStatus[]> => [
+      { provider: "withings", available: true, connected: false, last_sync_at: null },
+    ]),
+    connectIntegration: vi.fn(async () => "https://account.withings.com/oauth2_user/authorize2?state=s"),
+    finishIntegration: vi.fn(async () => ({ synced: true, last_sync_at: null, created: 2, updated: 0, skipped: 0 })),
+    syncIntegration: vi.fn(async () => ({ synced: false, last_sync_at: null, created: 0, updated: 0, skipped: 0 })),
+    disconnectIntegration: vi.fn(async () => undefined),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
@@ -781,6 +789,65 @@ describe("web app", () => {
       vi.mocked(api.uploadFit).mockRejectedValueOnce(new Error("The FIT file is damaged."));
       await userEvent.upload(within(fit).getByLabelText("Upload a .fit file"), new File(["x"], "bad.FIT"));
       expect(await screen.findByRole("alert")).toHaveTextContent("damaged");
+    });
+
+    it("sends the browser to the provider to connect", async () => {
+      const assign = vi.fn();
+      vi.stubGlobal("location", { ...window.location, assign });
+      const api = fakeApi();
+      renderAt("/connections", api, true);
+      const accounts = await screen.findByRole("region", { name: "Accounts" });
+      await userEvent.click(await within(accounts).findByRole("button", { name: "Connect Withings" }));
+      expect(api.connectIntegration).toHaveBeenCalledWith("withings");
+      expect(assign).toHaveBeenCalledWith("https://account.withings.com/oauth2_user/authorize2?state=s");
+      expect(sessionStorage.getItem("buddy.connecting")).toBe("withings");
+      vi.unstubAllGlobals();
+    });
+
+    it("syncs and disconnects a connected account", async () => {
+      const api = fakeApi({
+        integrations: vi.fn(async () => [
+          { provider: "withings" as const, available: true, connected: true, last_sync_at: "2026-11-19T06:00:00Z" },
+        ]),
+      });
+      renderAt("/connections", api, true);
+      const accounts = await screen.findByRole("region", { name: "Accounts" });
+      expect(await within(accounts).findByText(/Connected, last sync/)).toBeInTheDocument();
+      await userEvent.click(within(accounts).getByRole("button", { name: "Sync Withings now" }));
+      expect(await screen.findByText(/less than 10 minutes ago/)).toBeInTheDocument();
+      await userEvent.click(within(accounts).getByRole("button", { name: "Disconnect Withings" }));
+      expect(api.disconnectIntegration).toHaveBeenCalledWith("withings");
+      expect(api.integrations).toHaveBeenCalledTimes(3); // reloaded after each action
+    });
+
+    it("says when a provider is not set up on the server", async () => {
+      const api = fakeApi({
+        integrations: vi.fn(async () => [
+          { provider: "withings" as const, available: false, connected: false, last_sync_at: null },
+        ]),
+      });
+      renderAt("/connections", api, true);
+      const accounts = await screen.findByRole("region", { name: "Accounts" });
+      expect(await within(accounts).findByText("Not set up on this server yet")).toBeInTheDocument();
+      expect(within(accounts).queryByRole("button")).toBeNull();
+    });
+
+    it("finishes connecting on the callback page and removes the code from the address", async () => {
+      sessionStorage.setItem("buddy.connecting", "withings");
+      const api = fakeApi();
+      renderAt("/connections/callback?code=abc&state=xyz", api, true);
+      expect(await screen.findByRole("status")).toHaveTextContent("Withings is connected: 2 new weights.");
+      expect(api.finishIntegration).toHaveBeenCalledTimes(1);
+      expect(api.finishIntegration).toHaveBeenCalledWith("withings", "abc", "xyz");
+      expect(window.location.search).toBe("");
+      expect(sessionStorage.getItem("buddy.connecting")).toBeNull();
+    });
+
+    it("explains a cancelled sign-in", async () => {
+      const api = fakeApi();
+      renderAt("/connections/callback?error=access_denied", api, true);
+      expect(await screen.findByRole("alert")).toHaveTextContent("not connected");
+      expect(api.finishIntegration).not.toHaveBeenCalled();
     });
 
     it("refuses other files", async () => {

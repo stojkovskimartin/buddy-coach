@@ -305,6 +305,108 @@ export interface paths {
         patch: operations["update_goal_status_api_v1_goals__goal_id__patch"];
         trace?: never;
     };
+    "/api/v1/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description Accounts that can be connected, and which are.
+         */
+        get: operations["list_providers_api_v1_integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect
+         * @description Disconnect. Weights already brought in stay.
+         */
+        delete: operations["disconnect_api_v1_integrations__provider__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Callback
+         * @description Finish connecting (only the user who started it can) and bring in the last year.
+         */
+        post: operations["callback_api_v1_integrations__provider__callback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{provider}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect
+         * @description Start connecting: send the browser to ``authorize_url``. The provider returns to the web
+         *     app's /connections/callback page, which posts the code to ``/callback``.
+         */
+        post: operations["connect_api_v1_integrations__provider__connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{provider}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync
+         * @description Bring in new weigh-ins. At most once every 10 minutes; earlier calls return
+         *     ``synced: false``.
+         */
+        post: operations["sync_api_v1_integrations__provider__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meals/daily": {
         parameters: {
             query?: never;
@@ -699,6 +801,24 @@ export interface components {
          * @enum {string}
          */
         AgentName: "head_coach" | "nutrition" | "training" | "recovery" | "progress" | "motivation";
+        /**
+         * AuthorizeOut
+         * @description Where to send the browser to sign in at the provider.
+         */
+        AuthorizeOut: {
+            /** Authorize Url */
+            authorize_url: string;
+        };
+        /**
+         * CallbackIn
+         * @description What the provider sent back to the web app's callback page.
+         */
+        CallbackIn: {
+            /** Code */
+            code: string;
+            /** State */
+            state: string;
+        };
         /**
          * ChatReply
          * @description The coach's answer.
@@ -1284,6 +1404,25 @@ export interface components {
             weight_kg: number;
         };
         /**
+         * Provider
+         * @description Accounts that can be connected directly.
+         * @enum {string}
+         */
+        Provider: "withings";
+        /**
+         * ProviderOut
+         * @description An account type: offered on this server (set up by the operator) and connected or not.
+         */
+        ProviderOut: {
+            /** Available */
+            available: boolean;
+            /** Connected */
+            connected: boolean;
+            /** Last Sync At */
+            last_sync_at: string | null;
+            provider: components["schemas"]["Provider"];
+        };
+        /**
          * RampOut
          * @description This week's load (the last 7 days, today included even if it is not over) against the
          *     7 days before.
@@ -1359,6 +1498,22 @@ export interface components {
          * @enum {string}
          */
         Sport: "running" | "cycling" | "swimming" | "triathlon" | "hiking" | "ski_touring" | "alpine_skiing" | "climbing" | "strength" | "other";
+        /**
+         * SyncOut
+         * @description Weights brought in. ``synced`` is false when the last sync was under 10 minutes ago.
+         */
+        SyncOut: {
+            /** Created */
+            created: number;
+            /** Last Sync At */
+            last_sync_at: string | null;
+            /** Skipped */
+            skipped: number;
+            /** Synced */
+            synced: boolean;
+            /** Updated */
+            updated: number;
+        };
         /**
          * TargetsOut
          * @description Today's energy and macro targets and why they are what they are.
@@ -1529,10 +1684,11 @@ export interface components {
         /**
          * WeightSource
          * @description Where a measurement came from. Smart scales (Withings, Xiaomi, Garmin, Eufy, Renpho, ...)
-         *     write to the phone's health store, which the app reads.
+         *     write to the phone's health store, which the app reads; a Withings account can also be
+         *     connected directly.
          * @enum {string}
          */
-        WeightSource: "manual" | "apple_health" | "health_connect";
+        WeightSource: "manual" | "apple_health" | "health_connect" | "withings";
         /**
          * WeightSourceOut
          * @description A source the athlete has weights from (a smart scale via the phone, or typed in).
@@ -2246,6 +2402,152 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_providers_api_v1_integrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"][];
+                };
+            };
+        };
+    };
+    disconnect_api_v1_integrations__provider__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["Provider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    callback_api_v1_integrations__provider__callback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["Provider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_api_v1_integrations__provider__connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["Provider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_api_v1_integrations__provider__sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["Provider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
                 };
             };
             /** @description Validation Error */
