@@ -5,6 +5,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 import { CheckinCard } from "../components/CheckinCard";
 import { HealthSyncCard } from "../components/HealthSyncCard";
 import { TargetsCard } from "../components/TargetsCard";
+import { WeightCard } from "../components/WeightCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
@@ -78,6 +79,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       <ErrorBanner message={error} />
       <CheckinCard reloadKey={reloads} />
       {profile && <TargetsCard reloadKey={reloads} />}
+      <WeightCard reloadKey={reloads} />
       <HealthSyncCard />
       {!loading && !error && !profile && (
         <Card>

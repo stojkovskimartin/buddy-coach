@@ -5,6 +5,8 @@ import {
   type CheckinIn,
   type Goal,
   type Profile,
+  type Weight,
+  type WeightIn,
 } from "@buddy/api-client";
 
 import type { CoachApi } from "../src/lib/session";
@@ -55,6 +57,17 @@ export function goal(overrides: Partial<Goal> = {}): Goal {
   } as Goal;
 }
 
+export function weight(weight_kg: number, overrides: Partial<Weight> = {}): Weight {
+  return {
+    id: `w-${weight_kg}`,
+    source: "manual",
+    measured_at: "2026-11-19T06:30:00Z",
+    day: "2026-11-19",
+    weight_kg,
+    ...overrides,
+  };
+}
+
 export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = {}) {
   const api = {
     register: jest.fn().mockResolvedValue({}),
@@ -67,6 +80,9 @@ export function fakeApi(overrides: Partial<Record<keyof CoachApi, jest.Mock>> = 
     chat: jest.fn().mockResolvedValue(reply()),
     getTodayCheckin: jest.fn().mockResolvedValue(null),
     getTodayTargets: jest.fn().mockResolvedValue(null),
+    logWeight: jest.fn(async (w: WeightIn) => weight(w.weight_kg)),
+    listWeights: jest.fn().mockResolvedValue({ weights: [], trend: [] }),
+    deleteWeight: jest.fn().mockResolvedValue(undefined),
     saveTodayCheckin: jest.fn(async (c: CheckinIn) => checkin("2026-11-19", c)),
     saveCheckin: jest.fn(async (day: string, c: CheckinIn) => checkin(day, c)),
     importWorkouts: jest.fn().mockResolvedValue({ created: 0, updated: 0 }),

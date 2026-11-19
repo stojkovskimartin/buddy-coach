@@ -180,6 +180,47 @@ describe("BuddyClient", () => {
     expect(await api.calls[0]?.json()).toEqual({ workouts: [run] });
   });
 
+  describe("weights", () => {
+    const authed = (routes: Parameters<typeof fakeApi>[0]) => {
+      const api = fakeApi(routes);
+      const client = new BuddyClient({
+        baseUrl: BASE,
+        tokens: memoryTokenStore(tokens(1)),
+        fetch: api.fetch,
+      });
+      return { api, client };
+    };
+
+    it("logs and lists with a range", async () => {
+      const weight = {
+        id: "w1",
+        source: "manual",
+        measured_at: "2026-11-19T06:30:00Z",
+        day: "2026-11-19",
+        weight_kg: 77.4,
+      };
+      const { api, client } = authed({
+        "POST /api/v1/body/weights": () => json(201, weight),
+        "GET /api/v1/body/weights": () => json(200, { weights: [weight], trend: [] }),
+      });
+      expect(await client.logWeight({ weight_kg: 77.4 })).toEqual(weight);
+      expect(await api.calls[0]?.json()).toEqual({ weight_kg: 77.4 });
+
+      expect((await client.listWeights({ from: "2026-08-22" })).weights).toHaveLength(1);
+      expect(new URL(api.calls[1]!.url).searchParams.get("from")).toBe("2026-08-22");
+    });
+
+    it("deletes, and reports a missing weight", async () => {
+      const { client } = authed({
+        "DELETE /api/v1/body/weights/w1": () => new Response(null, { status: 204 }),
+        "DELETE /api/v1/body/weights/gone": () =>
+          json(404, { code: "not_found", detail: "Weight not found." }),
+      });
+      await expect(client.deleteWeight("w1")).resolves.toBeUndefined();
+      await expect(client.deleteWeight("gone")).rejects.toMatchObject({ status: 404 });
+    });
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

@@ -90,3 +90,10 @@ button.link { background: none; color: var(--accent); padding: 0; font-weight: 5
 .macros div { padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; }
 .macros dt { color: var(--muted); font-size: 0.85rem; }
 .macros dd { margin: 0; font-weight: 600; }
+.chart { width: 100%; height: auto; margin: 0 0 0.75rem; }
+.chart path { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.chart circle { fill: var(--accent); }
+.entries { list-style: none; padding: 0; margin: 0 0 0.75rem; }
+.entries li { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+form.inline { flex-direction: row; align-items: flex-end; }
+form.inline label { flex: 1; }

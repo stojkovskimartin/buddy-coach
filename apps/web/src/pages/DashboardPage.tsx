@@ -6,6 +6,7 @@ import { daysUntil, goalDateBounds } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
 import { CheckinCard } from "./CheckinCard";
 import { TargetsCard } from "./TargetsCard";
+import { WeightCard } from "./WeightCard";
 
 const GOAL_LABELS: Record<Goal["goal_type"], string> = {
   lose_weight: "Lose weight",
@@ -42,6 +43,7 @@ export function DashboardPage() {
     <main className="stack">
       <CheckinCard />
       <TargetsCard />
+      <WeightCard />
       <section className="card">
         <h1>Your goals</h1>
         {error && (
