@@ -72,7 +72,6 @@ Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobi
 3. Consent for AI processing and chat history (see `docs/backlog.md`).
 4. Food logging (text and grams first, then photo and barcode) feeding the vitamin and mineral check.
 5. Workouts with session feedback; HealthKit / Health Connect import on mobile.
-6. Desktop app (Tauri) wrapping the web app.
 
 ## Open decisions for the product owner
 

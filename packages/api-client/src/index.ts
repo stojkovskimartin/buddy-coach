@@ -1,5 +1,5 @@
 /**
- * Typed client for the Buddy Coach API, shared by web, mobile and desktop.
+ * Typed client for the Buddy Coach API, shared by the web and mobile apps.
  *
  * Types come from `src/generated/schema.ts`, which is generated from the backend's OpenAPI
  * contract (`pnpm api:generate`), so a backend change that breaks a client fails `tsc`.
@@ -22,7 +22,7 @@ export type CheckinIn = Schemas["CheckinIn"];
 export type Checkin = Schemas["CheckinOut"];
 export type Readiness = Schemas["ReadinessOut"];
 
-/** Where the app keeps its tokens: localStorage on web, the OS keychain on mobile/desktop. */
+/** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
   get(): Promise<TokenPair | null>;
   set(tokens: TokenPair | null): Promise<void>;

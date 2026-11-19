@@ -1,11 +1,12 @@
 # ADR-0001: Two languages – Python backend, TypeScript clients
 
-- Status: accepted
+- Status: accepted; desktop part superseded by [ADR-0006](0006-no-desktop-app.md)
 - Date: 2026-11-18
 
 ## Context
 
-The product needs a backend with an AI agent network, a web app, iOS and Android apps and a desktop app.
+The product needs a backend with an AI agent network, a web app and iOS and Android apps
+(a desktop app was planned at first and dropped in ADR-0006).
 Every extra language adds contract translation, tooling and review load, for humans and for AI agents.
 
 ## Decision
@@ -15,7 +16,6 @@ Every extra language adds contract translation, tooling and review load, for hum
 - **All clients:** TypeScript.
   - Web: React + Vite.
   - Mobile: Expo (React Native) – one codebase for iOS and Android, native modules for HealthKit and Health Connect.
-  - Desktop: Tauri 2 wrapping the web app – small, fast, signed installers; the Rust shell stays minimal.
 - **Contract:** FastAPI's OpenAPI document is the single source of truth. `packages/api-client` is generated from it, so a backend change that breaks a client fails the type check.
 - **Tooling:** uv (Python), pnpm + Turborepo (TypeScript), one monorepo.
 
@@ -23,4 +23,3 @@ Every extra language adds contract translation, tooling and review load, for hum
 
 - One API contract, two languages, one repo: low coordination cost.
 - CPU-heavy work (e.g. large FIT file parsing) may later move to a worker process; Python stays the language.
-- Tauri needs a Rust toolchain in CI for desktop builds, but almost no Rust code.

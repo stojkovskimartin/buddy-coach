@@ -23,9 +23,6 @@ web-build/
 apps/mobile/ios/
 apps/mobile/android/
 
-# Tauri / Rust
-apps/desktop/src-tauri/target/
-
 # Env and secrets
 .env
 .env.*
