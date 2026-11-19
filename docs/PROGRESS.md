@@ -95,7 +95,7 @@ Totals: backend 578 tests, frontend 215 tests (shared 33, client 28, web 48, mob
 
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
-1. Direct accounts for workouts: Strava, then Polar, on the `integrations` module (ADR-0008) [7.3.5].
+1. Polar account for workouts on the `integrations` module (ADR-0008) [7.3.5].
 2. Mobile app catches up with web: food diary with barcode camera, photo camera, progress charts, connections [5.2.6, 10.2.1, 7.1.5].
 3. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
 4. Today screen: session card [4.2.4].
@@ -104,5 +104,8 @@ One at a time, each challenged before coding and reviewed after (tracker numbers
 
 ## Open decisions for the product owner
 
+- Strava: its API agreement forbids using Strava data in AI models or similar applications, which
+  includes an AI coach. Build it only with Strava's written permission; until then Strava workouts
+  arrive through the phone health app or watch files.
 - App name (shortlist: BuddyCoach, Coachli, FuelStride).
 - Repository visibility: currently public.
