@@ -20,4 +20,6 @@ class TargetsOut(BaseModel):
     fat_g: int
     maintenance_kcal: int
     floor_applied: bool
+    training_kcal_estimated: bool
+    """True while training energy comes from the planned week, not from logged workouts."""
     reasons: list[str]

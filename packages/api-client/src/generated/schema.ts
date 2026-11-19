@@ -705,6 +705,8 @@ export interface components {
             protein_g: number;
             /** Reasons */
             reasons: string[];
+            /** Training Kcal Estimated */
+            training_kcal_estimated: boolean;
         };
         /**
          * TokenPair

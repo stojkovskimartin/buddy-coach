@@ -140,6 +140,7 @@ describe("BuddyClient", () => {
       fat_g: 80,
       maintenance_kcal: 2700,
       floor_applied: false,
+      training_kcal_estimated: true,
       reasons: [],
     };
     let onboarded = false;

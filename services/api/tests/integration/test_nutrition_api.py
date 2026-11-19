@@ -59,5 +59,59 @@ async def test_targets_follow_the_main_goal(client: httpx.AsyncClient) -> None:
     assert lose["protein_g"] > maintain["protein_g"]
 
 
+async def _goal(
+    client: httpx.AsyncClient, headers: dict[str, str], **fields: object
+) -> dict[str, object]:
+    body = {
+        "goal_type": "lose_weight",
+        "title": "Race weight",
+        "target_weight_kg": 76,
+        "target_date": "2027-03-01",
+        "priority": "primary",
+        **fields,
+    }
+    created = await client.post("/api/v1/goals", json=body, headers=headers)
+    assert created.status_code == 201, created.text
+    goal: dict[str, object] = created.json()
+    return goal
+
+
+@pytest.mark.parametrize("case", ["secondary", "abandoned", "endurance"])
+async def test_only_an_active_primary_weight_goal_changes_intake(
+    client: httpx.AsyncClient, case: str
+) -> None:
+    headers = await register_and_login(client)
+    await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
+    if case == "secondary":
+        await _goal(client, headers, priority="secondary")
+    elif case == "abandoned":
+        goal = await _goal(client, headers)
+        response = await client.patch(
+            f"/api/v1/goals/{goal['id']}", json={"status": "abandoned"}, headers=headers
+        )
+        assert response.status_code == 200
+    else:
+        await _goal(
+            client,
+            headers,
+            goal_type="endurance_event",
+            title="Zurich Marathon",
+            sport="running",
+            target_weight_kg=None,
+            event_distance_km=42.2,
+        )
+    targets = (await client.get(URL, headers=headers)).json()
+    assert targets["goal"] == "maintain"
+    assert targets["kcal"] == targets["maintenance_kcal"]
+
+
+async def test_targets_say_training_is_estimated(client: httpx.AsyncClient) -> None:
+    headers = await register_and_login(client)
+    await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
+    targets = (await client.get(URL, headers=headers)).json()
+    assert targets["training_kcal_estimated"] is True
+    assert "planned week" in targets["reasons"][-1]
+
+
 async def test_targets_need_authentication(client: httpx.AsyncClient) -> None:
     assert (await client.get(URL)).status_code == 401

@@ -165,4 +165,6 @@ class AthleteSnapshot:
     height_cm: float
     weight_kg: float
     timezone: str
+    available_days_per_week: int
+    minutes_per_session: int
     primary_goal: GoalType | None

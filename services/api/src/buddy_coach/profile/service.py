@@ -67,6 +67,8 @@ class ProfileService:
             height_cm=profile.height_cm,
             weight_kg=profile.weight_kg,
             timezone=profile.timezone,
+            available_days_per_week=profile.available_days_per_week,
+            minutes_per_session=profile.minutes_per_session,
             primary_goal=primary.goal_type if primary else None,
         )
 

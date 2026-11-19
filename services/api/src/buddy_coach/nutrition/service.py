@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
+from buddy_coach.core.clock import local_date
 from buddy_coach.core.deps import Clock
 from buddy_coach.core.errors import NotFoundError
 from buddy_coach.nutrition.domain import targets_for
@@ -34,9 +33,7 @@ class NutritionService:
         athlete = await self._athletes.athlete_snapshot(user_id)
         if athlete is None:
             raise NotFoundError(ONBOARDING_NEEDED)
-        today = (
-            self._now().astimezone(ZoneInfo(athlete.timezone) if athlete.timezone else UTC).date()
-        )
+        today = local_date(self._now(), athlete.timezone)
         goal, targets = targets_for(athlete, today)
         return TargetsOut(
             day=today,
@@ -47,5 +44,6 @@ class NutritionService:
             fat_g=targets.fat_g,
             maintenance_kcal=targets.maintenance_kcal,
             floor_applied=targets.floor_applied,
+            training_kcal_estimated=True,
             reasons=list(targets.reasons),
         )
