@@ -255,6 +255,18 @@ describe("BuddyClient", () => {
     });
   });
 
+  it("reads daily food totals and the training load with their ranges", async () => {
+    const api = fakeApi({
+      "GET /api/v1/meals/daily": () => json(200, []),
+      "GET /api/v1/training/load": () => json(200, { days: [] }),
+    });
+    const client = new BuddyClient({ baseUrl: BASE, tokens: memoryTokenStore(tokens(1)), fetch: api.fetch });
+    await client.listDailyTotals({ from: "2026-10-23", to: "2026-11-19" });
+    expect(new URL(api.calls[0]!.url).searchParams.get("from")).toBe("2026-10-23");
+    await client.getTrainingLoad(90);
+    expect(new URL(api.calls[1]!.url).searchParams.get("days")).toBe("90");
+  });
+
   describe("check-ins", () => {
     const checkin = {
       day: "2026-11-18",

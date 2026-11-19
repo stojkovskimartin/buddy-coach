@@ -6,6 +6,7 @@ import {
   BuddyClient,
   type ChatReply,
   type Checkin,
+  type DailyTotals,
   type CheckinIn,
   type Goal,
   type GoalIn,
@@ -17,6 +18,7 @@ import {
   type ProfileIn,
   type TokenPair,
   type TokenStore,
+  type TrainingLoad,
   type Weight,
   type WeightHistory,
   type WeightIn,
@@ -41,6 +43,9 @@ export interface CoachApi {
   logMeal(entry: MealEntryIn): Promise<MealEntry>;
   getMealDay(day?: string): Promise<MealDay>;
   deleteMeal(id: string): Promise<void>;
+  listDailyTotals(range?: { from?: string; to?: string }): Promise<DailyTotals[]>;
+  getTrainingLoad(days?: number): Promise<TrainingLoad>;
+  listCheckins(range?: { from?: string; to?: string }): Promise<Checkin[]>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
 }

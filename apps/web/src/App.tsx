@@ -8,6 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { FoodPage } from "./pages/FoodPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { ProgressPage } from "./pages/ProgressPage";
 
 /** Logged-in users without a profile go to onboarding first. */
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -50,6 +51,7 @@ function Header() {
         <nav>
           <Link to="/">Goals</Link>
           <Link to="/food">Food</Link>
+          <Link to="/progress">Progress</Link>
           <Link to="/coach">Coach</Link>
           <Link to="/onboarding">Profile</Link>
           <button type="button" className="link" onClick={() => void logout()}>
@@ -117,6 +119,14 @@ export function AppRoutes() {
           element={
             <RequireProfile>
               <FoodPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/progress"
+          element={
+            <RequireProfile>
+              <ProgressPage />
             </RequireProfile>
           }
         />

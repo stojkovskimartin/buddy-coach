@@ -22,22 +22,33 @@ export interface ScaledSeries {
 
 const DAY_MS = 86_400_000;
 
+export interface ScaleOptions {
+  padding?: number;
+  minSpan?: number;
+  /** First and last ISO day of the x axis; default: the series' own days. Several series drawn
+   * in one chart share it, so the same day lines up. */
+  days?: readonly [string, string];
+  /** Value range of the y axis; default: the series' own values (plus `minSpan` headroom). */
+  values?: readonly [number, number];
+}
+
 /** Places a series in a width x height box: days spread left to right, values bottom to top,
  * with `minSpan` of headroom so a flat line is not drawn as a jagged one. */
 export function scaleSeries(
   series: readonly SeriesPoint[],
   width: number,
   height: number,
-  { padding = 8, minSpan = 1 }: { padding?: number; minSpan?: number } = {},
+  { padding = 8, minSpan = 1, days: dayRange, values: valueRange }: ScaleOptions = {},
 ): ScaledSeries {
-  if (series.length === 0) return { points: [], path: "", min: 0, max: 0 };
+  if (series.length === 0) return { points: [], path: "", min: valueRange?.[0] ?? 0, max: valueRange?.[1] ?? 0 };
   const ordered = [...series].sort((a, b) => a.day.localeCompare(b.day));
   const time = (day: string) => Date.parse(`${day}T00:00:00Z`);
-  const first = time(ordered[0]!.day);
-  const days = Math.max(1, (time(ordered[ordered.length - 1]!.day) - first) / DAY_MS);
+  const first = time(dayRange?.[0] ?? ordered[0]!.day);
+  const last = time(dayRange?.[1] ?? ordered[ordered.length - 1]!.day);
+  const days = Math.max(1, (last - first) / DAY_MS);
   const values = ordered.map((p) => p.value);
-  const low = Math.min(...values);
-  const high = Math.max(...values);
+  const low = valueRange?.[0] ?? Math.min(...values);
+  const high = valueRange?.[1] ?? Math.max(...values);
   const extra = Math.max(0, minSpan - (high - low)) / 2;
   const min = low - extra;
   const max = high + extra;

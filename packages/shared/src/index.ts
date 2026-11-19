@@ -7,3 +7,4 @@ export * from "./targets";
 export * from "./chart";
 export * from "./weight";
 export * from "./foods";
+export * from "./progress";

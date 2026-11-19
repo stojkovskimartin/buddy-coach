@@ -103,3 +103,20 @@ form.inline label { flex: 1; }
 .totals dd { margin: 0; font-weight: 600; }
 .totals progress { display: block; width: 100%; accent-color: var(--accent); }
 .inline-label { flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+.chart-figure { margin: 0; }
+.chart .axis { font-size: 11px; fill: var(--muted); stroke: none; }
+.chart .tone-accent path { stroke: var(--accent); }
+.chart .tone-accent circle { fill: var(--accent); }
+.chart .tone-warm path { stroke: #c2410c; }
+.chart .tone-warm circle { fill: #c2410c; }
+.chart .tone-muted path { stroke: var(--muted); stroke-opacity: 0.6; }
+.chart .tone-muted circle { fill: var(--muted); }
+.chart.bars rect { fill: var(--accent); opacity: 0.8; }
+.chart line.target { stroke: #c2410c; stroke-dasharray: 6 4; stroke-width: 1.5; }
+.legend { display: flex; gap: 1rem; font-size: 0.85rem; }
+.legend span::before { content: "■ "; }
+.legend .tone-accent::before { color: var(--accent); }
+.legend .tone-warm::before { color: #c2410c; }
+.legend .tone-muted::before { color: var(--muted); }
+.segmented { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.segmented button[aria-pressed="false"] { background: none; color: var(--accent); border: 1px solid var(--accent); }

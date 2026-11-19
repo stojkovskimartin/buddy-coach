@@ -56,4 +56,14 @@ describe("scaleSeries", () => {
     expect(flat.points[0]?.y).toBe(50);
     expect(scaleSeries([], 100, 100)).toEqual({ points: [], path: "", min: 0, max: 0 });
   });
+
+  it("can share a day range and a value range between series", () => {
+    const scaled = scaleSeries([{ day: "2026-11-06", value: 50 }], 116, 116, {
+      padding: 8,
+      days: ["2026-11-01", "2026-11-11"],
+      values: [0, 100],
+    });
+    expect(scaled.points.map((p) => [p.x, p.y])).toEqual([[58, 58]]);
+    expect([scaled.min, scaled.max]).toEqual([0, 100]);
+  });
 });

@@ -1,5 +1,6 @@
 import type {
   ChatReply,
+  DailyTotals,
   Checkin,
   CheckinIn,
   Goal,
@@ -9,6 +10,7 @@ import type {
   NutritionTargets,
   Profile,
   ProfileIn,
+  TrainingLoad,
   Weight,
   WeightHistory,
   WeightIn,
@@ -90,11 +92,25 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     logMeal: vi.fn(async (e: MealEntryIn): Promise<MealEntry> => mealOf(e.name, { grams: e.grams, kcal: e.kcal })),
     getMealDay: vi.fn(async (): Promise<MealDay> => ({ day: "2026-11-19", entries: [], totals: ZERO })),
     deleteMeal: vi.fn(async () => undefined),
+    listDailyTotals: vi.fn(async (): Promise<DailyTotals[]> => []),
+    getTrainingLoad: vi.fn(async (): Promise<TrainingLoad> => LOAD),
+    listCheckins: vi.fn(async (): Promise<Checkin[]> => []),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
   };
 }
+
+const LOAD: TrainingLoad = {
+  today: { day: "2026-11-19", load: 0, fitness: 31.2, fatigue: 40.5, form: -9.3 },
+  acute_chronic_ratio: 1.3,
+  ramp: { last_week_load: 1500, this_week_load: 1700, max_allowed_load: 1800, verdict: "ok" },
+  days: [
+    { day: "2026-11-18", load: 300, fitness: 30.8, fatigue: 38.1, form: -7.3 },
+    { day: "2026-11-19", load: 0, fitness: 31.2, fatigue: 40.5, form: -9.3 },
+  ],
+  excluded_activities: [],
+};
 
 const ZERO = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
 
@@ -639,6 +655,50 @@ describe("web app", () => {
       expect(api.logMeal).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Homemade soup", grams: 350, kcal: 210, protein_g: 0 }),
       );
+    });
+  });
+
+  describe("progress", () => {
+    it("shows weight, food, training and readiness over the chosen period", async () => {
+      const api = fakeApi({
+        listWeights: vi.fn(async () => ({
+          weights: [weightOf(78, { day: "2026-11-19" }), weightOf(79.5, { id: "w0", day: "2026-11-01" })],
+          trend: [
+            { day: "2026-11-01", weight_kg: 79.5 },
+            { day: "2026-11-19", weight_kg: 78.4 },
+          ],
+        })),
+        listDailyTotals: vi.fn(async () => [
+          { day: "2026-11-18", kcal: 2400, protein_g: 140, carbs_g: 280, fat_g: 70 },
+          { day: "2026-11-19", kcal: 2601, protein_g: 150, carbs_g: 300, fat_g: 80 },
+        ]),
+        listCheckins: vi.fn(async () => [
+          checkinFor("2026-11-19", { sleep_quality: 4, soreness: 4, mood: 4 }, { score: 80, level: "green", limiting_factors: [] }),
+          checkinFor("2026-11-18", { sleep_quality: 2, soreness: 3, mood: 3 }, { score: 60, level: "amber", limiting_factors: ["sleep"] }),
+        ]),
+      });
+      renderAt("/progress", api, true);
+      expect(await screen.findByText(/−1.1 kg since Nov 1/)).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: /Weight over 28 days/ })).toBeInTheDocument();
+      expect(screen.getByText(/2 days logged · on average 2501 kcal and 145 g protein/)).toBeInTheDocument();
+      expect(screen.getByText(/Fitness 31.2 · fatigue 40.5 · form -9.3 · load ratio 1.3/)).toBeInTheDocument();
+      expect(screen.getByText(/2 check-ins · on average 70 of 100/)).toBeInTheDocument();
+      expect(api.getTrainingLoad).toHaveBeenLastCalledWith(28);
+
+      await userEvent.click(screen.getByRole("button", { name: "1 year" }));
+      await waitFor(() => expect(api.getTrainingLoad).toHaveBeenLastCalledWith(365));
+      expect(await screen.findByRole("img", { name: /Weight over 365 days/ })).toBeInTheDocument();
+      const checkinRange = vi.mocked(api.listCheckins).mock.lastCall?.[0];
+      const weightRange = vi.mocked(api.listWeights).mock.lastCall?.[0];
+      expect(checkinRange?.from && weightRange?.from && checkinRange.from > weightRange.from).toBe(true);
+    });
+
+    it("says what is missing in an empty period", async () => {
+      renderAt("/progress", fakeApi(), true);
+      expect(await screen.findByText("No weights in this period yet.")).toBeInTheDocument();
+      expect(screen.getByText("No food logged in this period yet.")).toBeInTheDocument();
+      expect(screen.getByText("No check-ins in this period yet.")).toBeInTheDocument();
+      expect(screen.queryByText("No workouts in this period yet.")).not.toBeInTheDocument(); // LOAD has one
     });
   });
 });
