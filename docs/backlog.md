@@ -16,9 +16,9 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Mobile: check `EXPO_PUBLIC_API_BASE_URL` is https at build time (app.config.ts or CI), so a wrong value never crashes a release app on launch | #13 re-review | Before app store builds |
 | Mobile: verify keyboard layout on a real Android device (edge-to-edge) | #13 re-review | Before beta |
 | Branch protection on `main` requiring the CI checks (needs repository admin settings) | docs review | Before beta |
-| Coach nutrition tool: build on `athlete_snapshot` + `nutrition.domain.targets_for` so the coach and the Today screen give the same numbers (tool still uses training_kcal 0 by default) | #20 review | Next coach PR |
 | Nutrition targets: training energy comes from available time (capped 180 min/day); replace with logged workouts and adaptive maintenance | #20 review | With workout logging |
 | Workout import: skip invalid workouts and return `rejected` instead of failing the whole batch; store `rpe_source` (athlete or device) | #21 review | With phone sync |
 | Workouts: resting HR from the check-in baseline; database checks for HR, distance, kcal | #21 review | Next workouts PR |
 | Walking, alpine skiing and yoga are left out of the training-load summary – product owner to confirm | #21 review | Product decision |
 | Store review for health data: App Store privacy policy and health-data consent (guidelines 5.1.2(i), 5.1.3); Google Play Health Connect data declaration and rationale screen | ADR-0007 | Before store builds |
+| Transactional outbox and a background worker for domain events; events are published after commit and nothing subscribes yet | expert review | With the first event subscriber |

@@ -31,8 +31,11 @@ Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,0
 - Every number comes from a tool (deterministic engine); the model never calculates.
 - Not a doctor: no diagnoses or medication; medical topics go to a professional.
 - Supplements only from `supplement_guidance`; iron and high-dose vitamin D need a blood test.
-- Data sent to the model: age, sex, height, weight, experience, availability and structured goal
-  fields. Never names, emails, ids or user-written free text.
+- Data sent to the model: age, sex, height, weight, experience, availability, structured goal
+  fields, today's check-in answers and readiness, today's targets and the training load. Never
+  names, emails, ids or user-written free text.
+- Tools that read stored data use the user's local calendar day (injected clock + profile
+  timezone), so the coach gives the same numbers as the app.
 
 ## Tools
 
@@ -40,20 +43,21 @@ Every agent also has a maximum of 6 steps, 800 output tokens per step and a 20,0
 | --- | --- | --- |
 | `get_profile_summary` | profile service | body data, experience, primary goal |
 | `list_goals` | profile service | active goals with days to target |
-| `calculate_nutrition_targets` | `science/nutrition.py` | kcal, protein, carbs, fat, reasons |
+| `get_today_targets` | nutrition service | today's kcal, protein, carbs, fat and reasons, as the app shows them |
 | `session_fuelling` | `science/nutrition.py` | carbs per hour during a session |
 | `recovery_nutrition` | `science/recovery.py` | recovery meal, fluids, protein per meal |
 | `supplement_guidance` | `science/supplements.py` | catalogue entries, professional referrals, doping note |
 | `micronutrient_reference` | `science/micronutrients.py` | daily references, upper limits, food sources |
 | `calculate_session_load` | `science/training.py` | session-RPE load |
 | `check_weekly_ramp` | `science/training.py` | safe or too steep, max allowed load |
-| `assess_readiness` | `science/training.py` | score 0–100, traffic light, limiting factors |
+| `get_today_readiness` | check-in service | today's check-in and readiness (score 0–100, traffic light, limiting factors); an error when there is no check-in |
+| `get_training_load` | workouts service | fitness, fatigue, form, acute:chronic ratio and this week's ramp (no day-by-day history) |
 
 ## LLM providers
 
 | `BUDDY_LLM_PROVIDER` | Use |
 | --- | --- |
-| `dev` | Local development without a key; calls one tool and returns its raw result. Refused in production. |
+| `dev` | Local development without a key; calls one tool and lists its result as readable lines, with a note on how to switch on real answers. Refused in production. |
 | `anthropic` | Real answers via the Anthropic Messages API, with retries on overload and graceful degradation. |
 
 ## Adding an agent or tool

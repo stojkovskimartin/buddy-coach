@@ -66,8 +66,9 @@ pull request numbers.
 | #22 | Docs in sync after #18-#21 (architecture, API, progress) | – |
 | #23 | Workouts from Apple Health and Health Connect on the phone (read only, foreground sync, incremental) – ADR-0007 | +47 frontend (mobile 46, client 1) |
 | #25 | Readable offline coach answers that say how to switch on the real AI; web favicon | +2 |
+| #26 | The coach reads stored data on the athlete's day: today's targets, check-in readiness and training load (same numbers as the app) | +2 |
 
-Totals: backend 488 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 490 tests, frontend 146 tests (shared 13, client 20, web 22, mobile 91); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -78,7 +79,7 @@ Totals: backend 488 tests, frontend 146 tests (shared 13, client 20, web 22, mob
 One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
 
 1. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
-2. Today screen: targets and session cards; the coach uses the same numbers [4.2.3, 4.2.4, 8.2.3, 8.2.4].
+2. Today screen: targets and session cards [4.2.3, 4.2.4].
 3. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
 4. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
 

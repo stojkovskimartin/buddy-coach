@@ -8,7 +8,7 @@ from datetime import date
 from typing import Any, cast
 
 from buddy_coach.coach.llm import LLMResponse, ToolCall
-from buddy_coach.coach.tools import ToolContext
+from buddy_coach.coach.tools import CheckinReader, LoadReader, TargetsReader, ToolContext
 from buddy_coach.profile.service import ProfileService
 
 
@@ -32,6 +32,10 @@ def tool_context(profiles: FakeProfiles | None = None) -> ToolContext:
         user_id=uuid.uuid4(),
         today=date(2026, 11, 18),
         profiles=cast(ProfileService, profiles or FakeProfiles()),
+        # The stored-data readers are not used by the tests that need no database.
+        checkins=cast(CheckinReader, None),
+        targets=cast(TargetsReader, None),
+        training=cast(LoadReader, None),
     )
 
 

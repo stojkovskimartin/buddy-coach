@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 
+from buddy_coach.checkin.deps import CheckinServiceDep
 from buddy_coach.coach.builtin_tools import build_default_registry
 from buddy_coach.coach.llm import AnthropicProvider, DevLLMProvider, LLMProvider
 from buddy_coach.coach.orchestrator import HeadCoach
 from buddy_coach.coach.tools import ToolContext
+from buddy_coach.core.clock import local_date
 from buddy_coach.core.config import LLMProviderName, Settings
+from buddy_coach.core.deps import Clock, get_clock
 from buddy_coach.identity.deps import CurrentUserDep
+from buddy_coach.nutrition.deps import NutritionServiceDep
 from buddy_coach.profile.deps import ProfileServiceDep
+from buddy_coach.workouts.deps import WorkoutServiceDep
 
 
 def build_llm_provider(settings: Settings) -> LLMProvider:
@@ -44,9 +48,23 @@ def get_head_coach(request: Request) -> HeadCoach:
     return coach
 
 
-def get_tool_context(current: CurrentUserDep, profiles: ProfileServiceDep) -> ToolContext:
-    """Per-request tool context for the authenticated user."""
-    return ToolContext(user_id=current.id, today=datetime.now(UTC).date(), profiles=profiles)
+async def get_tool_context(
+    current: CurrentUserDep,
+    profiles: ProfileServiceDep,
+    checkins: CheckinServiceDep,
+    nutrition: NutritionServiceDep,
+    workouts: WorkoutServiceDep,
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> ToolContext:
+    """Per-request tool context for the authenticated user, on their local calendar day."""
+    return ToolContext(
+        user_id=current.id,
+        today=local_date(clock(), await profiles.timezone_for(current.id)),
+        profiles=profiles,
+        checkins=checkins,
+        targets=nutrition,
+        training=workouts,
+    )
 
 
 HeadCoachDep = Annotated[HeadCoach, Depends(get_head_coach)]
