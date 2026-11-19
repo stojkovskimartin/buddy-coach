@@ -29,7 +29,9 @@ agreement, OAuth and webhooks, and some are gated (Garmin).
 - One mobile feature covers most watches on day one; no vendor accounts are needed.
 - Known limits: no background sync yet; deletions in the store are not mirrored (the API deletes by
   its own id only); the same run written by two apps (e.g. Apple Watch and Garmin) arrives twice
-  until server-side de-duplication across sources exists.
-- Store review: the App Store needs a privacy policy and explicit consent before health data is
-  shared with an AI provider (guideline 5.1.2); Google Play needs a Health Connect data
-  declaration. Both are tracked as consent and privacy work.
+  until server-side de-duplication across sources exists; heart rate, distance or calories that
+  an app writes to Health Connect after its session was synced are not picked up (changes are
+  tracked for exercise sessions only).
+- Store review: the App Store needs a privacy policy and the health-data rules of guideline 5.1.3,
+  and explicit consent before data is shared with an AI provider (5.1.2(i)); Google Play needs a
+  Health Connect data declaration. Tracked in `docs/backlog.md`.
