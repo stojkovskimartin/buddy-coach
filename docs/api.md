@@ -34,6 +34,13 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | PUT | `/checkins/{day}` | Same for a given day (today or up to 7 days late) |
 | GET | `/checkins/today`, `/checkins/{day}` | One check-in with its readiness (404 until entered) |
 | GET | `/checkins?from=&to=` | Check-ins, newest first (default 14 days, max 92) |
+| GET | `/nutrition/targets/today` | Today's calories and macros from profile and main goal; training energy estimated from available time (404 before onboarding) |
+| POST | `/workouts/import` | Sync up to 500 workouts from a device or app; idempotent by (source, external_id); returns created / updated |
+| POST | `/workouts` | Log a workout by hand (201) |
+| GET | `/workouts?from=&to=` | Workouts, newest first (default 28 days, max 366) |
+| PATCH | `/workouts/{id}/feedback` | Effort (RPE 1-10), feeling (1-5), pain; recomputes the load |
+| DELETE | `/workouts/{id}` | Delete a workout (204) |
+| GET | `/training/load?days=42` | Fitness, fatigue, form per day, acute:chronic ratio, weekly ramp check (7-366 days) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 

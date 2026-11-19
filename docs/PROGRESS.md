@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-18, 21:21
+Last update: 2026-11-19, 01:57
 
 ## How to run it
 
@@ -58,8 +58,13 @@ pull request numbers.
 | #14 | Docs: running the mobile app, CI, API client workflow | – |
 | #15 | Daily check-in API: sleep, soreness, mood, optional sleep hours, HRV, resting HR, pain; readiness 0-100 with personal baselines, in the athlete's time zone | +42 |
 | #16 | Morning check-in on web and mobile (three taps, readiness traffic light), shared wording package `@buddy/shared` | +32 frontend |
+| #17 | Progress and API docs after the check-in | – |
+| #18 | Test for invalid check-ins; a midnight-flaky coach test fixed | +1 |
+| #19 | Web and mobile only: desktop app removed everywhere (ADR-0006) | – |
+| #20 | Today's calorie and macro targets API, training energy estimated from available time | +21, +1 frontend |
+| #21 | Workouts from every source (import, manual, feedback) and training load: fitness, fatigue, form, weekly ramp | +40 |
 
-Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobile 45); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 486 tests, frontend 99 tests (shared 13, client 19, web 22, mobile 45); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -67,11 +72,13 @@ Totals: backend 424 tests, frontend 98 tests (shared 13, client 18, web 22, mobi
 
 ## Next
 
-1. Guided onboarding wizard (web and mobile) and the shared design system: easy first start.
-2. Today screen: nutrition targets and today's session next to readiness; the coach uses the check-in.
-3. Consent for AI processing and chat history (see `docs/backlog.md`).
-4. Food logging (text and grams first, then photo and barcode) feeding the vitamin and mineral check.
-5. Workouts with session feedback; HealthKit / Health Connect import on mobile.
+One at a time, each challenged before coding and reviewed after (tracker numbers in brackets):
+
+1. Phone sync: Apple Health and Health Connect into `/workouts/import` [7.2.1-7.2.3, 9.2.3].
+2. Quick actions: tick boxes and one-tap coach suggestions [8.3.1, 8.3.2].
+3. Today screen: targets and session cards; the coach uses the same numbers [4.2.3, 4.2.4, 8.2.3, 8.2.4].
+4. Log a workout in a few taps; training energy from logged workouts in the targets [6.4.1, 6.1.6].
+5. Latest stable versions of the whole stack, as its own reviewed change [1.2.4].
 
 ## Open decisions for the product owner
 
