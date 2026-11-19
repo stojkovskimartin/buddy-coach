@@ -18,8 +18,8 @@ The full product and architecture spec lives in the shared doc "Personal Buddy C
 
 1. **Clients** – web (React) and mobile (Expo). Both use the generated `@buddy/api-client` and `@buddy/shared`.
 2. **API** – FastAPI app in `services/api`, versioned under `/api/v1`, JWT auth, RFC 9457 errors.
-3. **Domain modules** – `identity`, `profile`, `nutrition`, `training`, `wellness`, `coach` (more to come: `planning`, `progress`, `integration`).
-4. **Engines** – pure, deterministic science code: nutrition targets, training load, readiness.
+3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `coach`, `health` (probes). Planned: `meals`, `integrations`, `planning`, `progress`.
+4. **Engines** – pure, deterministic science code in `science/`: nutrition targets, micronutrients, recovery nutrition, supplements, training load, readiness.
 5. **Coach agent network** – Head Coach + specialists + Safety Guard, acting only through tools (ADR-0003).
 6. **Infrastructure** – PostgreSQL (TimescaleDB and pgvector later), Redis, an event bus (in-process now, broker later).
 
@@ -32,8 +32,29 @@ buddy_coach/<module>/
   schemas.py     Pydantic request/response models
   repository.py  persistence
   service.py     use cases; the only entry point other modules may call
+  events.py      domain events it publishes
+  deps.py        FastAPI dependency wiring
   router.py      HTTP endpoints
 ```
+
+Modules never read each other's tables. A module that needs another one's data depends on a
+small `Protocol` and gets a plain value back (e.g. `ProfileService.athlete_snapshot` returns an
+`AthleteSnapshot`). "Today" always comes from the injected clock (`core.deps.get_clock`) and the
+athlete's time zone (`core.clock.local_date`).
+
+## Device data flow
+
+```
+Watch / app ──► Apple Health (iPhone) or Health Connect (Android) ──► mobile app ──┐
+Watch / app ──► vendor cloud API (WHOOP, Garmin, Fitbit, ...) ──► integrations ────┼─► POST /workouts/import
+Athlete ──► manual log / FIT file ─────────────────────────────────────────────────┘        │
+                                                         one load per workout (session RPE) ◄┘
+                                                                        │
+                       GET /training/load: fitness, fatigue, form, ramp (computed when read)
+```
+
+Imports are idempotent by (source, external_id); the athlete's own rating is never overwritten
+by a re-sync. The phone and cloud parts (`integrations`) are planned; the import API exists.
 
 ## Decisions
 
