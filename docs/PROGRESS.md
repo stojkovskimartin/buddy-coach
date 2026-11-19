@@ -76,8 +76,9 @@ pull request numbers.
 | #34 | Progress page on web: weight, food against today's target, fitness and fatigue, readiness over 4 weeks, 3 months or a year | +7 frontend (shared 4, client 1, web 2) |
 | #35 | The coach knows what you ate and how your weight moves: food today, food over 7 days, weight trend (totals only, no food names) | +2 |
 | #36 | Photos API: meal, progress and profile photos, shrunk to 1280 px without EXIF/GPS, private, meal photos expire after 90 days | +13 |
+| #37 | Photos on web: meal photos on the food page, progress photos on the progress page, profile picture on the profile page; the current avatar is returned however old | +4 frontend (client 1, web 3) |
 
-Totals: backend 539 tests, frontend 198 tests (shared 31, client 25, web 36, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 539 tests, frontend 202 tests (shared 31, client 26, web 39, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

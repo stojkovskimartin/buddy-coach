@@ -3258,7 +3258,7 @@
     },
     "/api/v1/photos": {
       "get": {
-        "description": "Photos in a date range (default: the last 90 days), newest first. Max 366 days.",
+        "description": "Photos in a date range (default: the last 90 days), newest first. Max 366 days.\n``kind=avatar`` without dates returns the current profile picture, however old.",
         "operationId": "list_photos_api_v1_photos_get",
         "parameters": [
           {

@@ -87,12 +87,17 @@ async def test_upload_list_download_and_delete(client: httpx.AsyncClient, setup:
     assert (await client.get(f"{URL}/{photo['id']}/image", headers=headers)).status_code == 404
 
 
-async def test_a_new_avatar_replaces_the_old_one(client: httpx.AsyncClient, setup: Path) -> None:
+async def test_a_new_avatar_replaces_the_old_one(
+    app: FastAPI, client: httpx.AsyncClient, setup: Path
+) -> None:
     headers = await _athlete(client)
     first = (await _upload(client, headers, "avatar", _jpeg((300, 300)))).json()
     second = (await _upload(client, headers, "avatar", _jpeg((300, 300)))).json()
     listed = (await client.get(URL, params={"kind": "avatar"}, headers=headers)).json()
     assert [p["id"] for p in listed] == [second["id"]]
+    app.state.now["at"] = datetime(2028, 1, 1, tzinfo=UTC)  # the avatar is not tied to a period
+    later = (await client.get(URL, params={"kind": "avatar"}, headers=headers)).json()
+    assert [p["id"] for p in later] == [second["id"]]
     assert not any(first["id"] in name for name in _files(setup))
 
 

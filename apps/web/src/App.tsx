@@ -8,6 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { FoodPage } from "./pages/FoodPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { PhotoStrip } from "./pages/Photos";
 import { ProgressPage } from "./pages/ProgressPage";
 
 /** Logged-in users without a profile go to onboarding first. */
@@ -87,7 +88,17 @@ function ProfileEditor() {
       </p>
     );
   if (profile === undefined) return <p className="muted">Loading…</p>;
-  return <OnboardingPage initial={profile} />;
+  return (
+    <>
+      <OnboardingPage initial={profile} />
+      {profile && (
+        <section className="card" aria-labelledby="avatar-title">
+          <h2 id="avatar-title">Profile picture</h2>
+          <PhotoStrip kind="avatar" title="Profile picture" />
+        </section>
+      )}
+    </>
+  );
 }
 
 export function AppRoutes() {

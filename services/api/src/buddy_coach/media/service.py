@@ -85,6 +85,10 @@ class PhotoService:
         validate_range(start, end)
         return await self._repo.between(user_id, kind, start, end)
 
+    async def avatar(self, user_id: uuid.UUID) -> Sequence[Photo]:
+        """The current profile picture (none or one)."""
+        return await self._repo.of_kind(user_id, PhotoKind.AVATAR)
+
     async def image(self, user_id: uuid.UUID, photo_id: uuid.UUID, size: Size) -> bytes:
         """The JPEG of one of the user's photos."""
         photo = await self._get(user_id, photo_id)

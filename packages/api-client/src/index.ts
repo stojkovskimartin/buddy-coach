@@ -34,6 +34,8 @@ export type MealEntry = Schemas["MealEntryOut"];
 export type MealDay = Schemas["MealDayOut"];
 export type DailyTotals = Schemas["DailyTotalsOut"];
 export type TrainingLoad = Schemas["LoadOut"];
+export type Photo = Schemas["PhotoOut"];
+export type PhotoKind = Schemas["PhotoKind"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -218,6 +220,39 @@ export class BuddyClient {
   /** Fitness, fatigue and form for the last `days` days (7-366) and this week's ramp. */
   async getTrainingLoad(days = 42): Promise<TrainingLoad> {
     return unwrap(await this.raw.GET("/api/v1/training/load", { params: { query: { days } } }));
+  }
+
+  /** Upload a JPEG, PNG or WebP photo (max 10 MB) as the raw body. */
+  async uploadPhoto(kind: PhotoKind, image: Blob): Promise<Photo> {
+    return unwrap(
+      await this.raw.POST("/api/v1/photos", {
+        params: { query: { kind } },
+        body: image as unknown as string, // sent as is, not as JSON
+        bodySerializer: (body) => body,
+        headers: { "Content-Type": image.type || "image/jpeg" },
+      }),
+    );
+  }
+
+  /** Photos between two ISO dates (default: 90 days), newest first. */
+  async listPhotos(query: { kind?: PhotoKind; from?: string; to?: string } = {}): Promise<Photo[]> {
+    return unwrap(await this.raw.GET("/api/v1/photos", { params: { query } }));
+  }
+
+  /** The JPEG of a photo; private, so it is fetched with the session, never by URL. */
+  async photoImage(id: string, size: "full" | "thumb" = "thumb"): Promise<Blob> {
+    const result = await this.raw.GET("/api/v1/photos/{photo_id}/image", {
+      params: { path: { photo_id: id }, query: { size } },
+      parseAs: "blob",
+    });
+    return unwrap(result as Result<Blob>);
+  }
+
+  async deletePhoto(id: string): Promise<void> {
+    const result = await this.raw.DELETE("/api/v1/photos/{photo_id}", {
+      params: { path: { photo_id: id } },
+    });
+    if (!result.response.ok) unwrap(result);
   }
 
   async chat(message: string): Promise<ChatReply> {

@@ -50,7 +50,7 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | DELETE | `/meals/entries/{id}` | Delete a diary entry (204) |
 | GET | `/meals/daily?from=&to=` | Calories and macros per day with entries, oldest first (default 28 days, max 366) |
 | POST | `/photos?kind=meal\|progress\|avatar` | Upload a photo as the raw JPEG, PNG or WebP body (max 10 MB, 413 above); stored shrunk to 1280 px with a 320 px thumbnail, without EXIF/GPS; a new avatar replaces the old one (201) |
-| GET | `/photos?kind=&from=&to=` | Photos, newest first (default 90 days, max 366) |
+| GET | `/photos?kind=&from=&to=` | Photos, newest first (default 90 days, max 366); `kind=avatar` without dates gives the current profile picture |
 | GET | `/photos/{id}/image?size=full\|thumb` | The JPEG (never cached) |
 | DELETE | `/photos/{id}` | Delete a photo and its files (204) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |

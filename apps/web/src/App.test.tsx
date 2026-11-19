@@ -8,6 +8,8 @@ import type {
   MealEntry,
   MealEntryIn,
   NutritionTargets,
+  Photo,
+  PhotoKind,
   Profile,
   ProfileIn,
   TrainingLoad,
@@ -18,7 +20,7 @@ import type {
 import { ApiError } from "@buddy/api-client";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 import type { CoachApi } from "./lib/session";
@@ -95,6 +97,10 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     listDailyTotals: vi.fn(async (): Promise<DailyTotals[]> => []),
     getTrainingLoad: vi.fn(async (): Promise<TrainingLoad> => LOAD),
     listCheckins: vi.fn(async (): Promise<Checkin[]> => []),
+    uploadPhoto: vi.fn(async (kind: PhotoKind): Promise<Photo> => photoOf("new", kind)),
+    listPhotos: vi.fn(async (): Promise<Photo[]> => []),
+    photoImage: vi.fn(async () => new Blob(["jpeg"], { type: "image/jpeg" })),
+    deletePhoto: vi.fn(async () => undefined),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
     ...overrides,
@@ -111,6 +117,10 @@ const LOAD: TrainingLoad = {
   ],
   excluded_activities: [],
 };
+
+function photoOf(id: string, kind: PhotoKind = "meal"): Photo {
+  return { id, kind, day: "2026-11-19", width: 1280, height: 960, created_at: "2026-11-19T07:00:00Z" };
+}
 
 const ZERO = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
 
@@ -699,6 +709,49 @@ describe("web app", () => {
       expect(screen.getByText("No food logged in this period yet.")).toBeInTheDocument();
       expect(screen.getByText("No check-ins in this period yet.")).toBeInTheDocument();
       expect(screen.queryByText("No workouts in this period yet.")).not.toBeInTheDocument(); // LOAD has one
+    });
+  });
+
+  describe("photos", () => {
+    // jsdom has no object URLs; the mocks stay for later tests, which unmount these photos.
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => "blob:photo");
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    const jpeg = () => new File(["jpeg"], "lunch.jpg", { type: "image/jpeg" });
+
+    it("adds a meal photo for today and refuses other files", async () => {
+      const api = fakeApi();
+      renderAt("/food", api, true);
+      const strip = await screen.findByRole("group", { name: "Meal photos" });
+      const input = within(strip).getByLabelText("Add a photo");
+      await userEvent.upload(input, jpeg());
+      expect(api.uploadPhoto).toHaveBeenCalledWith("meal", expect.any(File));
+
+      await userEvent.upload(input, new File(["gif"], "a.gif", { type: "image/gif" }), { applyAccept: false });
+      expect(within(strip).getByRole("alert")).toHaveTextContent("JPEG, PNG or WebP");
+      expect(api.uploadPhoto).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows thumbnails, opens one and deletes it", async () => {
+      const api = fakeApi({ listPhotos: vi.fn(async () => [photoOf("p1", "progress")]) });
+      renderAt("/progress", api, true);
+      const strip = await screen.findByRole("group", { name: "Progress photos" });
+      await userEvent.click(await within(strip).findByRole("button", { name: "Open progress photos from 2026-11-19" }));
+      expect(await within(strip).findAllByRole("img", { name: "Progress photos from 2026-11-19" })).toHaveLength(2);
+      expect(api.photoImage).toHaveBeenCalledWith("p1", "full");
+      await userEvent.click(within(strip).getByRole("button", { name: "Delete photo" }));
+      expect(api.deletePhoto).toHaveBeenCalledWith("p1");
+    });
+
+    it("sets a profile picture on the profile page", async () => {
+      const api = fakeApi();
+      renderAt("/onboarding", api, true);
+      const strip = await screen.findByRole("group", { name: "Profile picture" });
+      await userEvent.upload(within(strip).getByLabelText("Choose a profile picture"), jpeg());
+      expect(api.uploadPhoto).toHaveBeenCalledWith("avatar", expect.any(File));
+      expect(api.listPhotos).toHaveBeenCalledWith({ kind: "avatar" });
     });
   });
 });

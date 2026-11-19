@@ -78,7 +78,10 @@ async def list_photos(
     start: Annotated[date | None, Query(alias="from")] = None,
     end: Annotated[date | None, Query(alias="to")] = None,
 ) -> list[PhotoOut]:
-    """Photos in a date range (default: the last 90 days), newest first. Max 366 days."""
+    """Photos in a date range (default: the last 90 days), newest first. Max 366 days.
+    ``kind=avatar`` without dates returns the current profile picture, however old."""
+    if kind is PhotoKind.AVATAR and start is None and end is None:
+        return [PhotoOut.model_validate(p) for p in await service.avatar(current.id)]
     end = end or await service.today(current.id)
     start = start or end - timedelta(days=89)
     return [PhotoOut.model_validate(p) for p in await service.history(current.id, kind, start, end)]
