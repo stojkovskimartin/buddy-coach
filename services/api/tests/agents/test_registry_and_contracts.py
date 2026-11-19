@@ -32,8 +32,8 @@ def test_contract_limits_must_be_positive() -> None:
 
 def test_tool_specs_expose_json_schema() -> None:
     spec = build_default_registry().specs_for(CONTRACTS[AgentName.RECOVERY])
-    readiness = next(s for s in spec if s.name == "assess_readiness")
-    assert set(readiness.input_schema["required"]) == {"sleep_quality", "soreness", "mood"}
+    recovery = next(s for s in spec if s.name == "recovery_nutrition")
+    assert set(recovery.input_schema["required"]) == {"duration_min", "intensity"}
 
 
 @pytest.mark.parametrize(

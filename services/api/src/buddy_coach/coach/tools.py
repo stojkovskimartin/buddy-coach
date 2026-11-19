@@ -8,25 +8,52 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
+from buddy_coach.checkin.schemas import CheckinOut
 from buddy_coach.coach.contracts import AgentContract
 from buddy_coach.coach.llm import ToolCall, ToolSpec
 from buddy_coach.core.errors import DomainError
+from buddy_coach.nutrition.schemas import TargetsOut
 from buddy_coach.profile.service import ProfileService
+from buddy_coach.workouts.schemas import LoadOut
 
 logger = logging.getLogger(__name__)
 
 
+class CheckinReader(Protocol):
+    """Reads saved check-ins (implemented by the check-in module)."""
+
+    async def get(self, user_id: uuid.UUID, day: date) -> CheckinOut: ...
+
+
+class TargetsReader(Protocol):
+    """Reads today's nutrition targets (implemented by the nutrition module)."""
+
+    async def targets_today(self, user_id: uuid.UUID) -> TargetsOut: ...
+
+
+class LoadReader(Protocol):
+    """Reads the training load (implemented by the workouts module)."""
+
+    async def load(self, user_id: uuid.UUID, days: int) -> LoadOut: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ToolContext:
-    """What a tool may use. Tools never see the user's email or name."""
+    """What a tool may use. Tools never see the user's email or name.
+
+    ``today`` is the user's local calendar day, so tools agree with the rest of the app.
+    """
 
     user_id: uuid.UUID
     today: date
     profiles: ProfileService
+    checkins: CheckinReader
+    targets: TargetsReader
+    training: LoadReader
 
 
 ToolHandler = Callable[[ToolContext, Any], Awaitable[BaseModel]]

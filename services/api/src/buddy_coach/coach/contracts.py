@@ -62,11 +62,11 @@ CONTRACTS: dict[AgentName, AgentContract] = {
         name=AgentName.NUTRITION,
         role="You are the nutrition specialist. Help with calorie and macro targets, meals, "
         "vitamins and minerals, recovery nutrition, supplements and fuelling for training. "
-        "Use calculate_nutrition_targets for any target.",
+        "Use get_today_targets for any target.",
         allowed_tools=frozenset(
             {
                 PROFILE,
-                "calculate_nutrition_targets",
+                "get_today_targets",
                 "session_fuelling",
                 "recovery_nutrition",
                 "supplement_guidance",
@@ -77,21 +77,34 @@ CONTRACTS: dict[AgentName, AgentContract] = {
     AgentName.TRAINING: AgentContract(
         name=AgentName.TRAINING,
         role="You are the training specialist. Help with sessions, load and progression. "
-        "Use the load and ramp tools before recommending more training.",
-        allowed_tools=frozenset({PROFILE, GOALS, "calculate_session_load", "check_weekly_ramp"}),
+        "Check get_training_load and get_today_readiness before recommending more training; use "
+        "the session load and ramp tools for planned sessions and weeks.",
+        allowed_tools=frozenset(
+            {
+                PROFILE,
+                GOALS,
+                "get_training_load",
+                "get_today_readiness",
+                "calculate_session_load",
+                "check_weekly_ramp",
+            }
+        ),
     ),
     AgentName.RECOVERY: AgentContract(
         name=AgentName.RECOVERY,
-        role="You are the recovery specialist. Judge readiness from sleep, soreness, mood and "
-        "device data with assess_readiness, and suggest easy days or rest when needed.",
-        allowed_tools=frozenset({PROFILE, "assess_readiness", "recovery_nutrition"}),
+        role="You are the recovery specialist. Judge readiness with get_today_readiness; if there "
+        "is no check-in today, ask the user to do the daily check-in. Suggest easy days or "
+        "rest when needed.",
+        allowed_tools=frozenset(
+            {PROFILE, "get_today_readiness", "get_training_load", "recovery_nutrition"}
+        ),
         max_tool_calls=3,
     ),
     AgentName.PROGRESS: AgentContract(
         name=AgentName.PROGRESS,
         role="You are the progress analyst. Summarise progress towards the user's goals "
         "honestly and suggest one focus for next week.",
-        allowed_tools=frozenset({PROFILE, GOALS}),
+        allowed_tools=frozenset({PROFILE, GOALS, "get_training_load"}),
         max_tool_calls=3,
     ),
     AgentName.MOTIVATION: AgentContract(

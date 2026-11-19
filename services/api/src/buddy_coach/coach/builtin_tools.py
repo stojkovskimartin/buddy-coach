@@ -6,9 +6,11 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from buddy_coach.checkin.schemas import CheckinIn, ReadinessOut
 from buddy_coach.coach.tools import Tool, ToolContext, ToolRegistry
 from buddy_coach.core.errors import NotFoundError
-from buddy_coach.profile.domain import GoalPriority, GoalStatus, GoalType, age_on
+from buddy_coach.nutrition.schemas import TargetsOut
+from buddy_coach.profile.domain import GoalPriority, GoalStatus, age_on
 from buddy_coach.science.micronutrients import (
     FOOD_SOURCES,
     SUPPLEMENT_ONLY_LIMITS,
@@ -19,10 +21,7 @@ from buddy_coach.science.micronutrients import (
 )
 from buddy_coach.science.nutrition import (
     BodyData,
-    EnergyGoal,
-    Lifestyle,
     Sex,
-    daily_targets,
     session_carbs_g_per_hour,
 )
 from buddy_coach.science.recovery import (
@@ -36,12 +35,8 @@ from buddy_coach.science.supplements import (
     Supplement,
     supplement_advice,
 )
-from buddy_coach.science.training import (
-    ReadinessInputs,
-    check_weekly_ramp,
-    readiness,
-    srpe_load,
-)
+from buddy_coach.science.training import check_weekly_ramp, srpe_load
+from buddy_coach.workouts.schemas import DayLoadOut, RampOut
 
 ONBOARDING_NEEDED = "The user has not completed onboarding; ask them to fill in their profile."
 
@@ -127,73 +122,9 @@ async def list_goals(ctx: ToolContext, _: NoArguments) -> GoalList:
     return GoalList(goals=await _active_goals(ctx))
 
 
-class NutritionTargetsInput(BaseModel):
-    """Optional overrides; by default the goal comes from the user's primary goal."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    goal: EnergyGoal | None = None
-    lifestyle: Lifestyle = Lifestyle.LIGHT
-    training_kcal: float = Field(default=0.0, ge=0, le=10_000)
-    rate_pct_per_week: float | None = Field(default=None, gt=0, le=3)
-
-
-class NutritionTargetsOutput(BaseModel):
-    """Daily targets with reasons."""
-
-    goal: EnergyGoal
-    kcal: int
-    protein_g: int
-    carbs_g: int
-    fat_g: int
-    maintenance_kcal: int
-    floor_applied: bool
-    reasons: list[str]
-
-
-_GOAL_TO_ENERGY = {GoalType.LOSE_WEIGHT: EnergyGoal.LOSE, GoalType.GAIN_WEIGHT: EnergyGoal.GAIN}
-
-
-async def calculate_nutrition_targets(
-    ctx: ToolContext, args: NutritionTargetsInput
-) -> NutritionTargetsOutput:
-    """Energy and macro targets from the nutrition engine."""
-    profile = await ctx.profiles.find_profile(ctx.user_id)
-    if profile is None:
-        raise NotFoundError(ONBOARDING_NEEDED)
-    goal = args.goal
-    if goal is None:
-        primary = next(
-            (g for g in await _active_goals(ctx) if g.priority == GoalPriority.PRIMARY.value), None
-        )
-        goal = (
-            _GOAL_TO_ENERGY.get(GoalType(primary.goal_type), EnergyGoal.MAINTAIN)
-            if primary
-            else EnergyGoal.MAINTAIN
-        )
-    body = BodyData(
-        weight_kg=profile.weight_kg,
-        height_cm=profile.height_cm,
-        age_years=age_on(profile.birth_year, ctx.today),
-        sex=Sex(profile.sex.value),
-    )
-    targets = daily_targets(
-        body,
-        args.lifestyle,
-        goal,
-        training_kcal=args.training_kcal,
-        rate_pct_per_week=None if goal is EnergyGoal.MAINTAIN else args.rate_pct_per_week,
-    )
-    return NutritionTargetsOutput(
-        goal=goal,
-        kcal=targets.kcal,
-        protein_g=targets.protein_g,
-        carbs_g=targets.carbs_g,
-        fat_g=targets.fat_g,
-        maintenance_kcal=targets.maintenance_kcal,
-        floor_applied=targets.floor_applied,
-        reasons=list(targets.reasons),
-    )
+async def get_today_targets(ctx: ToolContext, _: NoArguments) -> TargetsOut:
+    """Today's targets exactly as the app shows them (nutrition module)."""
+    return await ctx.targets.targets_today(ctx.user_id)
 
 
 class SessionInput(BaseModel):
@@ -261,46 +192,35 @@ async def check_weekly_ramp_tool(ctx: ToolContext, args: RampInput) -> RampOutpu
     return RampOutput(verdict=result.verdict.value, max_allowed_load=result.max_allowed_load)
 
 
-class ReadinessInput(BaseModel):
-    """Morning check-in. Self-reports: 1 (bad) to 5 (great); soreness 5 means not sore."""
+class TodayCheckin(CheckinIn):
+    """Today's check-in answers and the readiness the app computed from them (no date)."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    sleep_quality: int = Field(ge=1, le=5)
-    soreness: int = Field(ge=1, le=5)
-    mood: int = Field(ge=1, le=5)
-    pain_reported: bool = False
-    hrv_ms: float | None = Field(default=None, gt=0, le=300)
-    hrv_baseline: list[float] = Field(default_factory=list, max_length=90)
-    resting_hr: float | None = Field(default=None, gt=20, le=220)
-    resting_hr_baseline: float | None = Field(default=None, gt=20, le=220)
+    readiness: ReadinessOut
 
 
-class ReadinessOutput(BaseModel):
-    """Readiness score and traffic light."""
-
-    score: int
-    level: str
-    limiting_factors: list[str]
+async def get_today_readiness(ctx: ToolContext, _: NoArguments) -> TodayCheckin:
+    """Today's check-in and readiness exactly as the app shows them (check-in module)."""
+    checkin = await ctx.checkins.get(ctx.user_id, ctx.today)
+    return TodayCheckin.model_validate(checkin.model_dump(exclude={"day"}))
 
 
-async def assess_readiness(_: ToolContext, args: ReadinessInput) -> ReadinessOutput:
-    """Readiness from the training engine."""
-    result = readiness(
-        ReadinessInputs(
-            sleep_quality=args.sleep_quality,
-            soreness=args.soreness,
-            mood=args.mood,
-            pain_reported=args.pain_reported,
-            hrv_ms=args.hrv_ms,
-            hrv_baseline=tuple(args.hrv_baseline),
-            resting_hr=args.resting_hr,
-            resting_hr_baseline=args.resting_hr_baseline,
-        )
-    )
-    return ReadinessOutput(
-        score=result.score, level=result.level.value, limiting_factors=list(result.limiting_factors)
-    )
+LOAD_DAYS = 42
+"""Days of history in the training load summary (the API's default)."""
+
+
+class TrainingLoadSummary(BaseModel):
+    """Where training stands today; the day-by-day history is left out to save tokens."""
+
+    today: DayLoadOut
+    acute_chronic_ratio: float | None
+    ramp: RampOut
+    excluded_activities: list[str]
+
+
+async def get_training_load(ctx: ToolContext, _: NoArguments) -> TrainingLoadSummary:
+    """Fitness, fatigue, form and this week's ramp from logged workouts (workouts module)."""
+    load = await ctx.training.load(ctx.user_id, LOAD_DAYS)
+    return TrainingLoadSummary.model_validate(load.model_dump(exclude={"days"}))
 
 
 async def _body(ctx: ToolContext) -> BodyData:
@@ -342,7 +262,7 @@ class RecoveryOutput(BaseModel):
     meals_per_day: int
     note: str = (
         "Protein per meal shows how to spread protein; the daily protein target comes from "
-        "calculate_nutrition_targets."
+        "get_today_targets."
     )
 
 
@@ -497,10 +417,10 @@ def build_default_registry() -> ToolRegistry:
     registry.register(Tool("list_goals", "The user's active goals.", NoArguments, list_goals))
     registry.register(
         Tool(
-            "calculate_nutrition_targets",
-            "Daily calorie and macro targets. Defaults to the user's primary goal.",
-            NutritionTargetsInput,
-            calculate_nutrition_targets,
+            "get_today_targets",
+            "Today's calorie and macro targets, the same numbers the app shows.",
+            NoArguments,
+            get_today_targets,
         )
     )
     registry.register(
@@ -529,11 +449,19 @@ def build_default_registry() -> ToolRegistry:
     )
     registry.register(
         Tool(
-            "assess_readiness",
-            "Readiness to train today from sleep, soreness, mood, pain and optional HRV or "
-            "resting heart rate.",
-            ReadinessInput,
-            assess_readiness,
+            "get_today_readiness",
+            "Today's check-in (sleep, soreness, mood, pain, HRV, resting heart rate) and the "
+            "readiness the app computed from it. Fails when there is no check-in today.",
+            NoArguments,
+            get_today_readiness,
+        )
+    )
+    registry.register(
+        Tool(
+            "get_training_load",
+            "Fitness, fatigue, form and this week's load ramp from the user's logged workouts.",
+            NoArguments,
+            get_training_load,
         )
     )
     registry.register(

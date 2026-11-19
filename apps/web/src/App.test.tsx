@@ -62,7 +62,7 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
       async (): Promise<ChatReply> => ({
         reply: "Aim for 2450 kcal today.",
         agent: "nutrition",
-        tools_used: ["calculate_nutrition_targets"],
+        tools_used: ["get_today_targets"],
         escalated: false,
         safety_category: "none",
         degraded: false,

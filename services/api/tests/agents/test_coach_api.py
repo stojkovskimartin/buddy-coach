@@ -3,31 +3,65 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
 from buddy_coach.coach.llm import LLMProvider, ScriptedLLMProvider
-from buddy_coach.science.nutrition import BodyData, EnergyGoal, Lifestyle, Sex, daily_targets
+from buddy_coach.core.deps import get_clock
 from tests.agents.fakes import answer, call
 from tests.support import VALID_PROFILE, register_and_login
 
 pytestmark = pytest.mark.integration
 
+NOW = datetime(2026, 11, 18, 23, 30, tzinfo=UTC)
+ZURICH_TODAY = date(2026, 11, 19)  # already the next day for the athlete
+
+
+@pytest.fixture(autouse=True)
+def frozen_clock(app: FastAPI) -> Iterator[None]:
+    app.dependency_overrides[get_clock] = lambda: lambda: NOW
+    yield
+    app.dependency_overrides.pop(get_clock, None)
+
 
 @pytest.fixture
 def llm_provider() -> LLMProvider:
     return ScriptedLLMProvider.of(
-        [call("calculate_nutrition_targets"), answer("Your daily target is in the app.")]
+        [call("get_today_targets"), answer("Your daily target is in the app.")]
     )
 
 
-async def test_nutrition_numbers_come_from_the_engine(
-    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
-) -> None:
+async def _athlete(client: httpx.AsyncClient) -> dict[str, str]:
     headers = await register_and_login(client)
     await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
+    return headers
+
+
+async def _tool_result(
+    client: httpx.AsyncClient,
+    llm: ScriptedLLMProvider,
+    headers: dict[str, str],
+    tool: str,
+    message: str,
+) -> dict[str, Any]:
+    llm.responses.clear()
+    llm.responses.extend([call(tool), answer("ok")])
+    response = await client.post("/api/v1/coach/chat", json={"message": message}, headers=headers)
+    assert response.status_code == 200, response.text
+    assert response.json()["tools_used"] == [tool]
+    result: dict[str, Any] = json.loads(llm.requests[-1].messages[-1].content)
+    return result
+
+
+async def test_coach_targets_are_the_ones_the_app_shows(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    headers = await _athlete(client)
     await client.post(
         "/api/v1/goals",
         json={"goal_type": "lose_weight", "title": "Race weight", "target_weight_kg": 75},
@@ -40,22 +74,59 @@ async def test_nutrition_numbers_come_from_the_engine(
     assert response.status_code == 200
     body = response.json()
     assert body["agent"] == "nutrition"
-    assert body["tools_used"] == ["calculate_nutrition_targets"]
+    assert body["tools_used"] == ["get_today_targets"]
 
     tool_result = json.loads(llm_provider.requests[1].messages[-1].content)
-    age = (
-        date.today().year
-        - VALID_PROFILE["birth_year"]
-        - (1 if date.today() < date(date.today().year, 7, 1) else 0)
-    )
-    expected = daily_targets(
-        BodyData(weight_kg=79, height_cm=182, age_years=age, sex=Sex.MALE),
-        Lifestyle.LIGHT,
-        EnergyGoal.LOSE,
-    )
+    shown = (await client.get("/api/v1/nutrition/targets/today", headers=headers)).json()
+    assert tool_result == shown
+    assert tool_result["day"] == ZURICH_TODAY.isoformat()
     assert tool_result["goal"] == "lose"
-    assert tool_result["kcal"] == expected.kcal
-    assert tool_result["protein_g"] == expected.protein_g
+
+
+async def test_coach_reads_todays_checkin_on_the_athletes_day(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    headers = await _athlete(client)
+    missing = await _tool_result(
+        client, llm_provider, headers, "get_today_readiness", "Am I recovered enough?"
+    )
+    assert "error" in missing
+
+    await client.put(
+        "/api/v1/checkins/today",
+        json={"sleep_quality": 2, "soreness": 4, "mood": 3, "pain": False},
+        headers=headers,
+    )
+    result = await _tool_result(
+        client, llm_provider, headers, "get_today_readiness", "Am I recovered enough?"
+    )
+    shown = (await client.get("/api/v1/checkins/today", headers=headers)).json()
+    assert result["readiness"] == shown["readiness"]
+    assert result["sleep_quality"] == 2
+    assert "day" not in result
+
+
+async def test_coach_reads_the_training_load(
+    client: httpx.AsyncClient, llm_provider: ScriptedLLMProvider
+) -> None:
+    headers = await _athlete(client)
+    await client.post(
+        "/api/v1/workouts",
+        json={
+            "activity": "running",
+            "started_at": "2026-11-18T18:00:00+01:00",
+            "duration_min": 50,
+            "rpe": 6,
+        },
+        headers=headers,
+    )
+    result = await _tool_result(
+        client, llm_provider, headers, "get_training_load", "How is my training going?"
+    )
+    shown = (await client.get("/api/v1/training/load", headers=headers)).json()
+    assert result["today"] == shown["today"]
+    assert result["ramp"] == shown["ramp"]
+    assert "days" not in result  # the day-by-day history stays out of the prompt
 
 
 async def test_coach_requires_authentication(client: httpx.AsyncClient) -> None:
@@ -87,9 +158,8 @@ async def test_goal_days_to_target_are_computed(
 ) -> None:
     llm_provider.responses.clear()
     llm_provider.responses.extend([call("list_goals"), answer("Keep going.")])
-    headers = await register_and_login(client)
-    await client.put("/api/v1/profile", json=VALID_PROFILE, headers=headers)
-    target = datetime.now(UTC).date() + timedelta(days=100)  # the server counts in UTC
+    headers = await _athlete(client)
+    target = ZURICH_TODAY + timedelta(days=100)  # counted from the athlete's day
     await client.post(
         "/api/v1/goals",
         json={
