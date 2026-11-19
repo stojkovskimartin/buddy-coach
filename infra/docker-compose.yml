@@ -30,7 +30,7 @@ services:
       BUDDY_DATABASE_URL: postgresql+asyncpg://buddy:buddy@db:5432/buddy
       # Local-only secret; real deployments inject their own.
       BUDDY_JWT_SECRET: local-development-secret-change-me-0123456789
-      BUDDY_CORS_ORIGINS: '["http://localhost:5173","tauri://localhost"]'
+      BUDDY_CORS_ORIGINS: '["http://localhost:5173"]'
       BUDDY_LLM_PROVIDER: ${BUDDY_LLM_PROVIDER:-dev}
       BUDDY_ANTHROPIC_API_KEY: ${BUDDY_ANTHROPIC_API_KEY:-}
     ports:

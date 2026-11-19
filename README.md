@@ -13,10 +13,10 @@ Current status, next steps and how to run everything: **[docs/PROGRESS.md](docs/
 | Path | What it is | Stack | Status |
 | --- | --- | --- | --- |
 | `services/api` | Backend: REST API, domain modules, coach agent network | Python 3.13, FastAPI, SQLAlchemy 2 (async), Alembic | in progress |
-| `apps/web` | Web app (dashboard, coach chat, logging) | React 19, TypeScript, Vite | planned |
-| `apps/mobile` | iOS and Android app (HealthKit, Health Connect, camera) | Expo / React Native, TypeScript | planned |
-| `apps/desktop` | Desktop app for Windows, macOS, Linux (wraps the web app) | Tauri 2 | planned |
-| `packages/api-client` | Typed API client generated from the FastAPI OpenAPI spec | TypeScript | planned |
+| `apps/web` | Web app (dashboard, coach chat, logging) | React 19, TypeScript, Vite | in progress |
+| `apps/mobile` | iOS and Android app (HealthKit, Health Connect, camera) | Expo / React Native, TypeScript | in progress |
+| `packages/api-client` | Typed API client generated from the FastAPI OpenAPI spec | TypeScript | done |
+| `packages/shared` | Wording and small rules shared by web and mobile | TypeScript | in progress |
 | `infra` | Local infrastructure (Postgres) and deployment files | Docker Compose | in progress |
 | `docs` | Architecture, ADRs, runbooks | Markdown | done |
 

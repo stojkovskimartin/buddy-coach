@@ -8,7 +8,7 @@
     },
     "build": {
       "dependsOn": ["^build", "generate"],
-      "env": ["VITE_*", "EXPO_PUBLIC_*", "TAURI_*"],
+      "env": ["VITE_*", "EXPO_PUBLIC_*"],
       "outputs": ["dist/**"]
     },
     "dev": {
