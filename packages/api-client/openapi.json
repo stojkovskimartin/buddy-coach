@@ -1,6 +1,30 @@
 {
   "components": {
     "schemas": {
+      "ActivityType": {
+        "description": "Activity of a workout (devices' many types are mapped onto these).",
+        "enum": [
+          "running",
+          "trail_running",
+          "cycling",
+          "indoor_cycling",
+          "swimming",
+          "walking",
+          "hiking",
+          "ski_touring",
+          "cross_country_skiing",
+          "alpine_skiing",
+          "rowing",
+          "strength",
+          "hiit",
+          "climbing",
+          "yoga",
+          "team_sport",
+          "other"
+        ],
+        "title": "ActivityType",
+        "type": "string"
+      },
       "AgentName": {
         "description": "All agents in the network.",
         "enum": [
@@ -251,6 +275,41 @@
         "title": "CoachStyle",
         "type": "string"
       },
+      "DayLoadOut": {
+        "description": "Training load, fitness, fatigue and form of one day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "fatigue": {
+            "title": "Fatigue",
+            "type": "number"
+          },
+          "fitness": {
+            "title": "Fitness",
+            "type": "number"
+          },
+          "form": {
+            "title": "Form",
+            "type": "number"
+          },
+          "load": {
+            "title": "Load",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "load",
+          "fitness",
+          "fatigue",
+          "form"
+        ],
+        "title": "DayLoadOut",
+        "type": "object"
+      },
       "EnergyGoal": {
         "description": "Direction of body-mass change.",
         "enum": [
@@ -271,6 +330,50 @@
         ],
         "title": "ExperienceLevel",
         "type": "string"
+      },
+      "FeedbackIn": {
+        "description": "How the session felt. Only the fields sent are changed.",
+        "properties": {
+          "feeling": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feeling"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pain"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          }
+        },
+        "title": "FeedbackIn",
+        "type": "object"
       },
       "GoalIn": {
         "description": "Create a goal.",
@@ -490,6 +593,244 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ImportIn": {
+        "description": "A batch from one sync. Sending the same workouts again updates them, never duplicates.",
+        "properties": {
+          "workouts": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedWorkout"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Workouts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workouts"
+        ],
+        "title": "ImportIn",
+        "type": "object"
+      },
+      "ImportResult": {
+        "description": "How many workouts were new and how many were updated.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated"
+        ],
+        "title": "ImportResult",
+        "type": "object"
+      },
+      "ImportedWorkout": {
+        "description": "A session from a device or app, identified by that source's own id.",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityType"
+          },
+          "avg_hr": {
+            "anyOf": [
+              {
+                "maximum": 230.0,
+                "minimum": 30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hr"
+          },
+          "distance_km": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "duration_min": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1440.0,
+            "title": "Duration Min",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation Gain M"
+          },
+          "external_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "External Id",
+            "type": "string"
+          },
+          "feeling": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 = awful, 5 = great",
+            "title": "Feeling"
+          },
+          "kcal": {
+            "anyOf": [
+              {
+                "maximum": 20000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "max_hr": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hr"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pain (not normal soreness) in or after it",
+            "title": "Pain"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Effort 1 (very easy) - 10 (max)",
+            "title": "Rpe"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WorkoutSource"
+          },
+          "started_at": {
+            "description": "Start time with its UTC offset",
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity",
+          "started_at",
+          "duration_min",
+          "source",
+          "external_id"
+        ],
+        "title": "ImportedWorkout",
+        "type": "object"
+      },
+      "LoadOut": {
+        "description": "Where the athlete's training stands today, and the days that led there.",
+        "properties": {
+          "acute_chronic_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fatigue / fitness; above 1.5 load is rising faster than the body adapts",
+            "title": "Acute Chronic Ratio"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayLoadOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "excluded_activities": {
+            "description": "Long, easy activities left out of this summary (still stored and listed)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Excluded Activities",
+            "type": "array"
+          },
+          "ramp": {
+            "$ref": "#/components/schemas/RampOut"
+          },
+          "today": {
+            "$ref": "#/components/schemas/DayLoadOut"
+          }
+        },
+        "required": [
+          "today",
+          "acute_chronic_ratio",
+          "ramp",
+          "days",
+          "excluded_activities"
+        ],
+        "title": "LoadOut",
+        "type": "object"
+      },
+      "LoadSource": {
+        "description": "How a workout's effort was known: the athlete's own rating beats any estimate.",
+        "enum": [
+          "rpe",
+          "heart_rate",
+          "typical"
+        ],
+        "title": "LoadSource",
+        "type": "string"
+      },
       "LoginRequest": {
         "description": "Exchange credentials for tokens.",
         "properties": {
@@ -657,6 +998,43 @@
         ],
         "title": "ProfileOut",
         "type": "object"
+      },
+      "RampOut": {
+        "description": "This week's load (the last 7 days, today included even if it is not over) against the\n7 days before.",
+        "properties": {
+          "last_week_load": {
+            "title": "Last Week Load",
+            "type": "number"
+          },
+          "max_allowed_load": {
+            "title": "Max Allowed Load",
+            "type": "number"
+          },
+          "this_week_load": {
+            "title": "This Week Load",
+            "type": "number"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/RampVerdict"
+          }
+        },
+        "required": [
+          "last_week_load",
+          "this_week_load",
+          "max_allowed_load",
+          "verdict"
+        ],
+        "title": "RampOut",
+        "type": "object"
+      },
+      "RampVerdict": {
+        "description": "Result of checking a planned week against last week.",
+        "enum": [
+          "ok",
+          "too_steep"
+        ],
+        "title": "RampVerdict",
+        "type": "string"
       },
       "ReadinessLevel": {
         "description": "Traffic light for today's training.",
@@ -934,6 +1312,296 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WorkoutData": {
+        "description": "What a device, an app or the athlete reports about a session.",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityType"
+          },
+          "avg_hr": {
+            "anyOf": [
+              {
+                "maximum": 230.0,
+                "minimum": 30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hr"
+          },
+          "distance_km": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "duration_min": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1440.0,
+            "title": "Duration Min",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation Gain M"
+          },
+          "feeling": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 = awful, 5 = great",
+            "title": "Feeling"
+          },
+          "kcal": {
+            "anyOf": [
+              {
+                "maximum": 20000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "max_hr": {
+            "anyOf": [
+              {
+                "maximum": 240.0,
+                "minimum": 30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hr"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pain (not normal soreness) in or after it",
+            "title": "Pain"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Effort 1 (very easy) - 10 (max)",
+            "title": "Rpe"
+          },
+          "started_at": {
+            "description": "Start time with its UTC offset",
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity",
+          "started_at",
+          "duration_min"
+        ],
+        "title": "WorkoutData",
+        "type": "object"
+      },
+      "WorkoutOut": {
+        "description": "A stored workout with its training load.",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityType"
+          },
+          "avg_hr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hr"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation Gain M"
+          },
+          "feeling": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feeling"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kcal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal"
+          },
+          "load": {
+            "title": "Load",
+            "type": "number"
+          },
+          "load_source": {
+            "$ref": "#/components/schemas/LoadSource"
+          },
+          "max_hr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hr"
+          },
+          "pain": {
+            "title": "Pain",
+            "type": "boolean"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WorkoutSource"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "activity",
+          "started_at",
+          "day",
+          "duration_min",
+          "distance_km",
+          "elevation_gain_m",
+          "avg_hr",
+          "max_hr",
+          "kcal",
+          "rpe",
+          "feeling",
+          "pain",
+          "load",
+          "load_source"
+        ],
+        "title": "WorkoutOut",
+        "type": "object"
+      },
+      "WorkoutSource": {
+        "description": "Where a workout came from. Phone hubs collect most watches and apps.",
+        "enum": [
+          "manual",
+          "fit_file",
+          "apple_health",
+          "health_connect",
+          "garmin",
+          "fitbit",
+          "whoop",
+          "polar",
+          "suunto",
+          "coros",
+          "huawei",
+          "xiaomi",
+          "strava"
+        ],
+        "title": "WorkoutSource",
+        "type": "string"
       }
     },
     "securitySchemes": {
@@ -1706,6 +2374,57 @@
         ]
       }
     },
+    "/api/v1/training/load": {
+      "get": {
+        "description": "Fitness, fatigue and form for the last ``days`` days, and this week's ramp check.",
+        "operationId": "training_load_api_v1_training_load_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 42,
+              "maximum": 366,
+              "minimum": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Training Load",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "description": "Return the authenticated account.",
@@ -1731,6 +2450,282 @@
         "tags": [
           "auth",
           "users"
+        ]
+      }
+    },
+    "/api/v1/workouts": {
+      "get": {
+        "description": "Workouts in a date range (default: the last 28 days), newest first. Max 366 days.",
+        "operationId": "list_workouts_api_v1_workouts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkoutOut"
+                  },
+                  "title": "Response List Workouts Api V1 Workouts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Workouts",
+        "tags": [
+          "workouts"
+        ]
+      },
+      "post": {
+        "description": "Log a session by hand.",
+        "operationId": "log_workout_api_v1_workouts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Log Workout",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/api/v1/workouts/import": {
+      "post": {
+        "description": "Sync workouts from a device or app. Safe to repeat: known workouts are updated.",
+        "operationId": "import_workouts_api_v1_workouts_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Workouts",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/api/v1/workouts/{workout_id}": {
+      "delete": {
+        "description": "Delete a workout.",
+        "operationId": "delete_workout_api_v1_workouts__workout_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workout Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not yours or gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Workout",
+        "tags": [
+          "workouts"
+        ]
+      }
+    },
+    "/api/v1/workouts/{workout_id}/feedback": {
+      "patch": {
+        "description": "How the session felt (effort, feeling, pain); updates its load.",
+        "operationId": "give_feedback_api_v1_workouts__workout_id__feedback_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workout Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not yours or gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Give Feedback",
+        "tags": [
+          "workouts"
         ]
       }
     },

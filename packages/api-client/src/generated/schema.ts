@@ -263,6 +263,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/training/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Training Load
+         * @description Fitness, fatigue and form for the last ``days`` days, and this week's ramp check.
+         */
+        get: operations["training_load_api_v1_training_load_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me": {
         parameters: {
             query?: never;
@@ -281,6 +301,90 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Workouts
+         * @description Workouts in a date range (default: the last 28 days), newest first. Max 366 days.
+         */
+        get: operations["list_workouts_api_v1_workouts_get"];
+        put?: never;
+        /**
+         * Log Workout
+         * @description Log a session by hand.
+         */
+        post: operations["log_workout_api_v1_workouts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Workouts
+         * @description Sync workouts from a device or app. Safe to repeat: known workouts are updated.
+         */
+        post: operations["import_workouts_api_v1_workouts_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts/{workout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Workout
+         * @description Delete a workout.
+         */
+        delete: operations["delete_workout_api_v1_workouts__workout_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts/{workout_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Give Feedback
+         * @description How the session felt (effort, feeling, pain); updates its load.
+         */
+        patch: operations["give_feedback_api_v1_workouts__workout_id__feedback_patch"];
         trace?: never;
     };
     "/health/live": {
@@ -327,6 +431,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityType
+         * @description Activity of a workout (devices' many types are mapped onto these).
+         * @enum {string}
+         */
+        ActivityType: "running" | "trail_running" | "cycling" | "indoor_cycling" | "swimming" | "walking" | "hiking" | "ski_touring" | "cross_country_skiing" | "alpine_skiing" | "rowing" | "strength" | "hiit" | "climbing" | "yoga" | "team_sport" | "other";
         /**
          * AgentName
          * @description All agents in the network.
@@ -454,6 +564,25 @@ export interface components {
          */
         CoachStyle: "friendly" | "strict" | "data_driven";
         /**
+         * DayLoadOut
+         * @description Training load, fitness, fatigue and form of one day.
+         */
+        DayLoadOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Fatigue */
+            fatigue: number;
+            /** Fitness */
+            fitness: number;
+            /** Form */
+            form: number;
+            /** Load */
+            load: number;
+        };
+        /**
          * EnergyGoal
          * @description Direction of body-mass change.
          * @enum {string}
@@ -465,6 +594,18 @@ export interface components {
          * @enum {string}
          */
         ExperienceLevel: "beginner" | "intermediate" | "advanced" | "elite";
+        /**
+         * FeedbackIn
+         * @description How the session felt. Only the fields sent are changed.
+         */
+        FeedbackIn: {
+            /** Feeling */
+            feeling?: number | null;
+            /** Pain */
+            pain?: boolean | null;
+            /** Rpe */
+            rpe?: number | null;
+        };
         /**
          * GoalIn
          * @description Create a goal.
@@ -541,6 +682,93 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * ImportIn
+         * @description A batch from one sync. Sending the same workouts again updates them, never duplicates.
+         */
+        ImportIn: {
+            /** Workouts */
+            workouts: components["schemas"]["ImportedWorkout"][];
+        };
+        /**
+         * ImportResult
+         * @description How many workouts were new and how many were updated.
+         */
+        ImportResult: {
+            /** Created */
+            created: number;
+            /** Updated */
+            updated: number;
+        };
+        /**
+         * ImportedWorkout
+         * @description A session from a device or app, identified by that source's own id.
+         */
+        ImportedWorkout: {
+            activity: components["schemas"]["ActivityType"];
+            /** Avg Hr */
+            avg_hr?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
+            /** Duration Min */
+            duration_min: number;
+            /** Elevation Gain M */
+            elevation_gain_m?: number | null;
+            /** External Id */
+            external_id: string;
+            /**
+             * Feeling
+             * @description 1 = awful, 5 = great
+             */
+            feeling?: number | null;
+            /** Kcal */
+            kcal?: number | null;
+            /** Max Hr */
+            max_hr?: number | null;
+            /**
+             * Pain
+             * @description Pain (not normal soreness) in or after it
+             */
+            pain?: boolean | null;
+            /**
+             * Rpe
+             * @description Effort 1 (very easy) - 10 (max)
+             */
+            rpe?: number | null;
+            source: components["schemas"]["WorkoutSource"];
+            /**
+             * Started At
+             * Format: date-time
+             * @description Start time with its UTC offset
+             */
+            started_at: string;
+        };
+        /**
+         * LoadOut
+         * @description Where the athlete's training stands today, and the days that led there.
+         */
+        LoadOut: {
+            /**
+             * Acute Chronic Ratio
+             * @description Fatigue / fitness; above 1.5 load is rising faster than the body adapts
+             */
+            acute_chronic_ratio: number | null;
+            /** Days */
+            days: components["schemas"]["DayLoadOut"][];
+            /**
+             * Excluded Activities
+             * @description Long, easy activities left out of this summary (still stored and listed)
+             */
+            excluded_activities: string[];
+            ramp: components["schemas"]["RampOut"];
+            today: components["schemas"]["DayLoadOut"];
+        };
+        /**
+         * LoadSource
+         * @description How a workout's effort was known: the athlete's own rating beats any estimate.
+         * @enum {string}
+         */
+        LoadSource: "rpe" | "heart_rate" | "typical";
         /**
          * LoginRequest
          * @description Exchange credentials for tokens.
@@ -624,6 +852,26 @@ export interface components {
             /** Weight Kg */
             weight_kg: number;
         };
+        /**
+         * RampOut
+         * @description This week's load (the last 7 days, today included even if it is not over) against the
+         *     7 days before.
+         */
+        RampOut: {
+            /** Last Week Load */
+            last_week_load: number;
+            /** Max Allowed Load */
+            max_allowed_load: number;
+            /** This Week Load */
+            this_week_load: number;
+            verdict: components["schemas"]["RampVerdict"];
+        };
+        /**
+         * RampVerdict
+         * @description Result of checking a planned week against last week.
+         * @enum {string}
+         */
+        RampVerdict: "ok" | "too_steep";
         /**
          * ReadinessLevel
          * @description Traffic light for today's training.
@@ -764,6 +1012,96 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WorkoutData
+         * @description What a device, an app or the athlete reports about a session.
+         */
+        WorkoutData: {
+            activity: components["schemas"]["ActivityType"];
+            /** Avg Hr */
+            avg_hr?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
+            /** Duration Min */
+            duration_min: number;
+            /** Elevation Gain M */
+            elevation_gain_m?: number | null;
+            /**
+             * Feeling
+             * @description 1 = awful, 5 = great
+             */
+            feeling?: number | null;
+            /** Kcal */
+            kcal?: number | null;
+            /** Max Hr */
+            max_hr?: number | null;
+            /**
+             * Pain
+             * @description Pain (not normal soreness) in or after it
+             */
+            pain?: boolean | null;
+            /**
+             * Rpe
+             * @description Effort 1 (very easy) - 10 (max)
+             */
+            rpe?: number | null;
+            /**
+             * Started At
+             * Format: date-time
+             * @description Start time with its UTC offset
+             */
+            started_at: string;
+        };
+        /**
+         * WorkoutOut
+         * @description A stored workout with its training load.
+         */
+        WorkoutOut: {
+            activity: components["schemas"]["ActivityType"];
+            /** Avg Hr */
+            avg_hr: number | null;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Distance Km */
+            distance_km: number | null;
+            /** Duration Min */
+            duration_min: number;
+            /** Elevation Gain M */
+            elevation_gain_m: number | null;
+            /** Feeling */
+            feeling: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kcal */
+            kcal: number | null;
+            /** Load */
+            load: number;
+            load_source: components["schemas"]["LoadSource"];
+            /** Max Hr */
+            max_hr: number | null;
+            /** Pain */
+            pain: boolean;
+            /** Rpe */
+            rpe: number | null;
+            source: components["schemas"]["WorkoutSource"];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+        };
+        /**
+         * WorkoutSource
+         * @description Where a workout came from. Phone hubs collect most watches and apps.
+         * @enum {string}
+         */
+        WorkoutSource: "manual" | "fit_file" | "apple_health" | "health_connect" | "garmin" | "fitbit" | "whoop" | "polar" | "suunto" | "coros" | "huawei" | "xiaomi" | "strava";
     };
     responses: never;
     parameters: never;
@@ -1298,6 +1636,37 @@ export interface operations {
             };
         };
     };
+    training_load_api_v1_training_load_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_v1_users_me_get: {
         parameters: {
             query?: never;
@@ -1314,6 +1683,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+        };
+    };
+    list_workouts_api_v1_workouts_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_workout_api_v1_workouts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkoutData"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_workouts_api_v1_workouts_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_workout_api_v1_workouts__workout_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not yours or gone */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    give_feedback_api_v1_workouts__workout_id__feedback_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutOut"];
+                };
+            };
+            /** @description Not yours or gone */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

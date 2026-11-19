@@ -8,7 +8,7 @@ import pytest
 from buddy_coach.core.clock import local_date
 from buddy_coach.nutrition.domain import energy_goal, estimated_training_kcal, targets_for
 from buddy_coach.nutrition.service import NutritionService
-from buddy_coach.profile.domain import AthleteSnapshot, GoalType, Sex
+from buddy_coach.profile.domain import AthleteSnapshot, ExperienceLevel, GoalType, Sex
 from buddy_coach.science.nutrition import WATCH_ENERGY_DISCOUNT, EnergyGoal
 
 TODAY = date(2026, 11, 19)
@@ -21,6 +21,7 @@ def _athlete(goal: GoalType | None, **overrides: object) -> AthleteSnapshot:
         "height_cm": 182,
         "weight_kg": 79,
         "timezone": "Europe/Zurich",
+        "experience": ExperienceLevel.INTERMEDIATE,
         "available_days_per_week": 5,
         "minutes_per_session": 60,
         "primary_goal": goal,

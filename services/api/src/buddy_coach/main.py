@@ -23,6 +23,7 @@ from buddy_coach.health.router import router as health_router
 from buddy_coach.identity.router import router as identity_router
 from buddy_coach.nutrition.router import router as nutrition_router
 from buddy_coach.profile.router import router as profile_router
+from buddy_coach.workouts.router import router as workouts_router
 
 API_PREFIX = "/api/v1"
 
@@ -75,6 +76,7 @@ def create_app(
     api.include_router(profile_router)
     api.include_router(checkin_router)
     api.include_router(nutrition_router)
+    api.include_router(workouts_router)
     api.include_router(coach_router)
     app.include_router(health_router)
     app.include_router(api)

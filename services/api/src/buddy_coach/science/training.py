@@ -236,3 +236,33 @@ def _hrv_score(hrv_ms: float | None, baseline: Sequence[float]) -> float | None:
 
 def _clamp(value: float) -> float:
     return min(max(value, 0.0), 1.0)
+
+
+# --- Session load when no RPE was given -------------------------------------------------------
+
+DEFAULT_REST_HR = 60.0
+"""Resting heart rate assumed when none is known (typical for trained adults)."""
+
+
+def max_hr_tanaka(age_years: int) -> float:
+    """Age-predicted maximal heart rate (Tanaka et al. 2001): 208 - 0.7 x age."""
+    if not 10 <= age_years <= 100:
+        msg = "age must be between 10 and 100"
+        raise ValueError(msg)
+    return 208 - 0.7 * age_years
+
+
+def rpe_from_heart_rate(avg_hr: float, rest_hr: float, max_hr: float) -> float:
+    """Perceived effort (CR-10) estimated from heart-rate reserve.
+
+    Roughly: 50 % reserve feels like 3, 70 % like 5, 90 % like 7, near max like 8+.
+    An estimate only; an athlete's own RPE always wins.
+    """
+    if not all(math.isfinite(v) for v in (avg_hr, rest_hr, max_hr)):
+        msg = "heart rates must be finite numbers"
+        raise ValueError(msg)
+    if not rest_hr < max_hr:
+        msg = "rest_hr must be below max_hr"
+        raise ValueError(msg)
+    reserve = min(max((avg_hr - rest_hr) / (max_hr - rest_hr), 0.0), 1.0)
+    return min(max(10 * reserve - 2, 1.0), 10.0)
