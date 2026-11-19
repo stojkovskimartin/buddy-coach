@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 MIN_SECRET_LENGTH = 32
 
@@ -42,7 +43,10 @@ class Settings(BaseSettings):
     jwt_audience: str = "buddy-coach-api"
     access_token_ttl_minutes: int = Field(default=15, ge=1, le=60)
     refresh_token_ttl_days: int = Field(default=30, ge=1, le=90)
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:5173"],
+        description='A JSON list or comma-separated: ["https://a.ch","https://b.ch"] or a,b',
+    )
     log_level: str = "INFO"
     llm_provider: LLMProviderName = LLMProviderName.DEV
     llm_model: str = "claude-sonnet-5-5"
@@ -51,6 +55,16 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None  # openai_compatible; local servers need none
     media_dir: str = "./media"  # photos on local disk; an S3-compatible store later
     meal_photo_retention_days: int = Field(default=90, ge=1, le=3650)
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _origins(cls, value: object) -> object:
+        # Some .env loaders (e.g. `uv run --env-file`) drop the inner quotes of a JSON list, so
+        # both forms are accepted: brackets and quotes around the items are optional.
+        if isinstance(value, str):
+            items = value.strip().removeprefix("[").removesuffix("]").split(",")
+            return [i.strip().strip("\"'") for i in items if i.strip().strip("\"'")]
+        return value
 
     @field_validator("jwt_secret")
     @classmethod

@@ -80,8 +80,9 @@ pull request numbers.
 | #38 | Watch files and connections API: FIT activity upload (Garmin, Coros, Polar, Suunto, Wahoo), sources of workouts and weights | +8 |
 | #39 | Connections page on web: phone health app, watch-file upload, typed-in data, planned direct accounts | +4 frontend (shared 1, client 1, web 2) |
 | #40 | Feedback fixes: the app says when the server is older than the app (instead of "Not Found"), profile picture inside the page, long coach answers wrap, the offline coach shows all of its data; update steps in the docs | +1 frontend (client 1) |
+| #41 | The API starts with `uv run --env-file .env` on Windows: allowed web origins accept a comma-separated list (the JSON form lost its quotes) | +3 |
 
-Totals: backend 547 tests, frontend 207 tests (shared 32, client 28, web 41, mobile 106); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 550 tests, frontend 207 tests (shared 32, client 28, web 41, mobile 106); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
