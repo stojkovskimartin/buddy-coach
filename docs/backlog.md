@@ -30,3 +30,5 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | `BUDDY_ENVIRONMENT` defaults to `development`: a deployment that forgets it would accept development-only settings such as `BUDDY_FAKE_PROVIDERS`; require it outside local runs | #51 review | Free hosting |
 | Web: the browser bar colour (`theme-color`) follows the device, not a theme chosen in the app | #52 review | With Settings |
 | Web: the dashboard's "Recent days" range and the check-in's "Not now" use the device's day; the server's "today" follows the profile's time zone, so a device in another zone can be a day off | #53 review | With Settings (time zone) |
+| Coach: router keywords in Macedonian (Macedonian questions go to the Head Coach); a native speaker reviews the Macedonian safety patterns and replies | #54 review | With the Macedonian UI |
+| Safety Guard: dose patterns are slow on very long runs of digits (5,000 digits take seconds; already so before #54); cap the checked length or bound the number patterns | #54 review | Before public launch |

@@ -69,3 +69,24 @@ async def test_safety_message_uses_profile_language() -> None:
         "Ich bin beim Laufen in Ohnmacht gefallen", tool_context(FakeProfiles(profile=profile))
     )
     assert "Notruf" in reply.text
+
+
+async def test_a_macedonian_red_flag_is_answered_in_macedonian_and_never_reaches_the_llm() -> None:
+    profile = SimpleNamespace(coach_style=CoachStyle.FRIENDLY, locale="de-CH")
+    llm = ScriptedLLMProvider.of([])
+    reply = await HeadCoach(llm, build_default_registry()).reply(
+        "Ме болат градите после трчање", tool_context(FakeProfiles(profile=profile))
+    )
+    assert reply.safety_category is SafetyCategory.EMERGENCY
+    assert "итна помош" in reply.text
+    assert llm.requests == []
+
+
+async def test_an_unsafe_macedonian_answer_is_replaced_in_macedonian() -> None:
+    llm = ScriptedLLMProvider.of([answer("Јади само 700 ккал на ден.")])
+    reply = await HeadCoach(llm, build_default_registry()).reply(
+        "Како да ослабам брзо?", tool_context()
+    )
+    assert reply.safety_category is SafetyCategory.UNSAFE_OUTPUT
+    assert "700" not in reply.text
+    assert "лекар" in reply.text

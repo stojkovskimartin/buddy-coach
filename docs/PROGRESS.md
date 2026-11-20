@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 03:30
+Last update: 2026-11-20, 04:40
 
 ## How to run it
 
@@ -92,8 +92,9 @@ pull request numbers.
 | #51 | Fake providers: `BUDDY_FAKE_PROVIDERS` lets Withings and WHOOP be connected and synced without keys or internet (deterministic data, development and tests only); Mailpit in Docker catches e-mails at http://localhost:8025; the sign-in `state` is checked against the app's clock only | +14 |
 | #52 | Web design system: colour tokens as light/dark pairs with WCAG AA contrast checked in both themes by a test; light / dark / system theme remembered per device and applied before the first paint; sidebar navigation (top bar on phones) with icons, current page marked, skip link; restyled forms, buttons, cards, charts, chat; loading placeholders | +47 frontend (web 47) |
 | #53 | Web dashboard and sign-in: "Dashboard" greets by the time of day; the check-in asks about the day so far after the morning, is optional ("Not now" for the day); goals with a "New goal" panel; the last 7 days' readiness; login and sign-up with a brand panel, account switch and show-password; profile in two groups | +19 frontend (web 19) |
+| #54 | Coach safety in Macedonian: the Safety Guard catches red flags in Macedonian (Cyrillic and Latin letters) and blocks unsafe Macedonian answers (diagnoses, very low calories, harmful advice, supplement overdoses); reviewed Macedonian replies with 112 / 194; the reply language follows what the athlete wrote | +107 |
 
-Totals: backend 597 tests, frontend 300 tests (shared 34, client 28, web 114, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 704 tests, frontend 300 tests (shared 34, client 28, web 114, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -105,7 +106,7 @@ The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, ea
 before coding and reviewed after (tracker 12.x):
 
 1. Languages: English and Macedonian, every text translated, dates and numbers per language;
-   the coach answers in Macedonian once its safety rules cover it [12.3].
+   the coach's safety rules cover Macedonian (#54) [12.3].
 2. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
 3. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
 4. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
@@ -136,5 +137,7 @@ stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].
   password, often landing in spam.
 - Food recognition: free by default with a model on your computer (Ollama); a hosted model
   (OpenAI, paid; Gemini free tier, which may use the photos for training) only by your choice.
+- A Macedonian crisis line for the mental-health reply: published numbers contradict each other, so
+  the reply names 112 / 194 and the Swiss 143 / 144 only. Confirm a number to add it.
 - App name (shortlist: BuddyCoach, Coachli, FuelStride).
 - Repository visibility: currently public.

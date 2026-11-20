@@ -50,6 +50,10 @@ ignore = ["B008"]  # FastAPI uses function calls in default args (Depends)
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
 "alembic/**" = ["N999"]
+# Macedonian text is Cyrillic on purpose, so look-alike letters are expected there.
+"src/buddy_coach/coach/safety.py" = ["RUF001", "RUF003"]
+"tests/agents/test_safety_macedonian.py" = ["RUF001", "RUF003"]
+"tests/agents/test_orchestrator.py" = ["RUF001", "RUF003"]
 
 [tool.mypy]
 strict = true

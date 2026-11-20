@@ -20,7 +20,7 @@ def _modules() -> list[str]:
 
 
 def _imports(path: Path) -> Iterator[str]:
-    tree = ast.parse(path.read_text(), filename=str(path))
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             yield from (alias.name for alias in node.names)
