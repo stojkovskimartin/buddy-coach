@@ -36,7 +36,7 @@ Postgres for the integration tests comes from Docker (`docker compose -f infra/d
 cd services/api
 uv sync
 uv run ruff check . ; uv run ruff format --check . ; uv run mypy
-$env:BUDDY_TEST_DATABASE_URL = "postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test"
+$env:BUDDY_TEST_DATABASE_URL = "postgresql+asyncpg://buddy:buddy@127.0.0.1:5433/buddy_test"
 uv run pytest
 cd ../..
 pnpm install

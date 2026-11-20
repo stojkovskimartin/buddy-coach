@@ -25,7 +25,8 @@ def make_settings(**overrides: Any) -> Settings:
         "log_level": "WARNING",
     }
     values.update(overrides)
-    return Settings(**values)
+    # A developer's own .env must not leak into the tests.
+    return Settings(_env_file=None, **values)  # type: ignore[call-arg]
 
 
 def production_settings(**overrides: Any) -> Settings:
