@@ -26,6 +26,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
+import { skipCheckinToday } from "./lib/greeting";
 import type { CoachApi } from "./lib/session";
 
 const PROFILE: Profile = {
@@ -253,6 +254,7 @@ describe("web app", () => {
     const api = fakeApi();
     renderAt("/", api, true);
     await screen.findByText("Half Ironman");
+    await userEvent.click(screen.getByRole("button", { name: "New goal" }));
 
     await userEvent.selectOptions(screen.getByLabelText("Type"), "lose_weight");
     await userEvent.type(screen.getByLabelText("Title"), "Race weight");
@@ -273,6 +275,7 @@ describe("web app", () => {
     const api = fakeApi({ listGoals: vi.fn(async () => []) });
     renderAt("/", api, true);
     await screen.findByText(/No active goal yet/);
+    await userEvent.click(screen.getByRole("button", { name: "New goal" }));
 
     await userEvent.type(screen.getByLabelText("Title"), "Get fitter");
     await userEvent.click(screen.getByRole("button", { name: "Add goal" }));
@@ -285,6 +288,7 @@ describe("web app", () => {
     const api = fakeApi();
     renderAt("/", api, true);
     await screen.findByText("Half Ironman");
+    await userEvent.click(screen.getByRole("button", { name: "New goal" }));
 
     await userEvent.selectOptions(screen.getByLabelText("Type"), "endurance_event");
     expect(screen.getByLabelText("Target date")).toBeRequired();
@@ -370,7 +374,7 @@ describe("web app", () => {
       renderAt("/food", fakeApi(), true);
       const nav = await screen.findByRole("navigation", { name: "Main" });
       expect(within(nav).getByRole("link", { name: "Food" })).toHaveAttribute("aria-current", "page");
-      expect(within(nav).getByRole("link", { name: "Goals" })).not.toHaveAttribute("aria-current");
+      expect(within(nav).getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
       expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
       expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#content");
     });
@@ -395,9 +399,138 @@ describe("web app", () => {
     });
   });
 
+  describe("dashboard", () => {
+    afterEach(() => window.localStorage.clear());
+
+    it("greets by the time of day and shows the date", async () => {
+      renderAt("/", fakeApi(), true);
+      expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
+        /^Good (morning|afternoon|evening)$/,
+      );
+    });
+
+    it("shows the last week's check-ins, newest first, with words next to the colour", async () => {
+      const api = fakeApi({
+        listCheckins: vi.fn(async () => [
+          checkinFor("2026-11-17", { sleep_quality: 2, soreness: 2, mood: 2 }, {
+            score: 30,
+            level: "red",
+            limiting_factors: ["sleep"],
+          }),
+          checkinFor("2026-11-19", { sleep_quality: 4, soreness: 4, mood: 4 }),
+        ]),
+      });
+      renderAt("/", api, true);
+      const list = await screen.findByRole("list", { name: "Readiness of the last days" });
+      const rows = within(list).getAllByRole("listitem");
+      expect(rows.map((r) => r.textContent)).toEqual([
+        expect.stringMatching(/^Thu 19 Nov.*81$/),
+        expect.stringMatching(/^Tue 17 Nov.*30$/),
+      ]);
+      const range = vi.mocked(api.listCheckins).mock.calls[0]?.[0];
+      expect(range?.from && range.to && Date.parse(range.to) - Date.parse(range.from)).toBe(
+        6 * 86_400_000,
+      );
+    });
+
+    it("says when there is no history yet", async () => {
+      renderAt("/", fakeApi(), true);
+      expect(await screen.findByText("No check-ins in the last 7 days yet.")).toBeInTheDocument();
+    });
+
+    it("opens the goal form on request and puts the cursor in the title", async () => {
+      renderAt("/", fakeApi(), true);
+      const toggle = await screen.findByRole("button", { name: "New goal" });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("form", { name: "New goal" })).not.toBeInTheDocument();
+      await userEvent.click(toggle);
+      expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByLabelText("Title")).toHaveFocus();
+    });
+  });
+
+  describe("optional check-in", () => {
+    afterEach(() => window.localStorage.clear());
+
+    it("folds away with 'Not now', stays folded today and opens again on request", async () => {
+      const first = renderAt("/", fakeApi(), true);
+      expect(await screen.findByText("Optional")).toBeInTheDocument();
+      await userEvent.click(await screen.findByRole("button", { name: "Not now" }));
+
+      expect(screen.queryByRole("form", { name: "Daily check-in" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Check in" })).toHaveFocus();
+      first.unmount();
+
+      renderAt("/", fakeApi(), true); // a reload the same day
+      await userEvent.click(await screen.findByRole("button", { name: "Check in" }));
+      expect(await screen.findByRole("form", { name: "Daily check-in" })).toBeInTheDocument();
+    });
+
+    it("asks about the day so far in the afternoon", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 20, 15, 0));
+      try {
+        renderAt("/", fakeApi(), true);
+        expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Good afternoon");
+        expect(screen.getByRole("heading", { name: "How is your day going?" })).toBeInTheDocument();
+        expect(await screen.findByRole("form", { name: "Daily check-in" })).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("shows today's readiness even after 'Not now' was chosen", async () => {
+      skipCheckinToday(true);
+      const today = checkinFor("2026-11-20", { sleep_quality: 4, soreness: 4, mood: 4 });
+      renderAt("/", fakeApi({ getTodayCheckin: vi.fn(async () => today) }), true);
+      expect(await screen.findByText(/Readiness 81\/100/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Check in" })).not.toBeInTheDocument();
+    });
+
+    it("offers no 'Not now' while changing answers already given", async () => {
+      const today = checkinFor("2026-11-20", { sleep_quality: 4, soreness: 4, mood: 4 });
+      renderAt("/", fakeApi({ getTodayCheckin: vi.fn(async () => today) }), true);
+      await userEvent.click(await screen.findByRole("button", { name: "Change today's answers" }));
+      expect(screen.getByRole("form", { name: "Daily check-in" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Not now" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Optional")).not.toBeInTheDocument();
+    });
+
+    it("updates the recent days after saving", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const form = await screen.findByRole("form", { name: "Daily check-in" });
+      for (const group of within(form).getAllByRole("group")) {
+        await userEvent.click(within(group).getByRole("radio", { name: /^4 of 5/ }));
+      }
+      const calls = vi.mocked(api.listCheckins).mock.calls.length;
+      await userEvent.click(within(form).getByRole("button", { name: "Save check-in" }));
+      await waitFor(() => expect(vi.mocked(api.listCheckins).mock.calls.length).toBe(calls + 1));
+    });
+  });
+
+  describe("login page", () => {
+    it("switches to sign-up with a password hint and can show the password", async () => {
+      renderAt("/login", fakeApi(), false);
+      const account = screen.getByRole("group", { name: "Account" });
+      expect(within(account).getByRole("button", { name: "I have an account" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await userEvent.click(within(account).getByRole("button", { name: "Create an account" }));
+      expect(screen.getByRole("form", { name: "Create account" })).toBeInTheDocument();
+      const password = screen.getByLabelText("Password");
+      expect(password).toHaveAccessibleDescription("At least 10 characters.");
+      expect(password).toHaveAttribute("type", "password");
+      await userEvent.click(screen.getByRole("button", { name: "Show password" }));
+      expect(password).toHaveAttribute("type", "text");
+      expect(password).toHaveAttribute("autocomplete", "new-password");
+    });
+  });
+
   describe("morning check-in", () => {
     async function answerAll(value: string) {
-      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      const form = await screen.findByRole("form", { name: "Daily check-in" });
       for (const group of within(form).getAllByRole("group")) {
         await userEvent.click(within(group).getByRole("radio", { name: new RegExp(`^${value} of 5`) }));
       }
@@ -407,7 +540,7 @@ describe("web app", () => {
     it("takes three answers, lets the server pick today and shows readiness", async () => {
       const api = fakeApi();
       renderAt("/", api, true);
-      const form = await screen.findByRole("form", { name: "Morning check-in" });
+      const form = await screen.findByRole("form", { name: "Daily check-in" });
       const save = within(form).getByRole("button", { name: "Save check-in" });
       expect(save).toBeDisabled();
 
@@ -485,9 +618,9 @@ describe("web app", () => {
       renderAt("/", fakeApi({ getTodayCheckin }), true);
 
       expect(await screen.findByRole("alert")).toHaveTextContent("Network error");
-      expect(screen.queryByRole("form", { name: "Morning check-in" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("form", { name: "Daily check-in" })).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-      expect(await screen.findByRole("form", { name: "Morning check-in" })).toBeInTheDocument();
+      expect(await screen.findByRole("form", { name: "Daily check-in" })).toBeInTheDocument();
     });
 
     it("shows the error when saving fails and clears it on the next try", async () => {
