@@ -57,7 +57,7 @@ class HeadCoach:
     ) -> CoachReply:
         """Answer one user message."""
         profile = await ctx.profiles.find_profile(ctx.user_id)
-        language = safety_language(profile.locale if profile else None)
+        language = safety_language(profile.locale if profile else None, message)
         verdict = self._guard.check_input(message, language)
         if not verdict.allowed:
             logger.info("coach_escalated_input", extra={"category": verdict.category})

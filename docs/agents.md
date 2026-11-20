@@ -5,12 +5,16 @@ Code: `services/api/src/buddy_coach/coach/`.
 
 ## How one message is answered
 
-1. **Safety Guard (input)** – red flags (emergency, mental health, eating disorder, injury)
-   return a fixed, reviewed message in the user's language. No LLM is called.
-2. **Router** – keyword scoring (English and German) picks a specialist; ties go to the Head Coach.
+1. **Safety Guard (input)** – red flags (emergency, mental health, eating disorder, injury) in
+   English, German and Macedonian (Cyrillic and Latin letters) return a fixed, reviewed message.
+   No LLM is called. The message's language follows what the athlete wrote (Macedonian for
+   Macedonian or Serbian Cyrillic), then the profile's language.
+2. **Router** – keyword scoring (English and German) picks a specialist; ties go to the Head Coach,
+   so Macedonian questions go to the Head Coach for now.
 3. **Specialist agent** – loops model → tools → model within its contract limits.
 4. **Safety Guard (output)** – blocks diagnoses, dangerously low daily calories, harmful
-   training advice and supplement overdoses.
+   training advice and supplement overdoses, in English, German and Macedonian. Negated
+   Macedonian advice ("не ја игнорирај болката") and religious fasting are not blocked.
 5. **Audit log** – agent, tools used, limits hit and tokens (never message content).
 
 ## Agents and their tools
