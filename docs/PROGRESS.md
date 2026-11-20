@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 04:40
+Last update: 2026-11-20, 06:10
 
 ## How to run it
 
@@ -93,8 +93,9 @@ pull request numbers.
 | #52 | Web design system: colour tokens as light/dark pairs with WCAG AA contrast checked in both themes by a test; light / dark / system theme remembered per device and applied before the first paint; sidebar navigation (top bar on phones) with icons, current page marked, skip link; restyled forms, buttons, cards, charts, chat; loading placeholders | +47 frontend (web 47) |
 | #53 | Web dashboard and sign-in: "Dashboard" greets by the time of day; the check-in asks about the day so far after the morning, is optional ("Not now" for the day); goals with a "New goal" panel; the last 7 days' readiness; login and sign-up with a brand panel, account switch and show-password; profile in two groups | +19 frontend (web 19) |
 | #54 | Coach safety in Macedonian: the Safety Guard catches red flags in Macedonian (Cyrillic and Latin letters) and blocks unsafe Macedonian answers (diagnoses, very low calories, harmful advice, supplement overdoses); reviewed Macedonian replies with 112 / 194; the reply language follows what the athlete wrote | +107 |
+| #55 | Web in English and Macedonian: every screen translated; EN / МК switch in the menu and on the login page, remembered per device, else the browser's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording (check-in, readiness, meals, summaries) in both languages for the phone app too | +25 frontend (shared 15, web 10) |
 
-Totals: backend 704 tests, frontend 300 tests (shared 34, client 28, web 114, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 704 tests, frontend 325 tests (shared 49, client 28, web 124, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -105,8 +106,8 @@ Totals: backend 704 tests, frontend 300 tests (shared 34, client 28, web 114, mo
 The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, each challenged
 before coding and reviewed after (tracker 12.x):
 
-1. Languages: English and Macedonian, every text translated, dates and numbers per language;
-   the coach's safety rules cover Macedonian (#54) [12.3].
+1. Languages on the phone: the Expo app in English and Macedonian with the shared wording from #55
+   and the device's language [12.3].
 2. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
 3. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
 4. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].

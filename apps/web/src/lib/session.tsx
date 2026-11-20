@@ -33,6 +33,8 @@ import {
 } from "@buddy/api-client";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+import { errorText } from "../i18n";
+
 /** The API calls the screens use (a subset of BuddyClient, easy to fake in tests). */
 export interface CoachApi {
   register(email: string, password: string): Promise<unknown>;
@@ -164,7 +166,7 @@ export function useSession(): SessionValue {
   return value;
 }
 
-/** Human-readable message from any thrown value. */
+/** Human-readable message from any thrown value, in the language in use. */
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+  return errorText(error);
 }

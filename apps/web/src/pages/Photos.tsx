@@ -1,6 +1,7 @@
 import type { Photo, PhotoKind } from "@buddy/api-client";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
@@ -9,6 +10,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 /** A private photo: fetched with the session as a blob and shown through a short-lived URL. */
 function PhotoImage({ photo, size, alt }: { photo: Photo; size: "full" | "thumb"; alt: string }) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | "failed" | null>(null);
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -28,7 +30,7 @@ function PhotoImage({ photo, size, alt }: { photo: Photo; size: "full" | "thumb"
     };
   }, [api, photo.id, size]);
   if (url && url !== "failed") return <img src={url} alt={alt} />;
-  const state = url === "failed" ? "could not be loaded" : "loading";
+  const state = url === "failed" ? t.photos.failedState : t.photos.loadingState;
   return <span className="photo-placeholder" role="img" aria-label={`${alt} (${state})`} />;
 }
 
@@ -48,6 +50,7 @@ export function PhotoStrip({
   canAdd?: boolean;
 }) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState<Photo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -88,8 +91,8 @@ export function PhotoStrip({
     const file = event.target.files?.[0];
     event.target.value = ""; // the same file can be picked again
     if (!file) return;
-    if (!ACCEPT.split(",").includes(file.type)) return setError("Choose a JPEG, PNG or WebP photo.");
-    if (file.size > MAX_BYTES) return setError("A photo can be at most 10 MB.");
+    if (!ACCEPT.split(",").includes(file.type)) return setError(t.photos.wrongType);
+    if (file.size > MAX_BYTES) return setError(t.photos.tooBig);
     void change(() => api.uploadPhoto(kind, file));
   }
 
@@ -107,10 +110,10 @@ export function PhotoStrip({
               <button
                 type="button"
                 className="photo"
-                aria-label={`Open ${title.toLowerCase()} from ${p.day}`}
+                aria-label={t.photos.open(title, p.day)}
                 onClick={() => setOpen(p)}
               >
-                <PhotoImage photo={p} size="thumb" alt={`${title} from ${p.day}`} />
+                <PhotoImage photo={p} size="thumb" alt={t.photos.alt(title, p.day)} />
               </button>
             </li>
           ))}
@@ -118,11 +121,11 @@ export function PhotoStrip({
       )}
       {open && (
         <figure className="photo-open">
-          <PhotoImage photo={open} size="full" alt={`${title} from ${open.day}`} />
+          <PhotoImage photo={open} size="full" alt={t.photos.alt(title, open.day)} />
           <figcaption>
             {open.day}
             <button type="button" className="link" onClick={() => setOpen(null)}>
-              Close
+              {t.close}
             </button>
             <button
               type="button"
@@ -130,14 +133,14 @@ export function PhotoStrip({
               disabled={busy}
               onClick={() => void change(() => api.deletePhoto(open.id))}
             >
-              Delete photo
+              {t.photos.delete}
             </button>
           </figcaption>
         </figure>
       )}
       {canAdd && (
         <label className="upload">
-          {busy ? "Uploading…" : kind === "avatar" ? "Choose a profile picture" : "Add a photo"}
+          {busy ? t.photos.uploading : kind === "avatar" ? t.photos.chooseAvatar : t.photos.add}
           <input type="file" accept={ACCEPT} disabled={busy} onChange={pick} />
         </label>
       )}

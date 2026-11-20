@@ -1,20 +1,9 @@
 import type { Checkin, CheckinIn } from "@buddy/api-client";
-import {
-  CHECKIN_QUESTIONS,
-  PAIN_LABEL,
-  PAIN_NOTE,
-  READINESS_NOTE,
-  READINESS_TEXT,
-  SCALE_VALUES,
-  SLEEP_HOURS_ERROR,
-  limitingText,
-  parseSleepHours,
-  scaleOptionLabel,
-  type CheckinScale,
-} from "@buddy/shared";
+import { SCALE_VALUES, parseSleepHours, type CheckinScale } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
-import { CHECKIN_PROMPT, checkinSkippedToday, dayPart, skipCheckinToday } from "../lib/greeting";
+import { useI18n } from "../i18n";
+import { checkinSkippedToday, dayPart, skipCheckinToday } from "../lib/greeting";
 import { errorMessage, useSession } from "../lib/session";
 
 type Load = { state: "loading" } | { state: "failed"; error: string } | { state: "ready" };
@@ -25,6 +14,7 @@ type Load = { state: "loading" } | { state: "failed"; error: string } | { state:
  */
 export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [part, setPart] = useState(dayPart);
   const [skipped, setSkipped] = useState(checkinSkippedToday);
   const checkInButton = useRef<HTMLButtonElement>(null);
@@ -83,7 +73,7 @@ export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
   let body;
   if (load.state === "loading") {
     body = (
-      <p className="muted">Loading…</p>
+      <p className="muted">{t.loading}</p>
     );
   } else if (load.state === "failed") {
     // Never show an empty form here: saving it would overwrite a check-in we could not load.
@@ -93,7 +83,7 @@ export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
           {load.error}
         </p>
         <button type="button" onClick={() => void fetchToday()}>
-          Try again
+          {t.tryAgain}
         </button>
       </>
     );
@@ -102,9 +92,9 @@ export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
   } else if (!today && skipped) {
     body = (
       <div className="skipped">
-        <p className="muted">Skipped for today. You can still check in whenever you like.</p>
+        <p className="muted">{t.checkin.skipped}</p>
         <button type="button" className="secondary" ref={checkInButton} onClick={() => skip(false)}>
-          Check in
+          {t.checkin.checkIn}
         </button>
       </div>
     );
@@ -136,9 +126,9 @@ export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
     <section className="card" aria-labelledby="checkin-title">
       <div className="card-header">
         <h2 id="checkin-title" ref={heading} tabIndex={-1}>
-          {CHECKIN_PROMPT[part]}
+          {t.checkinPrompt[part]}
         </h2>
-        {load.state === "ready" && !today && <span className="badge">Optional</span>}
+        {load.state === "ready" && !today && <span className="badge">{t.checkin.optional}</span>}
       </div>
       {body}
     </section>
@@ -146,18 +136,19 @@ export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
 }
 
 function ReadinessView({ checkin, onEdit }: { checkin: Checkin; onEdit: () => void }) {
+  const { t, s } = useI18n();
   const { score, level, limiting_factors } = checkin.readiness;
-  const limiting = limitingText(limiting_factors);
+  const limiting = s.limitingText(limiting_factors);
   return (
     <div className="readiness">
       <p className={`traffic ${level}`} role="status">
-        <strong>Readiness {score}/100</strong> – {READINESS_TEXT[level]}
+        <strong>{t.checkin.readiness(score)}</strong> – {s.readinessText[level]}
       </p>
       {limiting && <p className="muted">{limiting}</p>}
-      {checkin.pain && <p>{PAIN_NOTE}</p>}
-      <p className="muted small">{READINESS_NOTE}</p>
+      {checkin.pain && <p>{s.painNote}</p>}
+      <p className="muted small">{s.readinessNote}</p>
       <button type="button" className="link" onClick={onEdit}>
-        Change today's answers
+        {t.checkin.change}
       </button>
     </div>
   );
@@ -178,6 +169,7 @@ function CheckinForm({
   onSkip?: () => void;
 }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [answers, setAnswers] = useState<Partial<Record<CheckinScale, number>>>(() =>
     initial
       ? { sleep_quality: initial.sleep_quality, soreness: initial.soreness, mood: initial.mood }
@@ -189,7 +181,7 @@ function CheckinForm({
 
   const hours = parseSleepHours(sleepHours);
   const complete =
-    CHECKIN_QUESTIONS.every((q) => answers[q.key] !== undefined) && hours !== "invalid";
+    s.checkinQuestions.every((q) => answers[q.key] !== undefined) && hours !== "invalid";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -217,8 +209,8 @@ function CheckinForm({
   }
 
   return (
-    <form onSubmit={submit} aria-label="Daily check-in">
-      {CHECKIN_QUESTIONS.map((q) => (
+    <form onSubmit={submit} aria-label={t.checkin.form}>
+      {s.checkinQuestions.map((q) => (
         <fieldset key={q.key} className="scale">
           <legend>{q.question}</legend>
           <div className="scale-options">
@@ -230,7 +222,7 @@ function CheckinForm({
                   value={value}
                   checked={answers[q.key] === value}
                   onChange={() => setAnswers((a) => ({ ...a, [q.key]: value }))}
-                  aria-label={scaleOptionLabel(value, q)}
+                  aria-label={s.scaleOptionLabel(value, q)}
                 />
                 <span aria-hidden="true">{value}</span>
               </label>
@@ -243,7 +235,7 @@ function CheckinForm({
         </fieldset>
       ))}
       <label>
-        Hours of sleep (optional)
+        {t.checkin.sleepHours}
         <input
           type="text"
           inputMode="decimal"
@@ -255,20 +247,20 @@ function CheckinForm({
       </label>
       {hours === "invalid" && (
         <p id="sleep-hours-error" className="error">
-          {SLEEP_HOURS_ERROR}
+          {s.sleepHoursError}
         </p>
       )}
       <label className="checkbox">
         <input type="checkbox" checked={pain} onChange={(e) => setPain(e.target.checked)} />
-        {PAIN_LABEL}
+        {s.painLabel}
       </label>
       <div className="actions">
         <button type="submit" disabled={!complete || busy}>
-          {busy ? "Saving…" : "Save check-in"}
+          {busy ? t.checkin.saving : t.checkin.save}
         </button>
         {onSkip && (
           <button type="button" className="ghost" onClick={onSkip}>
-            Not now
+            {t.checkin.notNow}
           </button>
         )}
       </div>

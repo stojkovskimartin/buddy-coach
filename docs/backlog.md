@@ -32,3 +32,6 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Web: the dashboard's "Recent days" range and the check-in's "Not now" use the device's day; the server's "today" follows the profile's time zone, so a device in another zone can be a day off | #53 review | With Settings (time zone) |
 | Coach: router keywords in Macedonian (Macedonian questions go to the Head Coach); a native speaker reviews the Macedonian safety patterns and replies | #54 review | With the Macedonian UI |
 | Safety Guard: dose patterns are slow on very long runs of digits (5,000 digits take seconds; already so before #54); cap the checked length or bound the number patterns | #54 review | Before public launch |
+| Macedonian: the reasons under today's food targets come from the server in English; send codes and translate them in the apps. Product names from Open Food Facts stay as the database has them | #55 | With the target engine's next change |
+| Web: an error or status message already on screen stays in the old language after switching; the next one uses the new language | #55 review | When it bites |
+| Phone: Macedonian dates use Intl `mk-MK`, which Hermes on Android may lack; check or fall back to month names from the catalog in the phone PR | #55 review | Languages on the phone |

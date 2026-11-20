@@ -1,16 +1,8 @@
 import type { Checkin, DailyTotals, NutritionTargets, TrainingLoad, WeightHistory } from "@buddy/api-client";
-import {
-  CHECKIN_RANGE_DAYS,
-  PROGRESS_RANGES,
-  daysBefore,
-  foodSummary,
-  localToday,
-  readinessSummary,
-  trainingSummary,
-  trendChangeText,
-} from "@buddy/shared";
+import { CHECKIN_RANGE_DAYS, PROGRESS_RANGES, daysBefore, localToday, mkNumber } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { BarChart, LineChart } from "./Charts";
 import { PhotoStrip } from "./Photos";
@@ -30,6 +22,7 @@ interface Data {
 /** Everything in one place, over 4 weeks, 3 months or a year: weight, food, training, readiness. */
 export function ProgressPage() {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [days, setDays] = useState<number>(PROGRESS_RANGES[0].days);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +66,11 @@ export function ProgressPage() {
   return (
     <main className="stack">
       <section className="card">
-        <h1>Progress</h1>
-        <div className="segmented" role="group" aria-label="Period">
+        <h1>{t.progress.title}</h1>
+        <div className="segmented" role="group" aria-label={t.progress.period}>
           {PROGRESS_RANGES.map((r) => (
             <button key={r.days} type="button" aria-pressed={days === r.days} onClick={() => setDays(r.days)}>
-              {r.label}
+              {s.rangeLabel[r.days]}
             </button>
           ))}
         </div>
@@ -86,7 +79,7 @@ export function ProgressPage() {
             {error}
           </p>
         )}
-        {!data && !error && <p className="muted">Loading…</p>}
+        {!data && !error && <p className="muted">{t.loading}</p>}
       </section>
       {data && <Sections data={data} />}
     </main>
@@ -94,6 +87,8 @@ export function ProgressPage() {
 }
 
 function Sections({ data }: { data: Data }) {
+  const { t, s, locale } = useI18n();
+  const kg = (value: number) => (locale === "mk" ? mkNumber(value.toFixed(1)) : value.toFixed(1));
   const { weights, food, targets, load, checkins, days, range, checkinRange } = data;
   const trend = weights.trend.map((t) => ({ day: t.day, value: t.weight_kg }));
   const measured = weights.weights.map((w) => ({ day: w.day, value: w.weight_kg }));
@@ -102,19 +97,22 @@ function Sections({ data }: { data: Data }) {
   return (
     <>
       <section className="card" aria-labelledby="p-weight">
-        <h2 id="p-weight">Weight</h2>
+        <h2 id="p-weight">{t.progress.weight}</h2>
         {trend.length === 0 ? (
-          <p className="muted">No weights in this period yet.</p>
+          <p className="muted">{t.progress.noWeights}</p>
         ) : (
           <>
-            <p>{trendChangeText(weights.trend) ?? `Latest ${weights.weights[0]?.weight_kg.toFixed(1)} kg`}</p>
+            <p>
+              {s.trendChangeText(weights.trend) ??
+                t.progress.latest(kg(weights.weights[0]?.weight_kg ?? 0))}
+            </p>
             <LineChart
-              label={`Weight over ${days} days, 7-day trend and measurements`}
+              label={t.progress.weightChart(days)}
               days={range}
-              unit="kg"
+              unit={t.units.kg}
               series={[
-                { name: "Measured", points: measured, tone: "muted" },
-                { name: "7-day trend", points: trend, tone: "accent" },
+                { name: t.progress.measured, points: measured, tone: "muted" },
+                { name: t.progress.trend, points: trend, tone: "accent" },
               ]}
             />
           </>
@@ -122,16 +120,16 @@ function Sections({ data }: { data: Data }) {
       </section>
 
       <section className="card" aria-labelledby="p-food">
-        <h2 id="p-food">Food</h2>
+        <h2 id="p-food">{t.progress.food}</h2>
         {food.length === 0 ? (
-          <p className="muted">No food logged in this period yet.</p>
+          <p className="muted">{t.progress.noFood}</p>
         ) : (
           <>
-            <p>{foodSummary(food, targets)}</p>
+            <p>{s.foodSummary(food, targets)}</p>
             <BarChart
-              label={`Calories per logged day over ${days} days${targets ? `, line at today's target of ${targets.kcal} kcal` : ""}`}
+              label={t.progress.kcalChart(days, targets?.kcal ?? null)}
               days={range}
-              unit="kcal"
+              unit={t.units.kcal}
               target={targets?.kcal ?? null}
               points={food.map((d) => ({ day: d.day, value: d.kcal }))}
             />
@@ -140,24 +138,24 @@ function Sections({ data }: { data: Data }) {
       </section>
 
       <section className="card" aria-labelledby="p-training">
-        <h2 id="p-training">Training</h2>
+        <h2 id="p-training">{t.progress.training}</h2>
         {load.days.every((d) => d.load === 0) ? (
-          <p className="muted">No workouts in this period yet.</p>
+          <p className="muted">{t.progress.noWorkouts}</p>
         ) : (
           <>
-            <p>{trainingSummary(load.today, load.acute_chronic_ratio)}</p>
+            <p>{s.trainingSummary(load.today, load.acute_chronic_ratio)}</p>
             <LineChart
-              label={`Fitness and fatigue over ${days} days`}
+              label={t.progress.loadChart(days)}
               days={range}
               unit=""
               series={[
                 {
-                  name: "Fitness",
+                  name: t.progress.fitness,
                   points: load.days.map((d) => ({ day: d.day, value: d.fitness })),
                   tone: "accent",
                 },
                 {
-                  name: "Fatigue",
+                  name: t.progress.fatigue,
                   points: load.days.map((d) => ({ day: d.day, value: d.fatigue })),
                   tone: "warm",
                 },
@@ -168,24 +166,24 @@ function Sections({ data }: { data: Data }) {
       </section>
 
       <section className="card" aria-labelledby="p-photos">
-        <h2 id="p-photos">Progress photos</h2>
-        <PhotoStrip kind="progress" title="Progress photos" range={{ from: range[0], to: range[1] }} />
-        <p className="muted small">Only you can see them. They are stored without location data.</p>
+        <h2 id="p-photos">{t.progress.photos}</h2>
+        <PhotoStrip kind="progress" title={t.progress.photos} range={{ from: range[0], to: range[1] }} />
+        <p className="muted small">{t.progress.photosNote}</p>
       </section>
 
       <section className="card" aria-labelledby="p-readiness">
-        <h2 id="p-readiness">Readiness</h2>
+        <h2 id="p-readiness">{t.progress.readiness}</h2>
         {readiness.length === 0 ? (
-          <p className="muted">No check-ins in this period yet.</p>
+          <p className="muted">{t.progress.noCheckins}</p>
         ) : (
           <>
-            <p>{readinessSummary(readiness.map((r) => r.value), days)}</p>
+            <p>{s.readinessSummary(readiness.map((r) => r.value), days)}</p>
             <LineChart
-              label="Readiness score per check-in, 0 to 100"
+              label={t.progress.readinessChart}
               days={checkinRange}
               unit=""
               values={[0, 100]}
-              series={[{ name: "Readiness", points: readiness, tone: "accent" }]}
+              series={[{ name: t.progress.readiness, points: readiness, tone: "accent" }]}
             />
           </>
         )}

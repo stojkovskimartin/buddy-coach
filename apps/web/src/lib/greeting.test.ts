@@ -1,4 +1,5 @@
-import { checkinSkippedToday, dayPart, GREETING, shortDay, skipCheckinToday } from "./greeting";
+import { MESSAGES } from "../i18n/messages";
+import { checkinSkippedToday, dayPart, shortDay, skipCheckinToday } from "./greeting";
 
 afterEach(() => window.localStorage.clear());
 
@@ -14,11 +15,14 @@ it.each([
 });
 
 it("greets by the part of the day", () => {
-  expect(GREETING[dayPart(new Date(2026, 10, 20, 15))]).toBe("Good afternoon");
+  const part = dayPart(new Date(2026, 10, 20, 15));
+  expect(MESSAGES.en.greeting[part]).toBe("Good afternoon");
+  expect(MESSAGES.mk.greeting[part]).toBe("Добар ден");
 });
 
 it("shows an ISO day as that day in every time zone", () => {
   expect(shortDay("2026-11-20")).toBe("Fri 20 Nov");
+  expect(shortDay("2026-11-20", "mk-MK")).toMatch(/20/);
 });
 
 it("remembers 'Not now' for today only", () => {
