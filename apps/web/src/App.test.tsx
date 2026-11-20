@@ -360,6 +360,41 @@ describe("web app", () => {
     expect(await screen.findByRole("form", { name: "Log in" })).toBeInTheDocument();
   });
 
+  describe("app shell", () => {
+    afterEach(() => {
+      window.localStorage.clear();
+      document.documentElement.removeAttribute("data-theme");
+    });
+
+    it("marks the current section and offers a skip link to the content", async () => {
+      renderAt("/food", fakeApi(), true);
+      const nav = await screen.findByRole("navigation", { name: "Main" });
+      expect(within(nav).getByRole("link", { name: "Food" })).toHaveAttribute("aria-current", "page");
+      expect(within(nav).getByRole("link", { name: "Goals" })).not.toHaveAttribute("aria-current");
+      expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+      expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#content");
+    });
+
+    it("switches the theme and remembers it on this device", async () => {
+      renderAt("/", fakeApi(), true);
+      const themes = await screen.findByRole("group", { name: "Theme" });
+      expect(within(themes).getByRole("radio", { name: "System" })).toBeChecked();
+
+      await userEvent.click(within(themes).getByRole("radio", { name: "Dark" }));
+      expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+      expect(window.localStorage.getItem("buddy-theme")).toBe("dark");
+
+      await userEvent.click(within(themes).getByRole("radio", { name: "System" }));
+      expect(document.documentElement).not.toHaveAttribute("data-theme");
+      expect(window.localStorage.getItem("buddy-theme")).toBeNull();
+    });
+
+    it("shows no navigation before logging in", () => {
+      renderAt("/login", fakeApi(), false);
+      expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+    });
+  });
+
   describe("morning check-in", () => {
     async function answerAll(value: string) {
       const form = await screen.findByRole("form", { name: "Morning check-in" });

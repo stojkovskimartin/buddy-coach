@@ -1,8 +1,22 @@
 import type { Profile } from "@buddy/api-client";
 import { useEffect, useState, type ReactNode } from "react";
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
 
+import {
+  BrandMark,
+  CoachIcon,
+  ConnectIcon,
+  FoodIcon,
+  HomeIcon,
+  LogoutIcon,
+  MoonIcon,
+  ProfileIcon,
+  ProgressIcon,
+  SunIcon,
+  SystemIcon,
+} from "./lib/icons";
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
+import { useTheme, type Theme } from "./lib/theme";
 import { CoachPage } from "./pages/CoachPage";
 import { ConnectionCallback, ConnectionsPage } from "./pages/ConnectionsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -37,31 +51,82 @@ function RequireProfile({ children }: { children: ReactNode }) {
         {error}
       </p>
     );
-  if (profile === undefined) return <p className="muted">Loading…</p>;
+  if (profile === undefined) return <Loading />;
   if (profile === null) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
-function Header() {
-  const { loggedIn, logout } = useSession();
+/** A busy indicator (an indeterminate progress bar to assistive technology). */
+function Loading() {
   return (
-    <header className="topbar">
-      <Link to="/" className="brand">
-        Buddy Coach
+    <div role="progressbar" aria-label="Loading" className="loading">
+      <span className="skeleton" />
+      <span className="skeleton short" />
+    </div>
+  );
+}
+
+const SECTIONS = [
+  { to: "/", label: "Goals", icon: <HomeIcon /> },
+  { to: "/food", label: "Food", icon: <FoodIcon /> },
+  { to: "/progress", label: "Progress", icon: <ProgressIcon /> },
+  { to: "/coach", label: "Coach", icon: <CoachIcon /> },
+  { to: "/connections", label: "Connections", icon: <ConnectIcon /> },
+  { to: "/onboarding", label: "Profile", icon: <ProfileIcon /> },
+];
+
+const THEMES: { value: Theme; label: string; icon: ReactNode }[] = [
+  { value: "light", label: "Light", icon: <SunIcon /> },
+  { value: "dark", label: "Dark", icon: <MoonIcon /> },
+  { value: "system", label: "System", icon: <SystemIcon /> },
+];
+
+function ThemeSwitcher() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <fieldset className="theme-switcher">
+      <legend className="visually-hidden">Theme</legend>
+      {THEMES.map((option) => (
+        <label key={option.value} title={option.label} className={theme === option.value ? "selected" : ""}>
+          <input
+            type="radio"
+            name="theme"
+            value={option.value}
+            checked={theme === option.value}
+            onChange={() => setTheme(option.value)}
+          />
+          {option.icon}
+          <span className="visually-hidden">{option.label}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** One navigation: a sidebar on wide screens, a top bar with a scrolling strip on phones. */
+function Sidebar() {
+  const { logout } = useSession();
+  return (
+    <header className="sidebar">
+      <Link to="/" className="brand" aria-label="Buddy Coach, home">
+        <BrandMark />
+        <span>Buddy Coach</span>
       </Link>
-      {loggedIn && (
-        <nav>
-          <Link to="/">Goals</Link>
-          <Link to="/food">Food</Link>
-          <Link to="/progress">Progress</Link>
-          <Link to="/connections">Connections</Link>
-          <Link to="/coach">Coach</Link>
-          <Link to="/onboarding">Profile</Link>
-          <button type="button" className="link" onClick={() => void logout()}>
-            Log out
-          </button>
-        </nav>
-      )}
+      <nav aria-label="Main" className="nav">
+        {SECTIONS.map((section) => (
+          <NavLink key={section.to} to={section.to} end={section.to === "/"} className="nav-link">
+            {section.icon}
+            <span>{section.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+      <div className="sidebar-footer">
+        <ThemeSwitcher />
+        <button type="button" className="ghost nav-link" onClick={() => void logout()}>
+          <LogoutIcon />
+          <span>Log out</span>
+        </button>
+      </div>
     </header>
   );
 }
@@ -89,7 +154,7 @@ function ProfileEditor() {
         {error}
       </p>
     );
-  if (profile === undefined) return <p className="muted">Loading…</p>;
+  if (profile === undefined) return <Loading />;
   return (
     <OnboardingPage initial={profile}>
       {profile && (
@@ -105,62 +170,67 @@ function ProfileEditor() {
 export function AppRoutes() {
   const { loggedIn } = useSession();
   return (
-    <>
-      <Header />
-      <Routes>
-        <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/onboarding" element={<ProfileEditor />} />
-        <Route
-          path="/"
-          element={
-            <RequireProfile>
-              <DashboardPage />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/coach"
-          element={
-            <RequireProfile>
-              <CoachPage />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/food"
-          element={
-            <RequireProfile>
-              <FoodPage />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/progress"
-          element={
-            <RequireProfile>
-              <ProgressPage />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/connections"
-          element={
-            <RequireProfile>
-              <ConnectionsPage />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/connections/callback"
-          element={
-            <RequireProfile>
-              <ConnectionCallback />
-            </RequireProfile>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+    <div className={loggedIn ? "shell" : "shell guest"}>
+      <a href="#content" className="skip-link">
+        Skip to content
+      </a>
+      {loggedIn && <Sidebar />}
+      <div id="content" className="content" tabIndex={-1}>
+        <Routes>
+          <Route path="/login" element={loggedIn ? <Navigate to="/" replace /> : <LoginPage />} />
+          <Route path="/onboarding" element={<ProfileEditor />} />
+          <Route
+            path="/"
+            element={
+              <RequireProfile>
+                <DashboardPage />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/coach"
+            element={
+              <RequireProfile>
+                <CoachPage />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/food"
+            element={
+              <RequireProfile>
+                <FoodPage />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <RequireProfile>
+                <ProgressPage />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/connections"
+            element={
+              <RequireProfile>
+                <ConnectionsPage />
+              </RequireProfile>
+            }
+          />
+          <Route
+            path="/connections/callback"
+            element={
+              <RequireProfile>
+                <ConnectionCallback />
+              </RequireProfile>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
   );
 }
 
