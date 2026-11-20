@@ -14,13 +14,22 @@ import {
 } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
+import { CHECKIN_PROMPT, checkinSkippedToday, dayPart, skipCheckinToday } from "../lib/greeting";
 import { errorMessage, useSession } from "../lib/session";
 
 type Load = { state: "loading" } | { state: "failed"; error: string } | { state: "ready" };
 
-/** Morning check-in: three taps, then today's readiness. Reloads when the tab is shown again. */
-export function CheckinCard() {
+/**
+ * Daily check-in: three taps, then today's readiness. Optional: "Not now" folds it away for the
+ * day. Asks about the day so far after the morning. Reloads when the tab is shown again.
+ */
+export function CheckinCard({ onSaved }: { onSaved?: () => void } = {}) {
   const { api } = useSession();
+  const [part, setPart] = useState(dayPart);
+  const [skipped, setSkipped] = useState(checkinSkippedToday);
+  const checkInButton = useRef<HTMLButtonElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const changedByClick = useRef(false);
   const [today, setToday] = useState<Checkin | null>(null);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [editing, setEditing] = useState(false);
@@ -48,15 +57,34 @@ export function CheckinCard() {
     void fetchToday();
     // A dashboard left open overnight shows the new day when the tab is visible again.
     const onVisible = () => {
-      if (document.visibilityState === "visible") void fetchToday();
+      if (document.visibilityState !== "visible") return;
+      setPart(dayPart());
+      setSkipped(checkinSkippedToday());
+      void fetchToday();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [fetchToday]);
 
+  useEffect(() => {
+    // Keep keyboard focus on the card when the form folds away or opens again.
+    if (!changedByClick.current) return;
+    changedByClick.current = false;
+    if (skipped) checkInButton.current?.focus();
+    else heading.current?.focus();
+  }, [skipped]);
+
+  function skip(value: boolean) {
+    skipCheckinToday(value);
+    changedByClick.current = true;
+    setSkipped(value);
+  }
+
   let body;
   if (load.state === "loading") {
-    body = <p className="muted">Loading…</p>;
+    body = (
+      <p className="muted">Loading…</p>
+    );
   } else if (load.state === "failed") {
     // Never show an empty form here: saving it would overwrite a check-in we could not load.
     body = (
@@ -71,6 +99,15 @@ export function CheckinCard() {
     );
   } else if (today && !editing) {
     body = <ReadinessView checkin={today} onEdit={() => setEditing(true)} />;
+  } else if (!today && skipped) {
+    body = (
+      <div className="skipped">
+        <p className="muted">Skipped for today. You can still check in whenever you like.</p>
+        <button type="button" className="secondary" ref={checkInButton} onClick={() => skip(false)}>
+          Check in
+        </button>
+      </div>
+    );
   } else {
     body = (
       <>
@@ -86,8 +123,10 @@ export function CheckinCard() {
             request.current++; // a load started before the save must not undo it
             setToday(saved);
             setEditing(false);
+            onSaved?.();
           }}
           onError={setSaveError}
+          {...(today ? {} : { onSkip: () => skip(true) })}
         />
       </>
     );
@@ -95,7 +134,12 @@ export function CheckinCard() {
 
   return (
     <section className="card" aria-labelledby="checkin-title">
-      <h2 id="checkin-title">Morning check-in</h2>
+      <div className="card-header">
+        <h2 id="checkin-title" ref={heading} tabIndex={-1}>
+          {CHECKIN_PROMPT[part]}
+        </h2>
+        {load.state === "ready" && !today && <span className="badge">Optional</span>}
+      </div>
       {body}
     </section>
   );
@@ -124,11 +168,14 @@ function CheckinForm({
   onSaving,
   onSaved,
   onError,
+  onSkip,
 }: {
   initial: Checkin | null;
   onSaving: () => void;
   onSaved: (checkin: Checkin) => void;
   onError: (message: string) => void;
+  /** Only for a new check-in: fold the card away for today. */
+  onSkip?: () => void;
 }) {
   const { api } = useSession();
   const [answers, setAnswers] = useState<Partial<Record<CheckinScale, number>>>(() =>
@@ -170,7 +217,7 @@ function CheckinForm({
   }
 
   return (
-    <form onSubmit={submit} aria-label="Morning check-in">
+    <form onSubmit={submit} aria-label="Daily check-in">
       {CHECKIN_QUESTIONS.map((q) => (
         <fieldset key={q.key} className="scale">
           <legend>{q.question}</legend>
@@ -215,9 +262,16 @@ function CheckinForm({
         <input type="checkbox" checked={pain} onChange={(e) => setPain(e.target.checked)} />
         {PAIN_LABEL}
       </label>
-      <button type="submit" disabled={!complete || busy}>
-        {busy ? "Saving…" : "Save check-in"}
-      </button>
+      <div className="actions">
+        <button type="submit" disabled={!complete || busy}>
+          {busy ? "Saving…" : "Save check-in"}
+        </button>
+        {onSkip && (
+          <button type="button" className="ghost" onClick={onSkip}>
+            Not now
+          </button>
+        )}
+      </div>
     </form>
   );
 }

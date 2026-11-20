@@ -67,7 +67,7 @@ function Loading() {
 }
 
 const SECTIONS = [
-  { to: "/", label: "Goals", icon: <HomeIcon /> },
+  { to: "/", label: "Dashboard", icon: <HomeIcon /> },
   { to: "/food", label: "Food", icon: <FoodIcon /> },
   { to: "/progress", label: "Progress", icon: <ProgressIcon /> },
   { to: "/coach", label: "Coach", icon: <CoachIcon /> },

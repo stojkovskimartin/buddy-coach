@@ -29,3 +29,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Tests: `BUDDY_*` variables set in the shell (or `uv run --env-file .env pytest`) still reach `Settings` in tests; only the `.env` file is shut out | #50 review | When it bites |
 | `BUDDY_ENVIRONMENT` defaults to `development`: a deployment that forgets it would accept development-only settings such as `BUDDY_FAKE_PROVIDERS`; require it outside local runs | #51 review | Free hosting |
 | Web: the browser bar colour (`theme-color`) follows the device, not a theme chosen in the app | #52 review | With Settings |
+| Web: the dashboard's "Recent days" range and the check-in's "Not now" use the device's day; the server's "today" follows the profile's time zone, so a device in another zone can be a day off | #53 review | With Settings (time zone) |

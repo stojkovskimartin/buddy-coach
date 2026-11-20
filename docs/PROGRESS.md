@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 02:40
+Last update: 2026-11-20, 03:30
 
 ## How to run it
 
@@ -91,8 +91,9 @@ pull request numbers.
 | #50 | Time zones work on Windows: the API ships the `tzdata` package, so `Europe/Zurich` and every other zone load without a system time zone database (the demo data script failed on Windows); tests no longer read a developer's own `.env`; the database is reached at `127.0.0.1` (on Windows `localhost` costs 2 s per connection); running.md explains an old API container that shadows port 8000 | +3 |
 | #51 | Fake providers: `BUDDY_FAKE_PROVIDERS` lets Withings and WHOOP be connected and synced without keys or internet (deterministic data, development and tests only); Mailpit in Docker catches e-mails at http://localhost:8025; the sign-in `state` is checked against the app's clock only | +14 |
 | #52 | Web design system: colour tokens as light/dark pairs with WCAG AA contrast checked in both themes by a test; light / dark / system theme remembered per device and applied before the first paint; sidebar navigation (top bar on phones) with icons, current page marked, skip link; restyled forms, buttons, cards, charts, chat; loading placeholders | +47 frontend (web 47) |
+| #53 | Web dashboard and sign-in: "Dashboard" greets by the time of day; the check-in asks about the day so far after the morning, is optional ("Not now" for the day); goals with a "New goal" panel; the last 7 days' readiness; login and sign-up with a brand panel, account switch and show-password; profile in two groups | +19 frontend (web 19) |
 
-Totals: backend 597 tests, frontend 281 tests (shared 34, client 28, web 95, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 597 tests, frontend 300 tests (shared 34, client 28, web 114, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -105,24 +106,22 @@ before coding and reviewed after (tracker 12.x):
 
 1. Languages: English and Macedonian, every text translated, dates and numbers per language;
    the coach answers in Macedonian once its safety rules cover it [12.3].
-2. New design, part 2: page layouts (page headers, a two-column Today grid, login with a brand
-   panel, empty states); the theme choice moves into Settings with item 3 [12.4].
-3. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
-4. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
-5. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
-6. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
+2. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
+3. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
+4. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
+5. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
    secure cookies on the web [12.8].
-7. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
+6. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
    e-mail, device list; a reset still asks for the second factor. SMS codes left out: they cost
    money [12.9].
-8. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
-9. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
+7. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
+8. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
     and grams, nutrients come from the food database; free local model by default, and a deterministic dev
     recognizer for tests and clicking without a model (moved here from fake providers) [12.11].
-10. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
+9. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
     phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
-11. Web parity: workout logging, goals, check-in history [12.13].
-12. Click-through tests of every feature in the browser, in CI [12.14].
+10. Web parity: workout logging, goals, check-in history [12.13].
+11. Click-through tests of every feature in the browser, in CI [12.14].
 
 After that: mobile setup and goals on the phone, quick actions, today's session card, latest
 stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].

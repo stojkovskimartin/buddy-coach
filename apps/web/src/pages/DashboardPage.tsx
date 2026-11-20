@@ -1,7 +1,10 @@
-import type { Goal, GoalIn } from "@buddy/api-client";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import type { Checkin, Goal, GoalIn } from "@buddy/api-client";
+import { READINESS_TEXT, daysBefore, localToday } from "@buddy/shared";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { GREETING, dayPart, longDate, shortDay } from "../lib/greeting";
+import { CoachIcon } from "../lib/icons";
 import { daysUntil, goalDateBounds } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
 import { CheckinCard } from "./CheckinCard";
@@ -19,10 +22,57 @@ const GOAL_LABELS: Record<Goal["goal_type"], string> = {
   general_fitness: "General fitness",
 };
 
+const HISTORY_DAYS = 7;
+
+/** The athlete's day at a glance: check-in, food, goals, weight and the last days. */
 export function DashboardPage() {
+  const [now, setNow] = useState(() => new Date());
+  const [historyVersion, setHistoryVersion] = useState(0);
+
+  useEffect(() => {
+    // The greeting follows the clock when the tab is shown again (e.g. the next morning).
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      setNow(new Date());
+      setHistoryVersion((v) => v + 1); // a dashboard left open overnight shows the new week
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  return (
+    <main className="stack">
+      <header className="page-header">
+        <div>
+          <h1>{GREETING[dayPart(now)]}</h1>
+          <p className="muted">{longDate(now)}</p>
+        </div>
+        <Link to="/coach" className="button">
+          <CoachIcon />
+          Ask your coach
+        </Link>
+      </header>
+      <div className="dashboard">
+        <div className="stack">
+          <CheckinCard onSaved={() => setHistoryVersion((v) => v + 1)} />
+          <TargetsCard />
+        </div>
+        <div className="stack">
+          <GoalsCard />
+          <WeightCard />
+          <HistoryCard version={historyVersion} />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function GoalsCard() {
   const { api } = useSession();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -40,39 +90,104 @@ export function DashboardPage() {
   const hasPrimary = goals.some((g) => g.priority === "primary");
 
   return (
-    <main className="stack">
-      <CheckinCard />
-      <TargetsCard />
-      <WeightCard />
-      <section className="card">
-        <h1>Your goals</h1>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        {goals.length === 0 ? (
-          <p className="muted">No active goal yet. Add one below.</p>
-        ) : (
-          <ul className="goals">
-            {goals.map((goal) => (
-              <li key={goal.id} className={goal.priority === "primary" ? "primary" : ""}>
-                <strong>{goal.title}</strong>
-                <span className="muted">
-                  {GOAL_LABELS[goal.goal_type]}
-                  {goal.priority === "primary" && " · main goal"}
-                  {goal.target_date && ` · ${daysUntil(goal.target_date)} days to go`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link to="/coach" className="button">
-          Ask your coach
-        </Link>
-      </section>
-      <NewGoalForm onCreated={load} hasPrimary={hasPrimary} />
-    </main>
+    <section className="card" aria-labelledby="goals-title">
+      <div className="card-header">
+        <h2 id="goals-title">Your goals</h2>
+        <button
+          type="button"
+          className="secondary small-button"
+          aria-expanded={adding}
+          aria-controls="new-goal"
+          ref={toggle}
+          onClick={() => setAdding((open) => !open)}
+        >
+          {adding ? "Close" : "New goal"}
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {goals.length === 0 ? (
+        <p className="muted">No active goal yet. Add one to get targets and plans that fit.</p>
+      ) : (
+        <ul className="goals">
+          {goals.map((goal) => (
+            <li key={goal.id} className={goal.priority === "primary" ? "primary" : ""}>
+              <strong>{goal.title}</strong>
+              <span className="muted">
+                {GOAL_LABELS[goal.goal_type]}
+                {goal.priority === "primary" && " · main goal"}
+                {goal.target_date && ` · ${daysUntil(goal.target_date)} days to go`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {adding && (
+        <div id="new-goal" className="drawer">
+          <NewGoalForm
+            hasPrimary={hasPrimary}
+            onCreated={async () => {
+              await load();
+              setAdding(false);
+              toggle.current?.focus(); // the panel closes; focus stays on its button
+            }}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The last week's check-ins: only days with one, newest first. */
+function HistoryCard({ version }: { version: number }) {
+  const { api } = useSession();
+  const [days, setDays] = useState<Checkin[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const to = localToday();
+    api.listCheckins({ from: daysBefore(to, HISTORY_DAYS - 1), to }).then(
+      (checkins) => {
+        if (!active) return;
+        setDays([...checkins].sort((a, b) => b.day.localeCompare(a.day)));
+        setError(null);
+      },
+      (e: unknown) => active && setError(errorMessage(e)),
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, version]);
+
+  return (
+    <section className="card" aria-labelledby="history-title">
+      <h2 id="history-title">Recent days</h2>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {days === null && !error && <p className="muted">Loading…</p>}
+      {days?.length === 0 && (
+        <p className="muted">No check-ins in the last {HISTORY_DAYS} days yet.</p>
+      )}
+      {days && days.length > 0 && (
+        <ul className="history" aria-label="Readiness of the last days">
+          {days.map((c) => (
+            <li key={c.day}>
+              <span className="history-day">{shortDay(c.day)}</span>
+              <span className={`dot ${c.readiness.level}`} aria-hidden="true" />
+              <span className="history-text">{READINESS_TEXT[c.readiness.level]}</span>
+              <strong className="history-score">{c.readiness.score}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -92,6 +207,9 @@ function NewGoalForm({
   const [distance, setDistance] = useState("");
   const [makeMain, setMakeMain] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => titleInput.current?.focus(), []);
 
   const isEndurance = goalType === "endurance_event";
   const needsSport = isEndurance || goalType === "mountain_sport";
@@ -128,8 +246,8 @@ function NewGoalForm({
   }
 
   return (
-    <section className="card">
-      <h2>New goal</h2>
+    <>
+      <h3>New goal</h3>
       <form onSubmit={submit} aria-label="New goal" className="grid">
         <label>
           Type
@@ -143,7 +261,13 @@ function NewGoalForm({
         </label>
         <label>
           Title
-          <input required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            ref={titleInput}
+            required
+            maxLength={120}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
         {needsSport && (
           <label>
@@ -222,6 +346,6 @@ function NewGoalForm({
           Add goal
         </button>
       </form>
-    </section>
+    </>
   );
 }
