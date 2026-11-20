@@ -15,6 +15,7 @@ docker compose -f infra/docker-compose.yml up --build
 | Interactive API page | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health/ready |
 | PostgreSQL (from your machine) | `127.0.0.1:5433`, user `buddy`, password `buddy`, database `buddy` |
+| Test mailbox (Mailpit), for e-mail once the API sends any | http://localhost:8025; SMTP on `127.0.0.1:1025` (from other containers `mail:1025`) |
 
 Walkthrough: README → "Try it in 5 minutes".
 
@@ -141,6 +142,28 @@ Changing the key later disconnects every account; they connect again with one cl
 Withings app already sends weights to Apple Health or Health Connect, use one of the two paths,
 or each weigh-in appears twice.
 
+### Without keys: fake providers
+
+To click through Connect and Sync without any developer app or internet, set in `.env`:
+
+```env
+BUDDY_INTEGRATIONS_KEY=<a key from step 2 above>
+BUDDY_FAKE_PROVIDERS=true
+```
+
+and restart the API. Withings and WHOOP are then offered; "Connect" returns at once without a
+provider page, and the first sync brings 30 days of made-up weigh-ins (Withings) or a run or ride
+every other day (WHOOP). Syncing again the same day updates those records. The API refuses to
+start with this on unless `BUDDY_ENVIRONMENT` is `development` or `test`. Real keys, when set, win over the fake.
+
+Fake data counts like real data (weight trend, targets, training load), so use the demo athlete
+or a throwaway account. Its records have ids starting with `fake-`; to remove them:
+
+```sql
+DELETE FROM body_weights WHERE source = 'withings' AND external_id LIKE 'fake-%';
+DELETE FROM workouts_sessions WHERE source = 'whoop' AND external_id LIKE 'fake-%';
+```
+
 ## Update after `git pull`
 
 New code often brings new libraries and database tables, and a running API keeps the old code
@@ -226,6 +249,7 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `BUDDY_OAUTH_REDIRECT_URL` | `http://localhost:5173/connections/callback` | where providers send the browser back; https in production |
 | `BUDDY_WITHINGS_CLIENT_ID`, `BUDDY_WITHINGS_CLIENT_SECRET` | – | from your Withings developer app |
 | `BUDDY_WHOOP_CLIENT_ID`, `BUDDY_WHOOP_CLIENT_SECRET` | – | from your WHOOP developer app |
+| `BUDDY_FAKE_PROVIDERS` | `false` | stand-ins for Withings and WHOOP without keys or internet; development and tests only, needs `BUDDY_INTEGRATIONS_KEY` (see "Without keys: fake providers") |
 | `BUDDY_LOG_LEVEL` | `INFO` | logs are JSON lines |
 
 ## Troubleshooting

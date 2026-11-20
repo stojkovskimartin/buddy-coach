@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 01:30
+Last update: 2026-11-20, 02:10
 
 ## How to run it
 
@@ -89,8 +89,9 @@ pull request numbers.
 | #48 | Mobile photos and Connect tab: meal, progress and profile photos taken with the camera or picked (shrunk on the phone, no metadata); data sources and Withings/WHOOP sync and disconnect | +7 frontend (mobile 7) |
 | #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +2 |
 | #50 | Time zones work on Windows: the API ships the `tzdata` package, so `Europe/Zurich` and every other zone load without a system time zone database (the demo data script failed on Windows); tests no longer read a developer's own `.env`; the database is reached at `127.0.0.1` (on Windows `localhost` costs 2 s per connection); running.md explains an old API container that shadows port 8000 | +3 |
+| #51 | Fake providers: `BUDDY_FAKE_PROVIDERS` lets Withings and WHOOP be connected and synced without keys or internet (deterministic data, development and tests only); Mailpit in Docker catches e-mails at http://localhost:8025; the sign-in `state` is checked against the app's clock only | +14 |
 
-Totals: backend 583 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 597 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -101,26 +102,25 @@ Totals: backend 583 tests, frontend 234 tests (shared 34, client 28, web 48, mob
 The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, each challenged
 before coding and reviewed after (tracker 12.x):
 
-1. Fake providers for clicking without keys or internet: dev OAuth provider, dev food recognizer,
-   Mailpit for e-mail in Docker [12.2].
-2. Languages: English and Macedonian, every text translated, dates and numbers per language;
+1. Languages: English and Macedonian, every text translated, dates and numbers per language;
    the coach answers in Macedonian once its safety rules cover it [12.3].
-3. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
-4. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
-5. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
-6. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
-7. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
+2. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
+3. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
+4. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
+5. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
+6. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
    secure cookies on the web [12.8].
-8. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
+7. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
    e-mail, device list; a reset still asks for the second factor. SMS codes left out: they cost
    money [12.9].
-9. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
-10. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
-    and grams, nutrients come from the food database; free local model by default [12.11].
-11. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
+8. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
+9. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
+    and grams, nutrients come from the food database; free local model by default, and a deterministic dev
+    recognizer for tests and clicking without a model (moved here from fake providers) [12.11].
+10. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
     phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
-12. Web parity: workout logging, goals, check-in history [12.13].
-13. Click-through tests of every feature in the browser, in CI [12.14].
+11. Web parity: workout logging, goals, check-in history [12.13].
+12. Click-through tests of every feature in the browser, in CI [12.14].
 
 After that: mobile setup and goals on the phone, quick actions, today's session card, latest
 stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].

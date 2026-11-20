@@ -241,8 +241,12 @@ class IntegrationsService:
                 self._settings.jwt_secret.get_secret_value(),
                 algorithms=[self._settings.jwt_algorithm],
                 audience=STATE_AUDIENCE,
-                # Expiry is checked against the app's clock below, like every other time rule.
-                options={"require": ["sub", "provider", "aud", "exp"], "verify_exp": False},
+                # Times are checked against the app's clock below, like every other time rule.
+                options={
+                    "require": ["sub", "provider", "aud", "exp"],
+                    "verify_exp": False,
+                    "verify_iat": False,
+                },
             )
         except jwt.PyJWTError as exc:
             raise ValidationFailedError("The sign-in took too long or is invalid.") from exc
