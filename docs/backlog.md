@@ -28,3 +28,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Photos: scheduled purge of expired meal photos (now on the user's next upload), S3-compatible storage with pre-signed URLs, removing a user's photo files when account deletion exists, a per-user photo quota, one avatar per user enforced in the database | #36 | Before beta |
 | Tests: `BUDDY_*` variables set in the shell (or `uv run --env-file .env pytest`) still reach `Settings` in tests; only the `.env` file is shut out | #50 review | When it bites |
 | `BUDDY_ENVIRONMENT` defaults to `development`: a deployment that forgets it would accept development-only settings such as `BUDDY_FAKE_PROVIDERS`; require it outside local runs | #51 review | Free hosting |
+| Web: the browser bar colour (`theme-color`) follows the device, not a theme chosen in the app | #52 review | With Settings |

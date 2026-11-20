@@ -1,0 +1,104 @@
+/* Page-specific pieces. Only tokens, no raw colours. */
+
+/* Login */
+.content > main.narrow {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Goals */
+.goals {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.goals li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.goals li.primary {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Coach chat */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 320px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+.bubble {
+  max-width: min(85%, 640px);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  line-height: 1.55;
+}
+.bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bubble.you {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-bottom-right-radius: var(--space-1);
+}
+.bubble.coach {
+  align-self: flex-start;
+  background: var(--surface-2);
+  border-bottom-left-radius: var(--space-1);
+}
+.bubble.escalated {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+}
+.bubble.failed {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+}
+.flag,
+.agent {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.flag {
+  color: var(--danger);
+}
+.agent {
+  color: var(--muted);
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.composer {
+  flex-direction: row;
+  gap: var(--space-2);
+}
+.composer input {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 02:10
+Last update: 2026-11-20, 02:40
 
 ## How to run it
 
@@ -90,8 +90,9 @@ pull request numbers.
 | #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +2 |
 | #50 | Time zones work on Windows: the API ships the `tzdata` package, so `Europe/Zurich` and every other zone load without a system time zone database (the demo data script failed on Windows); tests no longer read a developer's own `.env`; the database is reached at `127.0.0.1` (on Windows `localhost` costs 2 s per connection); running.md explains an old API container that shadows port 8000 | +3 |
 | #51 | Fake providers: `BUDDY_FAKE_PROVIDERS` lets Withings and WHOOP be connected and synced without keys or internet (deterministic data, development and tests only); Mailpit in Docker catches e-mails at http://localhost:8025; the sign-in `state` is checked against the app's clock only | +14 |
+| #52 | Web design system: colour tokens as light/dark pairs with WCAG AA contrast checked in both themes by a test; light / dark / system theme remembered per device and applied before the first paint; sidebar navigation (top bar on phones) with icons, current page marked, skip link; restyled forms, buttons, cards, charts, chat; loading placeholders | +47 frontend (web 47) |
 
-Totals: backend 597 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 597 tests, frontend 281 tests (shared 34, client 28, web 95, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -104,7 +105,8 @@ before coding and reviewed after (tracker 12.x):
 
 1. Languages: English and Macedonian, every text translated, dates and numbers per language;
    the coach answers in Macedonian once its safety rules cover it [12.3].
-2. New design: design system, navigation, light / dark / system theme, contrast checked in both [12.4].
+2. New design, part 2: page layouts (page headers, a two-column Today grid, login with a brand
+   panel, empty states); the theme choice moves into Settings with item 3 [12.4].
 3. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
 4. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
 5. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
