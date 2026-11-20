@@ -1,6 +1,7 @@
 import type { ChatReply } from "@buddy/api-client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 
 interface Turn {
@@ -12,24 +13,9 @@ interface Turn {
   failed?: boolean;
 }
 
-const AGENT_LABELS: Record<ChatReply["agent"], string> = {
-  head_coach: "Head Coach",
-  nutrition: "Nutrition",
-  training: "Training",
-  recovery: "Recovery",
-  progress: "Progress",
-  motivation: "Motivation",
-};
-
-const SUGGESTIONS = [
-  "How many calories should I eat today?",
-  "What should I eat after a hard interval session?",
-  "Should I take creatine?",
-  "I slept badly – should I still train today?",
-];
-
 export function CoachPage() {
   const { api } = useSession();
+  const { t } = useI18n();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -75,11 +61,11 @@ export function CoachPage() {
 
   return (
     <main className="card chat">
-      <h1>Your coach</h1>
+      <h1>{t.coach.title}</h1>
       <div className="messages" aria-live="polite">
         {turns.length === 0 && (
           <div className="suggestions">
-            {SUGGESTIONS.map((s) => (
+            {t.coach.suggestions.map((s) => (
               <button key={s} type="button" className="chip" onClick={() => void send(s)}>
                 {s}
               </button>
@@ -93,30 +79,30 @@ export function CoachPage() {
             data-testid={`turn-${turn.from}`}
             {...(turn.escalated || turn.failed ? { role: "alert" } : {})}
           >
-            {turn.escalated && <span className="flag">Important</span>}
-            {turn.failed && <span className="flag">Could not reach your coach</span>}
+            {turn.escalated && <span className="flag">{t.coach.important}</span>}
+            {turn.failed && <span className="flag">{t.coach.unreachable}</span>}
             {turn.agent && !turn.escalated && (
-              <span className="agent">{AGENT_LABELS[turn.agent]}</span>
+              <span className="agent">{t.coach.agents[turn.agent]}</span>
             )}
             <p>{turn.text}</p>
           </div>
         ))}
-        {busy && <p className="muted">Coach is thinking…</p>}
+        {busy && <p className="muted">{t.coach.thinking}</p>}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="composer" aria-label="Message the coach">
+      <form onSubmit={submit} className="composer" aria-label={t.coach.form}>
         <input
-          aria-label="Your message"
+          aria-label={t.coach.message}
           maxLength={2000}
-          placeholder="Ask about food, training or recovery…"
+          placeholder={t.coach.placeholder}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
         <button type="submit" disabled={busy || !message.trim()}>
-          Send
+          {t.coach.send}
         </button>
       </form>
-      <p className="muted small">Buddy Coach is not a doctor. For medical questions, see a professional.</p>
+      <p className="muted small">{t.coach.disclaimer}</p>
     </main>
   );
 }

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "../i18n";
+import { LanguageSwitcher } from "../i18n/LanguageSwitcher";
 import { BrandMark } from "../lib/icons";
 import { errorMessage, useSession } from "../lib/session";
 
@@ -10,6 +12,7 @@ const MIN_PASSWORD = 10;
 
 export function LoginPage() {
   const { login, register } = useSession();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -44,26 +47,23 @@ export function LoginPage() {
       <aside className="auth-brand" aria-hidden="true">
         <BrandMark />
         <p className="auth-brand-name">Buddy Coach</p>
-        <p className="auth-tagline">Your coach for nutrition, training and recovery.</p>
+        <p className="auth-tagline">{t.login.tagline}</p>
       </aside>
       <section className="auth-panel card">
-        <h1>{registering ? "Create your account" : "Welcome back"}</h1>
-        <p className="muted">
-          {registering
-            ? "Free, and your data stays yours."
-            : "Log in to see today's plan and how you are doing."}
-        </p>
-        <div className="segmented auth-switch" role="group" aria-label="Account">
+        <LanguageSwitcher />
+        <h1>{registering ? t.login.create : t.login.welcome}</h1>
+        <p className="muted">{registering ? t.login.createText : t.login.welcomeText}</p>
+        <div className="segmented auth-switch" role="group" aria-label={t.login.account}>
           <button type="button" aria-pressed={!registering} onClick={() => choose("login")}>
-            I have an account
+            {t.login.haveAccount}
           </button>
           <button type="button" aria-pressed={registering} onClick={() => choose("register")}>
-            Create an account
+            {t.login.newAccount}
           </button>
         </div>
-        <form onSubmit={submit} aria-label={registering ? "Create account" : "Log in"}>
+        <form onSubmit={submit} aria-label={registering ? t.login.createButton : t.login.logIn}>
           <label>
-            Email
+            {t.login.email}
             <input
               type="email"
               autoComplete="email"
@@ -74,7 +74,7 @@ export function LoginPage() {
           </label>
           <div className="password-field">
             <label>
-              Password
+              {t.login.password}
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete={registering ? "new-password" : "current-password"}
@@ -91,12 +91,12 @@ export function LoginPage() {
               aria-pressed={showPassword}
               onClick={() => setShowPassword((shown) => !shown)}
             >
-              Show password
+              {t.login.showPassword}
             </button>
           </div>
           {registering && (
             <p id="password-hint" className="muted small">
-              At least {MIN_PASSWORD} characters.
+              {t.login.passwordHint(MIN_PASSWORD)}
             </p>
           )}
           {error && (
@@ -105,7 +105,7 @@ export function LoginPage() {
             </p>
           )}
           <button type="submit" disabled={busy} className="block">
-            {busy ? "One moment…" : registering ? "Create account" : "Log in"}
+            {busy ? t.login.busy : registering ? t.login.createButton : t.login.logIn}
           </button>
         </form>
       </section>

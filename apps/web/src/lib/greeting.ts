@@ -10,27 +10,14 @@ export function dayPart(now: Date = new Date()): DayPart {
   return "evening";
 }
 
-export const GREETING: Record<DayPart, string> = {
-  morning: "Good morning",
-  afternoon: "Good afternoon",
-  evening: "Good evening",
-};
-
-/** The check-in's question; later in the day it asks about the day so far. */
-export const CHECKIN_PROMPT: Record<DayPart, string> = {
-  morning: "How do you feel this morning?",
-  afternoon: "How is your day going?",
-  evening: "How was your day?",
-};
-
-/** "Friday, 20 November" for the device's language settings (English for now). */
-export function longDate(now: Date = new Date()): string {
-  return now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+/** "Friday, 20 November" ("петок, 20 ноември" in Macedonian). */
+export function longDate(now: Date = new Date(), locale = "en-GB"): string {
+  return now.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
 }
 
 /** "Fri 20 Nov" for an ISO day, the same everywhere (the day is not shifted by time zones). */
-export function shortDay(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
+export function shortDay(day: string, locale = "en-GB"): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString(locale, {
     weekday: "short",
     day: "numeric",
     month: "short",

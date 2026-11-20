@@ -1,9 +1,10 @@
 import type { Checkin, Goal, GoalIn } from "@buddy/api-client";
-import { READINESS_TEXT, daysBefore, localToday } from "@buddy/shared";
+import { daysBefore, localToday } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
-import { GREETING, dayPart, longDate, shortDay } from "../lib/greeting";
+import { useI18n } from "../i18n";
+import { dayPart, longDate, shortDay } from "../lib/greeting";
 import { CoachIcon } from "../lib/icons";
 import { daysUntil, goalDateBounds } from "../lib/rules";
 import { errorMessage, useSession } from "../lib/session";
@@ -11,21 +12,11 @@ import { CheckinCard } from "./CheckinCard";
 import { TargetsCard } from "./TargetsCard";
 import { WeightCard } from "./WeightCard";
 
-const GOAL_LABELS: Record<Goal["goal_type"], string> = {
-  lose_weight: "Lose weight",
-  gain_weight: "Gain weight",
-  maintain_weight: "Maintain weight",
-  recomposition: "Recomposition",
-  endurance_event: "Endurance event",
-  mountain_sport: "Mountain sport",
-  strength: "Strength",
-  general_fitness: "General fitness",
-};
-
 const HISTORY_DAYS = 7;
 
 /** The athlete's day at a glance: check-in, food, goals, weight and the last days. */
 export function DashboardPage() {
+  const { t } = useI18n();
   const [now, setNow] = useState(() => new Date());
   const [historyVersion, setHistoryVersion] = useState(0);
 
@@ -44,12 +35,12 @@ export function DashboardPage() {
     <main className="stack">
       <header className="page-header">
         <div>
-          <h1>{GREETING[dayPart(now)]}</h1>
-          <p className="muted">{longDate(now)}</p>
+          <h1>{t.greeting[dayPart(now)]}</h1>
+          <p className="muted">{longDate(now, t.dateLocale)}</p>
         </div>
         <Link to="/coach" className="button">
           <CoachIcon />
-          Ask your coach
+          {t.dashboard.askCoach}
         </Link>
       </header>
       <div className="dashboard">
@@ -69,6 +60,7 @@ export function DashboardPage() {
 
 function GoalsCard() {
   const { api } = useSession();
+  const { t } = useI18n();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -92,7 +84,7 @@ function GoalsCard() {
   return (
     <section className="card" aria-labelledby="goals-title">
       <div className="card-header">
-        <h2 id="goals-title">Your goals</h2>
+        <h2 id="goals-title">{t.dashboard.goals}</h2>
         <button
           type="button"
           className="secondary small-button"
@@ -101,7 +93,7 @@ function GoalsCard() {
           ref={toggle}
           onClick={() => setAdding((open) => !open)}
         >
-          {adding ? "Close" : "New goal"}
+          {adding ? t.close : t.dashboard.newGoal}
         </button>
       </div>
       {error && (
@@ -110,16 +102,16 @@ function GoalsCard() {
         </p>
       )}
       {goals.length === 0 ? (
-        <p className="muted">No active goal yet. Add one to get targets and plans that fit.</p>
+        <p className="muted">{t.dashboard.noGoal}</p>
       ) : (
         <ul className="goals">
           {goals.map((goal) => (
             <li key={goal.id} className={goal.priority === "primary" ? "primary" : ""}>
               <strong>{goal.title}</strong>
               <span className="muted">
-                {GOAL_LABELS[goal.goal_type]}
-                {goal.priority === "primary" && " · main goal"}
-                {goal.target_date && ` · ${daysUntil(goal.target_date)} days to go`}
+                {t.goalTypes[goal.goal_type]}
+                {goal.priority === "primary" && t.dashboard.mainGoal}
+                {goal.target_date && t.dashboard.daysToGo(daysUntil(goal.target_date))}
               </span>
             </li>
           ))}
@@ -144,6 +136,7 @@ function GoalsCard() {
 /** The last week's check-ins: only days with one, newest first. */
 function HistoryCard({ version }: { version: number }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [days, setDays] = useState<Checkin[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,23 +158,23 @@ function HistoryCard({ version }: { version: number }) {
 
   return (
     <section className="card" aria-labelledby="history-title">
-      <h2 id="history-title">Recent days</h2>
+      <h2 id="history-title">{t.dashboard.recentDays}</h2>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {days === null && !error && <p className="muted">Loading…</p>}
+      {days === null && !error && <p className="muted">{t.loading}</p>}
       {days?.length === 0 && (
-        <p className="muted">No check-ins in the last {HISTORY_DAYS} days yet.</p>
+        <p className="muted">{t.dashboard.noHistory(HISTORY_DAYS)}</p>
       )}
       {days && days.length > 0 && (
-        <ul className="history" aria-label="Readiness of the last days">
+        <ul className="history" aria-label={t.dashboard.recentList}>
           {days.map((c) => (
             <li key={c.day}>
-              <span className="history-day">{shortDay(c.day)}</span>
+              <span className="history-day">{shortDay(c.day, t.dateLocale)}</span>
               <span className={`dot ${c.readiness.level}`} aria-hidden="true" />
-              <span className="history-text">{READINESS_TEXT[c.readiness.level]}</span>
+              <span className="history-text">{s.readinessText[c.readiness.level]}</span>
               <strong className="history-score">{c.readiness.score}</strong>
             </li>
           ))}
@@ -199,6 +192,7 @@ function NewGoalForm({
   hasPrimary: boolean;
 }) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [goalType, setGoalType] = useState<GoalIn["goal_type"]>("general_fitness");
   const [title, setTitle] = useState("");
   const [sport, setSport] = useState<NonNullable<GoalIn["sport"]>>("running");
@@ -247,12 +241,12 @@ function NewGoalForm({
 
   return (
     <>
-      <h3>New goal</h3>
-      <form onSubmit={submit} aria-label="New goal" className="grid">
+      <h3>{t.goalForm.title}</h3>
+      <form onSubmit={submit} aria-label={t.goalForm.title} className="grid">
         <label>
-          Type
+          {t.goalForm.type}
           <select value={goalType} onChange={(e) => chooseType(e.target.value as GoalIn["goal_type"])}>
-            {Object.entries(GOAL_LABELS).map(([value, label]) => (
+            {Object.entries(t.goalTypes).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -260,7 +254,7 @@ function NewGoalForm({
           </select>
         </label>
         <label>
-          Title
+          {t.goalForm.name}
           <input
             ref={titleInput}
             required
@@ -271,24 +265,24 @@ function NewGoalForm({
         </label>
         {needsSport && (
           <label>
-            Sport
+            {t.goalForm.sport}
             <select
               value={sport}
               onChange={(e) => setSport(e.target.value as NonNullable<GoalIn["sport"]>)}
             >
               {isEndurance ? (
                 <>
-                  <option value="running">Running</option>
-                  <option value="cycling">Cycling</option>
-                  <option value="swimming">Swimming</option>
-                  <option value="triathlon">Triathlon</option>
+                  <option value="running">{t.sports.running}</option>
+                  <option value="cycling">{t.sports.cycling}</option>
+                  <option value="swimming">{t.sports.swimming}</option>
+                  <option value="triathlon">{t.sports.triathlon}</option>
                 </>
               ) : (
                 <>
-                  <option value="hiking">Hiking</option>
-                  <option value="ski_touring">Ski touring</option>
-                  <option value="alpine_skiing">Alpine skiing</option>
-                  <option value="climbing">Climbing</option>
+                  <option value="hiking">{t.sports.hiking}</option>
+                  <option value="ski_touring">{t.sports.ski_touring}</option>
+                  <option value="alpine_skiing">{t.sports.alpine_skiing}</option>
+                  <option value="climbing">{t.sports.climbing}</option>
                 </>
               )}
             </select>
@@ -296,7 +290,7 @@ function NewGoalForm({
         )}
         {isEndurance && (
           <label>
-            Distance (km)
+            {t.goalForm.distance}
             <input
               type="number"
               min={0.1}
@@ -309,7 +303,8 @@ function NewGoalForm({
         )}
         {allowsWeight && (
           <label>
-            Target weight (kg){needsWeight ? "" : " – optional"}
+            {t.goalForm.targetWeight}
+            {needsWeight ? "" : t.goalForm.optional}
             <input
               type="number"
               min={30}
@@ -322,7 +317,8 @@ function NewGoalForm({
           </label>
         )}
         <label>
-          Target date{isEndurance ? "" : " – optional"}
+          {t.goalForm.targetDate}
+          {isEndurance ? "" : t.goalForm.optional}
           <input
             type="date"
             min={bounds.min}
@@ -334,8 +330,8 @@ function NewGoalForm({
         </label>
         <label className="checkbox span">
           <input type="checkbox" checked={main} onChange={(e) => setMakeMain(e.target.checked)} />
-          Make this my main goal
-          {hasPrimary && main && <span className="muted"> (your current main goal becomes secondary)</span>}
+          {t.goalForm.makeMain}
+          {hasPrimary && main && <span className="muted">{t.goalForm.mainReplaced}</span>}
         </label>
         {error && (
           <p role="alert" className="error span">
@@ -343,7 +339,7 @@ function NewGoalForm({
           </p>
         )}
         <button type="submit" className="span">
-          Add goal
+          {t.goalForm.add}
         </button>
       </form>
     </>

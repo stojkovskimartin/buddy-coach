@@ -15,6 +15,8 @@ import {
   SunIcon,
   SystemIcon,
 } from "./lib/icons";
+import { I18nProvider, useI18n, type Locale } from "./i18n";
+import { LanguageSwitcher } from "./i18n/LanguageSwitcher";
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
 import { useTheme, type Theme } from "./lib/theme";
 import { CoachPage } from "./pages/CoachPage";
@@ -58,8 +60,9 @@ function RequireProfile({ children }: { children: ReactNode }) {
 
 /** A busy indicator (an indeterminate progress bar to assistive technology). */
 function Loading() {
+  const { t } = useI18n();
   return (
-    <div role="progressbar" aria-label="Loading" className="loading">
+    <div role="progressbar" aria-label={t.loading.replace("…", "")} className="loading">
       <span className="skeleton" />
       <span className="skeleton short" />
     </div>
@@ -67,27 +70,32 @@ function Loading() {
 }
 
 const SECTIONS = [
-  { to: "/", label: "Dashboard", icon: <HomeIcon /> },
-  { to: "/food", label: "Food", icon: <FoodIcon /> },
-  { to: "/progress", label: "Progress", icon: <ProgressIcon /> },
-  { to: "/coach", label: "Coach", icon: <CoachIcon /> },
-  { to: "/connections", label: "Connections", icon: <ConnectIcon /> },
-  { to: "/onboarding", label: "Profile", icon: <ProfileIcon /> },
-];
+  { to: "/", key: "dashboard", icon: <HomeIcon /> },
+  { to: "/food", key: "food", icon: <FoodIcon /> },
+  { to: "/progress", key: "progress", icon: <ProgressIcon /> },
+  { to: "/coach", key: "coach", icon: <CoachIcon /> },
+  { to: "/connections", key: "connections", icon: <ConnectIcon /> },
+  { to: "/onboarding", key: "profile", icon: <ProfileIcon /> },
+] as const;
 
-const THEMES: { value: Theme; label: string; icon: ReactNode }[] = [
-  { value: "light", label: "Light", icon: <SunIcon /> },
-  { value: "dark", label: "Dark", icon: <MoonIcon /> },
-  { value: "system", label: "System", icon: <SystemIcon /> },
+const THEMES: { value: Theme; icon: ReactNode }[] = [
+  { value: "light", icon: <SunIcon /> },
+  { value: "dark", icon: <MoonIcon /> },
+  { value: "system", icon: <SystemIcon /> },
 ];
 
 function ThemeSwitcher() {
   const [theme, setTheme] = useTheme();
+  const { t } = useI18n();
   return (
     <fieldset className="theme-switcher">
-      <legend className="visually-hidden">Theme</legend>
+      <legend className="visually-hidden">{t.shell.theme}</legend>
       {THEMES.map((option) => (
-        <label key={option.value} title={option.label} className={theme === option.value ? "selected" : ""}>
+        <label
+          key={option.value}
+          title={t.shell.themes[option.value]}
+          className={theme === option.value ? "selected" : ""}
+        >
           <input
             type="radio"
             name="theme"
@@ -96,7 +104,7 @@ function ThemeSwitcher() {
             onChange={() => setTheme(option.value)}
           />
           {option.icon}
-          <span className="visually-hidden">{option.label}</span>
+          <span className="visually-hidden">{t.shell.themes[option.value]}</span>
         </label>
       ))}
     </fieldset>
@@ -106,25 +114,29 @@ function ThemeSwitcher() {
 /** One navigation: a sidebar on wide screens, a top bar with a scrolling strip on phones. */
 function Sidebar() {
   const { logout } = useSession();
+  const { t } = useI18n();
   return (
     <header className="sidebar">
-      <Link to="/" className="brand" aria-label="Buddy Coach, home">
+      <Link to="/" className="brand" aria-label={t.shell.brandHome}>
         <BrandMark />
         <span>Buddy Coach</span>
       </Link>
-      <nav aria-label="Main" className="nav">
+      <nav aria-label={t.shell.mainNav} className="nav">
         {SECTIONS.map((section) => (
           <NavLink key={section.to} to={section.to} end={section.to === "/"} className="nav-link">
             {section.icon}
-            <span>{section.label}</span>
+            <span>{t.shell.nav[section.key]}</span>
           </NavLink>
         ))}
       </nav>
       <div className="sidebar-footer">
-        <ThemeSwitcher />
+        <div className="switchers">
+          <LanguageSwitcher />
+          <ThemeSwitcher />
+        </div>
         <button type="button" className="ghost nav-link" onClick={() => void logout()}>
           <LogoutIcon />
-          <span>Log out</span>
+          <span>{t.shell.logout}</span>
         </button>
       </div>
     </header>
@@ -133,6 +145,7 @@ function Sidebar() {
 
 function ProfileEditor() {
   const { api, loggedIn } = useSession();
+  const { t } = useI18n();
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -159,8 +172,8 @@ function ProfileEditor() {
     <OnboardingPage initial={profile}>
       {profile && (
         <section className="card" aria-labelledby="avatar-title">
-          <h2 id="avatar-title">Profile picture</h2>
-          <PhotoStrip kind="avatar" title="Profile picture" />
+          <h2 id="avatar-title">{t.shell.profilePicture}</h2>
+          <PhotoStrip kind="avatar" title={t.shell.profilePicture} />
         </section>
       )}
     </OnboardingPage>
@@ -169,10 +182,11 @@ function ProfileEditor() {
 
 export function AppRoutes() {
   const { loggedIn } = useSession();
+  const { t } = useI18n();
   return (
     <div className={loggedIn ? "shell" : "shell guest"}>
       <a href="#content" className="skip-link">
-        Skip to content
+        {t.shell.skip}
       </a>
       {loggedIn && <Sidebar />}
       <div id="content" className="content" tabIndex={-1}>
@@ -234,12 +248,23 @@ export function AppRoutes() {
   );
 }
 
-export function App({ api, initiallyLoggedIn }: { api?: CoachApi; initiallyLoggedIn?: boolean }) {
+export function App({
+  api,
+  initiallyLoggedIn,
+  locale,
+}: {
+  api?: CoachApi;
+  initiallyLoggedIn?: boolean;
+  /** Fixed language (tests); otherwise saved choice, browser language, English. */
+  locale?: Locale;
+}) {
   return (
-    <SessionProvider {...(api ? { api } : {})} {...(initiallyLoggedIn !== undefined ? { initiallyLoggedIn } : {})}>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </SessionProvider>
+    <I18nProvider {...(locale ? { locale } : {})}>
+      <SessionProvider {...(api ? { api } : {})} {...(initiallyLoggedIn !== undefined ? { initiallyLoggedIn } : {})}>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </SessionProvider>
+    </I18nProvider>
   );
 }

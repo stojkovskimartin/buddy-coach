@@ -9,3 +9,4 @@ export * from "./weight";
 export * from "./foods";
 export * from "./progress";
 export * from "./connections";
+export * from "./i18n";

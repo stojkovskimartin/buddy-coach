@@ -1,7 +1,8 @@
 import type { NutritionTargets } from "@buddy/api-client";
-import { ENERGY_GOAL_TEXT, MACROS, NO_TARGETS_TEXT } from "@buddy/shared";
+import { INTL_LOCALE, MACROS } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 
 type Load =
@@ -12,6 +13,7 @@ type Load =
 /** Today's calorie and macro targets, with the reasons behind them. Reloads when the tab is shown again. */
 export function TargetsCard() {
   const { api } = useSession();
+  const { t, s, locale } = useI18n();
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const request = useRef(0);
 
@@ -39,7 +41,7 @@ export function TargetsCard() {
 
   let body;
   if (load.state === "loading") {
-    body = <p className="muted">Loading…</p>;
+    body = <p className="muted">{t.loading}</p>;
   } else if (load.state === "failed") {
     body = (
       <>
@@ -47,31 +49,33 @@ export function TargetsCard() {
           {load.error}
         </p>
         <button type="button" onClick={() => void fetchTargets()}>
-          Try again
+          {t.tryAgain}
         </button>
       </>
     );
   } else if (!load.targets) {
-    body = <p className="muted">{NO_TARGETS_TEXT}</p>;
+    body = <p className="muted">{s.noTargets}</p>;
   } else {
-    const t = load.targets;
+    const targets = load.targets;
     body = (
       <>
         <p className="kcal">
-          <strong>{t.kcal.toLocaleString("en-US")}</strong> kcal
-          <span className="muted"> · {ENERGY_GOAL_TEXT[t.goal]}</span>
+          <strong>{targets.kcal.toLocaleString(INTL_LOCALE[locale])}</strong> {t.units.kcal}
+          <span className="muted"> · {s.energyGoalText[targets.goal]}</span>
         </p>
         <dl className="macros">
           {MACROS.map((m) => (
             <div key={m.key}>
-              <dt>{m.label}</dt>
-              <dd>{t[m.key]} g</dd>
+              <dt>{s.macroLabels[m.key]}</dt>
+              <dd>
+                {targets[m.key]} {t.units.g}
+              </dd>
             </div>
           ))}
         </dl>
-        {t.reasons.length > 0 && (
+        {targets.reasons.length > 0 && (
           <ul className="muted small">
-            {t.reasons.map((r) => (
+            {targets.reasons.map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>
@@ -82,7 +86,7 @@ export function TargetsCard() {
 
   return (
     <section className="card" aria-labelledby="targets-title">
-      <h2 id="targets-title">Today's food targets</h2>
+      <h2 id="targets-title">{t.targets.title}</h2>
       {body}
     </section>
   );

@@ -2,7 +2,6 @@ import type { MealDay, MealEntry, NutritionTargets } from "@buddy/api-client";
 import {
   MACROS,
   MEAL_LABEL,
-  OFF_ATTRIBUTION,
   foodByBarcode,
   mealForHour,
   parseAmount,
@@ -13,6 +12,7 @@ import {
 } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
+import { LocalizedError, useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { PhotoStrip } from "./Photos";
 
@@ -23,6 +23,7 @@ const MEALS = Object.keys(MEAL_LABEL) as Meal[];
  * from Open Food Facts (search or barcode) or typed in. */
 export function FoodPage() {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [picked, setPicked] = useState(""); // "" = today in the athlete's time zone
   const [day, setDay] = useState<MealDay | null>(null);
   const [targets, setTargets] = useState<NutritionTargets | null>(null);
@@ -64,9 +65,9 @@ export function FoodPage() {
   return (
     <main className="stack">
       <section className="card" aria-labelledby="food-title">
-        <h1 id="food-title">Food</h1>
+        <h1 id="food-title">{t.food.title}</h1>
         <label className="inline-label">
-          Day
+          {t.food.day}
           <input
             type="date"
             value={picked || day?.day || ""}
@@ -80,7 +81,7 @@ export function FoodPage() {
           </p>
         )}
         {!day ? (
-          !error && <p className="muted">Loading…</p>
+          !error && <p className="muted">{t.loading}</p>
         ) : (
           <>
             <Totals day={day} targets={isToday ? targets : null} />
@@ -89,23 +90,23 @@ export function FoodPage() {
               if (entries.length === 0) return null;
               return (
                 <div key={meal}>
-                  <h2>{MEAL_LABEL[meal]}</h2>
+                  <h2>{s.mealLabel[meal]}</h2>
                   <ul className="entries">
                     {entries.map((e) => (
                       <li key={e.id}>
                         <span>
                           {e.name}{" "}
                           <span className="muted">
-                            · {e.grams} g · {Math.round(e.kcal)} kcal
+                            · {e.grams} {t.units.g} · {Math.round(e.kcal)} {t.units.kcal}
                           </span>
                         </span>
                         <button
                           type="button"
                           className="link"
-                          aria-label={`Delete ${e.name}`}
+                          aria-label={t.food.deleteEntry(e.name)}
                           onClick={() => void remove(e)}
                         >
-                          Delete
+                          {t.delete}
                         </button>
                       </li>
                     ))}
@@ -113,15 +114,15 @@ export function FoodPage() {
                 </div>
               );
             })}
-            {day.entries.length === 0 && <p className="muted">Nothing logged for this day yet.</p>}
-            <h2>Meal photos</h2>
+            {day.entries.length === 0 && <p className="muted">{t.food.nothing}</p>}
+            <h2>{t.food.mealPhotos}</h2>
             <PhotoStrip
               kind="meal"
-              title="Meal photos"
+              title={t.food.mealPhotos}
               range={{ from: day.day, to: day.day }}
               canAdd={isToday}
             />
-            <p className="muted small">Meal photos are removed after 90 days; what you ate stays.</p>
+            <p className="muted small">{t.food.photosNote}</p>
           </>
         )}
       </section>
@@ -131,9 +132,10 @@ export function FoodPage() {
 }
 
 function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | null }) {
+  const { t, s } = useI18n();
   const rows = [
-    { key: "kcal" as const, label: "Calories", unit: "kcal" },
-    ...MACROS.map((m) => ({ ...m, unit: "g" })),
+    { key: "kcal" as const, label: t.food.calories, unit: t.units.kcal },
+    ...MACROS.map((m) => ({ key: m.key, label: s.macroLabels[m.key], unit: t.units.g })),
   ];
   return (
     <dl className="totals">
@@ -150,7 +152,7 @@ function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | nu
                 <progress
                   max={target}
                   value={Math.min(eaten, target)}
-                  aria-label={`${r.label} eaten of target`}
+                  aria-label={t.food.eatenOfTarget(r.label)}
                 />
               ) : null}
             </dd>
@@ -163,6 +165,15 @@ function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | nu
 
 function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
   const { api } = useSession();
+  const { t, s, locale } = useI18n();
+  // Open Food Facts errors are English; other languages show their own text.
+  const lookup = async <T,>(action: () => Promise<T>) => {
+    try {
+      return await action();
+    } catch (e) {
+      throw locale === "en" ? e : new LocalizedError(t.food.searchUnavailable);
+    }
+  };
   const [meal, setMeal] = useState<Meal>(() => mealForHour(new Date().getHours()));
   const [query, setQuery] = useState("");
   const [barcode, setBarcode] = useState("");
@@ -190,16 +201,15 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
     if (!query.trim()) return;
     void run(async () => {
       setFood(null);
-      setResults(await searchFoods(query, fetch));
+      setResults(await lookup(() => searchFoods(query, fetch)));
     });
   };
 
   const scan = (event: FormEvent) => {
     event.preventDefault();
     void run(async () => {
-      const found = await foodByBarcode(barcode.trim(), fetch);
-      if (!found)
-        throw new Error("No food with this barcode in Open Food Facts. Search by name or type it in.");
+      const found = await lookup(() => foodByBarcode(barcode.trim(), fetch));
+      if (!found) throw new LocalizedError(t.food.noBarcode);
       setResults(null);
       setFood(found);
     });
@@ -208,7 +218,7 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
   const add = (event: FormEvent) => {
     event.preventDefault();
     const g = parseGrams(grams);
-    if (!food || g === null) return setError("Enter the grams eaten (1-5000).");
+    if (!food || g === null) return setError(t.food.gramsError);
     void run(async () => {
       await api.logMeal({
         meal,
@@ -231,13 +241,13 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
 
   return (
     <section className="card" aria-labelledby="add-food-title">
-      <h2 id="add-food-title">Add food</h2>
+      <h2 id="add-food-title">{t.food.add}</h2>
       <label>
-        Meal
+        {t.food.meal}
         <select value={meal} onChange={(e) => setMeal(e.target.value as Meal)}>
           {MEALS.map((m) => (
             <option key={m} value={m}>
-              {MEAL_LABEL[m]}
+              {s.mealLabel[m]}
             </option>
           ))}
         </select>
@@ -258,75 +268,78 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
         />
       ) : (
         <>
-          <form className="inline" onSubmit={search} aria-label="Food search">
+          <form className="inline" onSubmit={search} aria-label={t.food.searchForm}>
             <label>
-              Search food
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. oat flakes" />
+              {t.food.search}
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t.food.placeholder}
+              />
             </label>
             <button type="submit" disabled={busy || !query.trim()}>
-              Search
+              {t.food.searchButton}
             </button>
           </form>
-          <form className="inline" onSubmit={scan} aria-label="Find by barcode">
+          <form className="inline" onSubmit={scan} aria-label={t.food.barcodeForm}>
             <label>
-              Barcode
+              {t.food.barcode}
               <input inputMode="numeric" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
             </label>
             <button type="submit" disabled={busy || !barcode.trim()}>
-              Find
+              {t.food.find}
             </button>
           </form>
           {results && (
-            <ul className="entries" aria-label="Search results">
-              {results.length === 0 && <li className="muted">No match. Try other words or type it in.</li>}
+            <ul className="entries" aria-label={t.food.results}>
+              {results.length === 0 && <li className="muted">{t.food.noMatch}</li>}
               {results.map((f) => (
                 <li key={f.barcode}>
                   <span>
                     {f.name}{" "}
                     <span className="muted">
-                      {f.brand ? `· ${f.brand} ` : ""}· {Math.round(f.per100g.kcal)} kcal / 100 g
+                      {f.brand ? `· ${f.brand} ` : ""}· {Math.round(f.per100g.kcal)} {t.food.per100g}
                     </span>
                   </span>
                   <button
                     type="button"
                     className="link"
-                    aria-label={`Choose ${f.name}`}
+                    aria-label={t.food.chooseEntry(f.name)}
                     onClick={() => {
                       setFood(f);
                       setResults(null);
                     }}
                   >
-                    Choose
+                    {t.food.choose}
                   </button>
                 </li>
               ))}
             </ul>
           )}
           {food && (
-            <form onSubmit={add} aria-label="Portion">
+            <form onSubmit={add} aria-label={t.food.portion}>
               <p>
                 <strong>{food.name}</strong>
                 {food.brand && <span className="muted"> · {food.brand}</span>}
               </p>
               <label>
-                Grams eaten
+                {t.food.gramsEaten}
                 <input inputMode="decimal" value={grams} onChange={(e) => setGrams(e.target.value)} />
               </label>
               {preview && (
                 <p className="muted">
-                  {Math.round(preview.kcal)} kcal · protein {preview.protein_g} g · carbs {preview.carbs_g} g
-                  · fat {preview.fat_g} g
+                  {t.food.preview(Math.round(preview.kcal), preview.protein_g, preview.carbs_g, preview.fat_g)}
                 </p>
               )}
               <button type="submit" disabled={busy || !preview}>
-                Add to {MEAL_LABEL[meal].toLowerCase()}
+                {t.food.addTo(s.mealLabel[meal])}
               </button>
             </form>
           )}
           <button type="button" className="link" onClick={() => setManual(true)}>
-            Type in a food instead
+            {t.food.typeInstead}
           </button>
-          <p className="muted small">{OFF_ATTRIBUTION}</p>
+          <p className="muted small">{s.offAttribution}</p>
         </>
       )}
     </section>
@@ -343,6 +356,7 @@ function ManualFood({
   onCancel: () => void;
 }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [fields, setFields] = useState({
     name: "",
     grams: "",
@@ -364,9 +378,7 @@ function ManualFood({
       fat_g: parseAmount(fields.fat_g || "0"),
     };
     if (!fields.name.trim() || grams === null || Object.values(values).some((v) => v === null)) {
-      return setError(
-        "Enter a name, the grams (1-5000) and the calories; protein, carbs and fat are optional.",
-      );
+      return setError(t.food.manualError);
     }
     setBusy(true);
     setError(null);
@@ -398,24 +410,24 @@ function ManualFood({
   );
 
   return (
-    <form onSubmit={submit} aria-label="Type in a food">
+    <form onSubmit={submit} aria-label={t.food.manualForm}>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {field("name", "Food")}
-      {field("grams", "Grams eaten")}
-      <p className="muted small">For the portion eaten:</p>
-      {field("kcal", "Calories (kcal)")}
-      {field("protein_g", "Protein (g)")}
-      {field("carbs_g", "Carbs (g)")}
-      {field("fat_g", "Fat (g)")}
+      {field("name", t.food.foodName)}
+      {field("grams", t.food.gramsEaten)}
+      <p className="muted small">{t.food.forPortion}</p>
+      {field("kcal", t.food.kcalField)}
+      {field("protein_g", t.food.proteinField)}
+      {field("carbs_g", t.food.carbsField)}
+      {field("fat_g", t.food.fatField)}
       <button type="submit" disabled={busy}>
-        Add to {MEAL_LABEL[meal].toLowerCase()}
+        {t.food.addTo(s.mealLabel[meal])}
       </button>
       <button type="button" className="link" onClick={onCancel}>
-        Back to search
+        {t.food.back}
       </button>
     </form>
   );

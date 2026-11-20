@@ -4,30 +4,35 @@ import type {
   WeightSourceSummary,
   WorkoutSourceSummary,
 } from "@buddy/api-client";
-import { WEIGHT_SOURCE_LABEL, importText, syncText } from "@buddy/shared";
+import { INTL_LOCALE, type Locale } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { useI18n } from "../i18n";
+import type { Messages } from "../i18n/messages";
 import { errorMessage, useSession } from "../lib/session";
 
 /** The provider being connected, kept for the callback page (the provider does not send it). */
 const PENDING_PROVIDER = "buddy.connecting";
 
-const PROVIDER: Record<IntegrationProvider, { name: string; what: string; data: "weight" | "workout" }> = {
-  withings: { name: "Withings", what: "weight from Withings smart scales", data: "weight" },
-  whoop: { name: "WHOOP", what: "workouts from WHOOP", data: "workout" },
+const PROVIDER: Record<IntegrationProvider, { name: string; data: "weight" | "workout" }> = {
+  withings: { name: "Withings", data: "weight" },
+  whoop: { name: "WHOOP", data: "workout" },
 };
 
 const MAX_FIT_BYTES = 10 * 1024 * 1024;
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+function when(iso: string, locale: Locale): string {
+  return new Date(iso).toLocaleString(INTL_LOCALE[locale], { dateStyle: "medium", timeStyle: "short" });
 }
 
 /** Where the data comes from: the phone's health app (watches and smart scales), watch files,
  * typed-in entries, and what is coming next. */
 export function ConnectionsPage() {
   const { api } = useSession();
+  const { t, s, locale } = useI18n();
+  const status = (w: WorkoutSourceSummary | undefined, m: WeightSourceSummary | undefined) =>
+    sourceStatus(w, m, t, locale);
   const [workouts, setWorkouts] = useState<WorkoutSourceSummary[] | null>(null);
   const [accounts, setAccounts] = useState<ProviderStatus[]>([]);
   const [weights, setWeights] = useState<WeightSourceSummary[]>([]);
@@ -56,12 +61,12 @@ export function ConnectionsPage() {
     if (!file) return;
     setMessage(null);
     if (!file.name.toLowerCase().endsWith(".fit"))
-      return setError("Choose a .fit file exported from your watch.");
-    if (file.size > MAX_FIT_BYTES) return setError("A FIT file can be at most 10 MB.");
+      return setError(t.connections.notFit);
+    if (file.size > MAX_FIT_BYTES) return setError(t.connections.fitTooBig);
     setBusy(true);
     setError(null);
     try {
-      setMessage(`${importText(await api.uploadFit(file))}.`);
+      setMessage(`${s.importText(await api.uploadFit(file))}.`);
       await load();
     } catch (e) {
       setError(errorMessage(e));
@@ -80,7 +85,8 @@ export function ConnectionsPage() {
         window.location.assign(await api.connectIntegration(provider));
         return;
       }
-      if (action === "sync") setMessage(`${syncText(await api.syncIntegration(provider), PROVIDER[provider].data)}.`);
+      if (action === "sync")
+        setMessage(`${s.syncText(await api.syncIntegration(provider), PROVIDER[provider].data)}.`);
       else await api.disconnectIntegration(provider);
       await load();
     } catch (e) {
@@ -92,7 +98,7 @@ export function ConnectionsPage() {
 
   const phone = (source: "apple_health" | "health_connect") => (
     <li key={source}>
-      <strong>{WEIGHT_SOURCE_LABEL[source]}</strong>
+      <strong>{s.weightSourceLabel[source]}</strong>
       <span className="muted">
         {" "}
         ·{" "}
@@ -107,11 +113,8 @@ export function ConnectionsPage() {
   return (
     <main className="stack">
       <section className="card">
-        <h1>Connections</h1>
-        <p className="muted">
-          Bring in workouts from your watch and weight from your scale. Everything else is calculated from
-          them.
-        </p>
+        <h1>{t.connections.title}</h1>
+        <p className="muted">{t.connections.intro}</p>
         {error && (
           <p role="alert" className="error">
             {error}
@@ -120,23 +123,14 @@ export function ConnectionsPage() {
       </section>
 
       <section className="card" aria-labelledby="c-phone">
-        <h2 id="c-phone">Phone health app (watches and smart scales)</h2>
-        <p>
-          Watches, fitness apps and smart scales that write to Apple Health on iPhone or Health Connect on
-          Android are included: Apple Watch, Garmin, WHOOP, Withings and many more on iPhone; Samsung, Google
-          and Fitbit, Xiaomi, Garmin and many more on Android. Connect it once in the Buddy Coach phone app
-          (Today → Watch and scale); it syncs when you open the app.
-        </p>
+        <h2 id="c-phone">{t.connections.phoneTitle}</h2>
+        <p>{t.connections.phoneText}</p>
         {workouts && <ul className="entries">{(["apple_health", "health_connect"] as const).map(phone)}</ul>}
       </section>
 
       <section className="card" aria-labelledby="c-fit">
-        <h2 id="c-fit">Watch files (FIT)</h2>
-        <p>
-          Sports watches save activities as .fit files. On the Garmin Connect website: open the activity → ⚙ →
-          Export original (a zip with the .fit file inside); other brands offer an export in their app or
-          website. Uploading the same activity again updates it.
-        </p>
+        <h2 id="c-fit">{t.connections.fitTitle}</h2>
+        <p>{t.connections.fitText}</p>
         {workouts && (
           <p className="muted">
             {status(
@@ -145,15 +139,15 @@ export function ConnectionsPage() {
             )}
           </p>
         )}
-        <div aria-live="polite">{busy ? <p>Importing…</p> : message && <p>{message}</p>}</div>
+        <div aria-live="polite">{busy ? <p>{t.connections.importing}</p> : message && <p>{message}</p>}</div>
         <label className="upload">
-          Upload a .fit file
+          {t.connections.upload}
           <input type="file" accept=".fit" disabled={busy} onChange={(e) => void upload(e)} />
         </label>
       </section>
 
       <section className="card" aria-labelledby="c-manual">
-        <h2 id="c-manual">Typed in</h2>
+        <h2 id="c-manual">{t.connections.manualTitle}</h2>
         <p className="muted">
           {workouts
             ? status(
@@ -165,30 +159,26 @@ export function ConnectionsPage() {
       </section>
 
       <section className="card" aria-labelledby="c-accounts">
-        <h2 id="c-accounts">Accounts</h2>
-        <p className="muted">
-          Connect an account directly, without the phone. If that app already sends the same data to Apple
-          Health or Health Connect, use only one of the two, or everything shows up twice. Strava and Polar
-          come next.
-        </p>
+        <h2 id="c-accounts">{t.connections.accountsTitle}</h2>
+        <p className="muted">{t.connections.accountsText}</p>
         <ul className="entries">
           {accounts.map((a) => (
             <li key={a.provider}>
               <strong>{PROVIDER[a.provider].name}</strong>
-              <span className="muted"> · {PROVIDER[a.provider].what} · </span>
-              <span className="muted">{accountStatus(a)}</span>{" "}
+              <span className="muted"> · {t.connections.what[a.provider]} · </span>
+              <span className="muted">{accountStatus(a, t, locale)}</span>{" "}
               {a.available && !a.connected && (
                 <button type="button" disabled={busy} onClick={() => void act(a.provider, "connect")}>
-                  Connect {PROVIDER[a.provider].name}
+                  {t.connections.connect(PROVIDER[a.provider].name)}
                 </button>
               )}
               {a.connected && (
                 <>
                   <button type="button" disabled={busy} onClick={() => void act(a.provider, "sync")}>
-                    Sync {PROVIDER[a.provider].name} now
+                    {t.connections.sync(PROVIDER[a.provider].name)}
                   </button>{" "}
                   <button type="button" className="link" disabled={busy} onClick={() => void act(a.provider, "disconnect")}>
-                    Disconnect {PROVIDER[a.provider].name}
+                    {t.connections.disconnect(PROVIDER[a.provider].name)}
                   </button>
                 </>
               )}
@@ -200,14 +190,18 @@ export function ConnectionsPage() {
   );
 }
 
-function accountStatus(a: ProviderStatus): string {
-  if (a.connected) return a.last_sync_at ? `Connected, last sync ${when(a.last_sync_at)}` : "Connected";
-  return a.available ? "Not connected" : "Not set up on this server yet";
+function accountStatus(a: ProviderStatus, t: Messages, locale: Locale): string {
+  if (a.connected)
+    return a.last_sync_at
+      ? t.connections.connectedSynced(when(a.last_sync_at, locale))
+      : t.connections.connected;
+  return a.available ? t.connections.notConnected : t.connections.notSetUp;
 }
 
 /** Where the provider sends the browser back to: finishes connecting and shows the result. */
 export function ConnectionCallback() {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -223,7 +217,7 @@ export function ConnectionCallback() {
     const code = query.get("code");
     const state = query.get("state");
     if (!provider || !(provider in PROVIDER) || !code || !state) {
-      setResult({ ok: false, text: "The account was not connected. Try again from Connections." });
+      setResult({ ok: false, text: t.connections.callbackFailed });
       return;
     }
     const name = PROVIDER[provider].name;
@@ -231,41 +225,38 @@ export function ConnectionCallback() {
       (r) =>
         setResult(
           r.synced
-            ? { ok: true, text: `${name} is connected: ${syncText(r, PROVIDER[provider].data)}.` }
-            : { ok: true, text: `${name} is connected. Bringing in the data failed; use Sync now in Connections.` },
+            ? { ok: true, text: t.connections.callbackDone(name, s.syncText(r, PROVIDER[provider].data)) }
+            : { ok: true, text: t.connections.callbackSyncFailed(name) },
         ),
       (e: unknown) => setResult({ ok: false, text: errorMessage(e) }),
     );
-  }, [api, location, navigate]);
+    // The code works once (the `started` guard), so a language change never runs it again.
+  }, [api, location, navigate, t, s]);
 
   return (
     <main className="stack">
       <section className="card">
-        <h1>Connecting your account</h1>
-        {!result && <p>Bringing in your data…</p>}
+        <h1>{t.connections.callbackTitle}</h1>
+        {!result && <p>{t.connections.callbackBusy}</p>}
         {result && (
           <p role={result.ok ? "status" : "alert"} className={result.ok ? undefined : "error"}>
             {result.text}
           </p>
         )}
-        <Link to="/connections">Back to Connections</Link>
+        <Link to="/connections">{t.connections.back}</Link>
       </section>
     </main>
   );
 }
 
-function status(
+function sourceStatus(
   workouts: WorkoutSourceSummary | undefined,
   weights: WeightSourceSummary | undefined,
+  t: Messages,
+  locale: Locale,
 ): string {
   const parts: string[] = [];
-  if (workouts)
-    parts.push(
-      `${workouts.workouts} ${workouts.workouts === 1 ? "workout" : "workouts"}, latest ${when(workouts.last_at)}`,
-    );
-  if (weights)
-    parts.push(
-      `${weights.weights} ${weights.weights === 1 ? "weight" : "weights"}, latest ${when(weights.last_at)}`,
-    );
-  return parts.length ? parts.join(" · ") : "Nothing yet";
+  if (workouts) parts.push(t.connections.workouts(workouts.workouts, when(workouts.last_at, locale)));
+  if (weights) parts.push(t.connections.weights(weights.weights, when(weights.last_at, locale)));
+  return parts.length ? parts.join(" · ") : t.connections.nothingYet;
 }

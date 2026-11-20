@@ -1,14 +1,8 @@
 import type { WeightHistory } from "@buddy/api-client";
-import {
-  WEIGHT_EMPTY_TEXT,
-  WEIGHT_INPUT_ERROR,
-  WEIGHT_SOURCE_LABEL,
-  parseWeightKg,
-  scaleSeries,
-  trendChangeText,
-} from "@buddy/shared";
+import { mkNumber, parseWeightKg, scaleSeries } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 
 const CHART = { width: 560, height: 140 };
@@ -19,6 +13,8 @@ type Load = { state: "loading" } | { state: "failed"; error: string } | { state:
 /** Latest weight, its 90-day trend, quick entry and the last few measurements. */
 export function WeightCard() {
   const { api } = useSession();
+  const { t, s, locale } = useI18n();
+  const kg = (value: number) => (locale === "mk" ? mkNumber(value.toFixed(1)) : value.toFixed(1));
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +61,7 @@ export function WeightCard() {
     event.preventDefault();
     const weight_kg = parseWeightKg(text);
     if (weight_kg === null) {
-      setError(WEIGHT_INPUT_ERROR);
+      setError(s.weightInputError);
       return;
     }
     if (await change(() => api.logWeight({ weight_kg }))) setText("");
@@ -73,7 +69,7 @@ export function WeightCard() {
 
   let body;
   if (load.state === "loading") {
-    body = <p className="muted">Loading…</p>;
+    body = <p className="muted">{t.loading}</p>;
   } else if (load.state === "failed") {
     body = (
       <>
@@ -81,7 +77,7 @@ export function WeightCard() {
           {load.error}
         </p>
         <button type="button" onClick={() => void fetchHistory()}>
-          Try again
+          {t.tryAgain}
         </button>
       </>
     );
@@ -93,19 +89,22 @@ export function WeightCard() {
       CHART.width,
       CHART.height,
     );
-    const changeText = trendChangeText(trend);
+    const changeText = s.trendChangeText(trend);
     body = latest ? (
       <>
         <p className="kcal">
-          <strong>{latest.weight_kg.toFixed(1)}</strong> kg
-          <span className="muted"> · {changeText ?? `measured ${latest.day}`}</span>
+          <strong>{kg(latest.weight_kg)}</strong> {t.units.kg}
+          <span className="muted"> · {changeText ?? t.weight.measured(latest.day)}</span>
         </p>
         {scaled.points.length > 1 && (
           <svg
             className="chart"
             viewBox={`0 0 ${CHART.width} ${CHART.height}`}
             role="img"
-            aria-label={`Weight trend (7-day average) from ${scaled.points[0]!.value.toFixed(1)} to ${scaled.points[scaled.points.length - 1]!.value.toFixed(1)} kg`}
+            aria-label={t.weight.trend(
+              kg(scaled.points[0]!.value),
+              kg(scaled.points[scaled.points.length - 1]!.value),
+            )}
           >
             <path d={scaled.path} />
             {scaled.points.map((p) => (
@@ -117,42 +116,45 @@ export function WeightCard() {
           {weights.slice(0, RECENT).map((w) => (
             <li key={w.id}>
               <span>
-                {w.weight_kg.toFixed(1)} kg <span className="muted">· {w.day} · {WEIGHT_SOURCE_LABEL[w.source]}</span>
+                {kg(w.weight_kg)} {t.units.kg}{" "}
+                <span className="muted">
+                  · {w.day} · {s.weightSourceLabel[w.source]}
+                </span>
               </span>
               <button
                 type="button"
                 className="link"
                 disabled={busy}
-                aria-label={`Delete ${w.weight_kg.toFixed(1)} kg from ${w.day}`}
+                aria-label={t.weight.deleteEntry(kg(w.weight_kg), w.day)}
                 onClick={() => void change(() => api.deleteWeight(w.id))}
               >
-                Delete
+                {t.delete}
               </button>
             </li>
           ))}
         </ul>
       </>
     ) : (
-      <p className="muted">{WEIGHT_EMPTY_TEXT}</p>
+      <p className="muted">{s.weightEmpty}</p>
     );
   }
 
   return (
     <section className="card" aria-labelledby="weight-title">
-      <h2 id="weight-title">Weight</h2>
+      <h2 id="weight-title">{t.weight.title}</h2>
       {body}
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      <form className="inline" onSubmit={submit} aria-label="Log your weight">
+      <form className="inline" onSubmit={submit} aria-label={t.weight.form}>
         <label>
-          Weight now (kg)
+          {t.weight.input}
           <input inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} />
         </label>
         <button type="submit" disabled={busy || !text.trim()}>
-          Save weight
+          {t.weight.save}
         </button>
       </form>
     </section>

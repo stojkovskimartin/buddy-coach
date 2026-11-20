@@ -3,6 +3,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { maxBirthYear } from "../lib/rules";
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 
 /** Form state keeps text, so body data starts empty instead of with made-up numbers. */
@@ -48,6 +49,7 @@ function toProfile(form: FormState, previous: ProfileIn | null | undefined): Pro
 
 /** Body data and availability: everything the engines need for the first targets. */
 export function OnboardingPage({ initial, children }: { initial?: ProfileIn | null; children?: ReactNode }) {
+  const { t } = useI18n();
   const { api } = useSession();
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(() => toForm(initial));
@@ -76,16 +78,16 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
     <main className="stack">
       <header className="page-header">
         <div>
-          <h1>{initial ? "Your profile" : "About you"}</h1>
-          <p className="muted">Your coach uses this to calculate your targets. You can change it later.</p>
+          <h1>{initial ? t.profile.yours : t.profile.about}</h1>
+          <p className="muted">{t.profile.intro}</p>
         </div>
       </header>
       <section className="card">
-        <form onSubmit={submit} aria-label="Profile" className="profile-form">
+        <form onSubmit={submit} aria-label={t.profile.form} className="profile-form">
           <fieldset className="grid">
-            <legend>Body</legend>
+            <legend>{t.profile.body}</legend>
             <label>
-              Birth year
+              {t.profile.birthYear}
               <input
                 type="number"
                 min={1920}
@@ -96,21 +98,21 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
               />
             </label>
             <label>
-              Sex
+              {t.profile.sex}
               <select
                 required
                 value={form.sex}
                 onChange={(e) => set("sex", e.target.value as FormState["sex"])}
               >
                 <option value="" disabled>
-                  Choose…
+                  {t.profile.choose}
                 </option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="male">{t.profile.male}</option>
+                <option value="female">{t.profile.female}</option>
               </select>
             </label>
             <label>
-              Height (cm)
+              {t.profile.height}
               <input
                 type="number"
                 min={100}
@@ -121,7 +123,7 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
               />
             </label>
             <label>
-              Weight (kg)
+              {t.profile.weight}
               <input
                 type="number"
                 min={30}
@@ -134,32 +136,32 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
             </label>
           </fieldset>
           <fieldset className="grid">
-            <legend>Training</legend>
+            <legend>{t.profile.training}</legend>
             <label>
-              Experience
+              {t.profile.experience}
               <select
                 value={form.experience}
                 onChange={(e) => set("experience", e.target.value as FormState["experience"])}
               >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-                <option value="elite">Elite</option>
+                <option value="beginner">{t.profile.levels.beginner}</option>
+                <option value="intermediate">{t.profile.levels.intermediate}</option>
+                <option value="advanced">{t.profile.levels.advanced}</option>
+                <option value="elite">{t.profile.levels.elite}</option>
               </select>
             </label>
             <label>
-              Coach style
+              {t.profile.coachStyle}
               <select
                 value={form.coach_style}
                 onChange={(e) => set("coach_style", e.target.value as FormState["coach_style"])}
               >
-                <option value="friendly">Friendly</option>
-                <option value="strict">Strict</option>
-                <option value="data_driven">Data-driven</option>
+                <option value="friendly">{t.profile.styles.friendly}</option>
+                <option value="strict">{t.profile.styles.strict}</option>
+                <option value="data_driven">{t.profile.styles.data_driven}</option>
               </select>
             </label>
             <label>
-              Training days per week
+              {t.profile.days}
               <input
                 type="number"
                 min={1}
@@ -170,7 +172,7 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
               />
             </label>
             <label>
-              Minutes per session
+              {t.profile.minutes}
               <input
                 type="number"
                 min={10}
@@ -187,7 +189,7 @@ export function OnboardingPage({ initial, children }: { initial?: ProfileIn | nu
             </p>
           )}
           <button type="submit" disabled={busy}>
-            {initial ? "Save" : "Save and continue"}
+            {initial ? t.profile.save : t.profile.saveContinue}
           </button>
         </form>
       </section>

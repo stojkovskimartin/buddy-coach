@@ -20,6 +20,9 @@ The full product and architecture spec lives in the shared doc "Personal Buddy C
    The web app's look comes from plain CSS in `apps/web/src/styles/` (tokens, base, layout, components,
    pages): every colour is a `light-dark()` token pair, so one value serves both themes, and a test
    checks their contrast. No inline styles, so the strict Content Security Policy holds.
+   Languages: English and Macedonian. Shared wording lives in `@buddy/shared` (`SHARED_TEXT`), each app's
+   own texts in its catalog (`apps/web/src/i18n/messages.ts`); the Macedonian catalog must have every
+   English key (typecheck). Server errors are translated by their `code`; English shows the server's text.
 2. **API** – FastAPI app in `services/api`, versioned under `/api/v1`, JWT auth, RFC 9457 errors.
 3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `body` (weight, smart scales), `meals` (food diary), `media` (photos), `integrations` (directly connected accounts), `coach`, `health` (probes). Planned: `planning`, `progress`.
 4. **Engines** – pure, deterministic science code in `science/`: nutrition targets, micronutrients, recovery nutrition, supplements, training load, readiness.

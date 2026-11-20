@@ -1,4 +1,6 @@
-import { scaleSeries, type SeriesPoint } from "@buddy/shared";
+import { INTL_LOCALE, mkNumber, scaleSeries, type SeriesPoint } from "@buddy/shared";
+
+import { useI18n } from "../i18n";
 
 const WIDTH = 640;
 const HEIGHT = 180;
@@ -11,8 +13,8 @@ export interface Series {
   tone: "accent" | "warm" | "muted";
 }
 
-function shortDay(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
+function shortDay(day: string, locale: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
@@ -33,23 +35,29 @@ export function LineChart({
   unit: string;
   values?: readonly [number, number];
 }) {
+  const language = useI18n().locale;
+  const locale = INTL_LOCALE[language];
   const all = series.flatMap((s) => s.points.map((p) => p.value));
   if (all.length === 0) return null;
   const range = values ?? ([Math.min(...all), Math.max(...all)] as const);
   const options = { padding: PAD, days, values: range, minSpan: 1 };
   const scaled = series.map((s) => ({ ...s, ...scaleSeries(s.points, WIDTH, HEIGHT, options) }));
   const { min, max } = scaled[0]!;
-  const value = (v: number) => `${max - min < 5 ? v.toFixed(1) : Math.round(v)} ${unit}`.trim();
+  const number = (v: number) => {
+    const text = max - min < 5 ? v.toFixed(1) : String(Math.round(v));
+    return language === "mk" ? mkNumber(text) : text;
+  };
+  const value = (v: number) => `${number(v)} ${unit}`.trim();
   return (
     <figure className="chart-figure">
       <svg className="chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
         <text x={2} y={PAD + 4} className="axis">{value(max)}</text>
         <text x={2} y={HEIGHT - PAD + 4} className="axis">{value(min)}</text>
         <text x={PAD} y={HEIGHT - 6} className="axis">
-          {shortDay(days[0])}
+          {shortDay(days[0], locale)}
         </text>
         <text x={WIDTH - PAD} y={HEIGHT - 6} className="axis" textAnchor="end">
-          {shortDay(days[1])}
+          {shortDay(days[1], locale)}
         </text>
         {scaled.map((s) => (
           <g key={s.name} className={`tone-${s.tone}`}>
@@ -85,6 +93,7 @@ export function BarChart({
   target: number | null;
   unit: string;
 }) {
+  const locale = INTL_LOCALE[useI18n().locale];
   if (points.length === 0) return null;
   const top = Math.max(1, target ?? 0, ...points.map((p) => p.value));
   const options = { padding: PAD, days, values: [0, top] as const };
@@ -100,10 +109,10 @@ export function BarChart({
     <svg className="chart bars" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={label}>
       <text x={2} y={PAD + 4} className="axis">{`${Math.round(top)} ${unit}`.trim()}</text>
       <text x={PAD} y={HEIGHT - 6} className="axis">
-        {shortDay(days[0])}
+        {shortDay(days[0], locale)}
       </text>
       <text x={WIDTH - PAD} y={HEIGHT - 6} className="axis" textAnchor="end">
-        {shortDay(days[1])}
+        {shortDay(days[1], locale)}
       </text>
       {scaled.points.map((p) => (
         <rect key={p.day} x={p.x - barWidth / 2} y={p.y} width={barWidth} height={base - p.y} />
