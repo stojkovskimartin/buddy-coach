@@ -19,6 +19,7 @@ dependencies = [
     "anyio>=4",
     "garmin-fit-sdk>=21.222",
     "cryptography>=50.0.2",
+    "tzdata>=2025.2",
 ]
 
 [dependency-groups]

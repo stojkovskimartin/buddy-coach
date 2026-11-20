@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 01:10
+Last update: 2026-11-20, 01:30
 
 ## How to run it
 
@@ -29,10 +29,10 @@ Full guide: [running.md](running.md).
 cd services/api
 uv sync
 uv run pytest                      # unit tests
-BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test uv run pytest
+BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@127.0.0.1:5433/buddy_test uv run pytest
 ```
 
-(The Docker stack exposes Postgres on localhost:5433, user/password `buddy`.)
+(The Docker stack exposes Postgres on 127.0.0.1:5433, user/password `buddy`.)
 
 ## Done
 
@@ -88,8 +88,9 @@ pull request numbers.
 | #47 | Mobile Progress tab: weight, food against the target, fitness and fatigue, readiness over 4 weeks, 3 months or a year; summaries shared with the web | +5 frontend (shared 1, mobile 4) |
 | #48 | Mobile photos and Connect tab: meal, progress and profile photos taken with the camera or picked (shrunk on the phone, no metadata); data sources and Withings/WHOOP sync and disconnect | +7 frontend (mobile 7) |
 | #49 | Demo data: `python -m buddy_coach.demo` creates a demo athlete with 120 days of check-ins, workouts, weigh-ins and meals through the API (development only); the owner's new task list in Next | +2 |
+| #50 | Time zones work on Windows: the API ships the `tzdata` package, so `Europe/Zurich` and every other zone load without a system time zone database (the demo data script failed on Windows); tests no longer read a developer's own `.env`; the database is reached at `127.0.0.1` (on Windows `localhost` costs 2 s per connection); running.md explains an old API container that shadows port 8000 | +3 |
 
-Totals: backend 580 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 583 tests, frontend 234 tests (shared 34, client 28, web 48, mobile 124); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

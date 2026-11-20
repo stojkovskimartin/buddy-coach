@@ -14,7 +14,7 @@ docker compose -f infra/docker-compose.yml up --build
 | --- | --- |
 | Interactive API page | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health/ready |
-| PostgreSQL (from your machine) | `localhost:5433`, user `buddy`, password `buddy`, database `buddy` |
+| PostgreSQL (from your machine) | `127.0.0.1:5433`, user `buddy`, password `buddy`, database `buddy` |
 
 Walkthrough: README → "Try it in 5 minutes".
 
@@ -41,8 +41,10 @@ uv run --env-file .env uvicorn buddy_coach.main:app --reload
 ```
 
 `uv sync` creates `.venv` with all dependencies. `.env.example` already points at the Docker
-database on `localhost:5433`; set your own `BUDDY_JWT_SECRET` in `.env`. `--env-file` is needed
-because neither uv nor Alembic reads `.env` by itself. The API runs on http://localhost:8000/docs.
+database on `127.0.0.1:5433`; set your own `BUDDY_JWT_SECRET` in `.env`. `--env-file` is needed
+because neither uv nor Alembic reads `.env` by itself. Use `127.0.0.1`, not `localhost`, for the
+database: on Windows `localhost` tries IPv6 first and every new connection waits about 2 seconds.
+The API runs on http://localhost:8000/docs.
 
 PyCharm: open the repo root, set the interpreter to `services/api/.venv`, mark
 `services/api/src` as Sources Root and `services/api/tests` as Test Sources Root.
@@ -169,14 +171,14 @@ uv run pytest
 All tests, with the Docker database running. PowerShell:
 
 ```powershell
-$env:BUDDY_TEST_DATABASE_URL = "postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test"
-uv run pytest
+$env:BUDDY_TEST_DATABASE_URL = "postgresql+asyncpg://buddy:buddy@127.0.0.1:5433/buddy_test"
+uv run pytest   # without --env-file: the tests bring their own settings
 ```
 
 bash / zsh:
 
 ```bash
-BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@localhost:5433/buddy_test uv run pytest
+BUDDY_TEST_DATABASE_URL=postgresql+asyncpg://buddy:buddy@127.0.0.1:5433/buddy_test uv run pytest
 ```
 
 Code quality (one per line):
@@ -233,6 +235,8 @@ All backend settings are environment variables with the prefix `BUDDY_`
 | `port is already allocated` | Another app uses 8000 or 5433: stop it, or change the left port in `infra/docker-compose.yml` |
 | `/health/ready` says database down | The `db` container is still starting; wait a few seconds |
 | `jwt_secret must be at least 32 characters` | Set a longer `BUDDY_JWT_SECRET` |
+| Pages or tests very slow on Windows | The database URL says `localhost`: use `127.0.0.1:5433` |
+| "This needs a newer server" although the API was restarted | An older API container also listens on 8000 and the browser reaches it: `docker stop buddy-coach-api-1` |
 | "This needs a newer server" on a page | The API runs older code: see "Update after `git pull`" |
 | Coach answers "I cannot reach my coaching brain right now" with `openai_compatible` | The model server is not running: start Ollama (or LM Studio), or switch back to `dev` |
 | Coach answers start with "(development coach)" | Expected without an API key; see "Real AI answers" |

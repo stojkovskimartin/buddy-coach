@@ -26,3 +26,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | WHOOP: edits to workouts older than 7 days and deleted workouts are not mirrored (no "changed since" in the API); recovery and sleep for the check-in | #44 | With webhooks |
 | Direct accounts: webhooks and background sync, revoking at the provider on disconnect, detecting the same weigh-in from Withings and a phone health store, a key rotation path (MultiFernet) | ADR-0008 | With WHOOP / Strava |
 | Photos: scheduled purge of expired meal photos (now on the user's next upload), S3-compatible storage with pre-signed URLs, removing a user's photo files when account deletion exists, a per-user photo quota, one avatar per user enforced in the database | #36 | Before beta |
+| Tests: `BUDDY_*` variables set in the shell (or `uv run --env-file .env pytest`) still reach `Settings` in tests; only the `.env` file is shut out | #50 review | When it bites |
