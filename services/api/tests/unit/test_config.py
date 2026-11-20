@@ -81,3 +81,21 @@ def test_production_needs_an_https_redirect_once_withings_is_set_up() -> None:
     production_settings(
         withings_client_id="id", oauth_redirect_url="https://app.example/connections/callback"
     )
+
+
+@pytest.mark.parametrize("environment", [Environment.STAGING, Environment.PRODUCTION])
+def test_fake_providers_are_refused_outside_development_and_tests(
+    environment: Environment,
+) -> None:
+    key = Fernet.generate_key().decode()
+    with pytest.raises(ValidationError, match="development and tests only"):
+        make_settings(environment=environment, fake_providers=True, integrations_key=key)
+
+
+def test_fake_providers_need_an_integrations_key() -> None:
+    with pytest.raises(ValidationError, match="integrations_key"):
+        make_settings(fake_providers=True)
+    key = Fernet.generate_key().decode()
+    assert make_settings(
+        environment=Environment.DEVELOPMENT, fake_providers=True, integrations_key=key
+    ).fake_providers

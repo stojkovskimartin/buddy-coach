@@ -1,6 +1,6 @@
 # Local development stack: PostgreSQL + Buddy Coach API.
 # Start:  docker compose -f infra/docker-compose.yml up --build
-# Open:   http://localhost:8000/docs
+# Open:   http://localhost:8000/docs, e-mails at http://localhost:8025
 name: buddy-coach
 
 services:
@@ -42,6 +42,16 @@ services:
       - media:/app/media
     ports:
       - "8000:8000"
+
+  mail:
+    # Catches every e-mail the API sends (nothing leaves your computer); read them at
+    # http://localhost:8025. Kept in memory only: a restart empties the mailbox.
+    image: axllent/mailpit:v1.21.0
+    environment:
+      MP_MAX_MESSAGES: 500
+    ports:
+      - "127.0.0.1:1025:1025"  # SMTP
+      - "127.0.0.1:8025:8025"  # mailbox in the browser
 
 volumes:
   pgdata:

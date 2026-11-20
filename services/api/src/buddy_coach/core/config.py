@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     withings_client_secret: SecretStr | None = None
     whoop_client_id: str | None = None
     whoop_client_secret: SecretStr | None = None
+    fake_providers: bool = False
+    """Stand-ins for Withings and WHOOP without keys or internet; development and tests only."""
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -103,6 +105,19 @@ class Settings(BaseSettings):
             and not self.oauth_redirect_url.startswith("https://")
         ):
             msg = "oauth_redirect_url must be https in production"
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _fake_providers_only_locally(self) -> Settings:
+        if self.fake_providers and self.environment not in {
+            Environment.DEVELOPMENT,
+            Environment.TEST,
+        }:
+            msg = "fake_providers is for development and tests only"
+            raise ValueError(msg)
+        if self.fake_providers and self.integrations_key is None:
+            msg = "fake_providers needs integrations_key (tokens are stored encrypted)"
             raise ValueError(msg)
         return self
 

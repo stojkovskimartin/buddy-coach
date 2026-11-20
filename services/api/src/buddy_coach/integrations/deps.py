@@ -15,6 +15,7 @@ from buddy_coach.core.deps import Clock, get_app_settings, get_clock, get_event_
 from buddy_coach.core.events import EventBus
 from buddy_coach.integrations.clients import ProviderClient
 from buddy_coach.integrations.domain import Provider
+from buddy_coach.integrations.fake import FakeClient
 from buddy_coach.integrations.service import IntegrationsService
 from buddy_coach.integrations.whoop import WhoopClient
 from buddy_coach.integrations.withings import WithingsClient
@@ -25,7 +26,8 @@ from buddy_coach.workouts.service import WorkoutService
 def get_provider_clients(
     request: Request, settings: Annotated[Settings, Depends(get_app_settings)]
 ) -> dict[Provider, ProviderClient]:
-    """The providers this server has an app (client id and secret) for."""
+    """The providers this server has an app (client id and secret) for, plus stand-ins for the
+    others when ``fake_providers`` is on."""
     http: httpx.AsyncClient = request.app.state.http
     redirect = settings.oauth_redirect_url
     clients: dict[Provider, ProviderClient] = {}
@@ -43,6 +45,9 @@ def get_provider_clients(
             settings.whoop_client_secret.get_secret_value(),
             redirect,
         )
+    if settings.fake_providers:  # real keys win
+        for provider in Provider:
+            clients.setdefault(provider, FakeClient(provider, redirect))
     return clients
 
 

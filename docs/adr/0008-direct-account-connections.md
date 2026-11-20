@@ -35,6 +35,10 @@ Google Health are gated.
   `reconnect_required`); other provider failures are 502 `provider_error` and change nothing.
 - A device that also writes to Apple Health or Health Connect would be counted twice; the
   Connections page tells the athlete to use one path per device.
+- For development without keys or internet, `BUDDY_FAKE_PROVIDERS` puts a `FakeClient` behind
+  every provider without real keys: its consent page is the callback page itself (``state`` is
+  still signed and checked), and it pulls deterministic data per day with ids `fake-<day>`. The
+  settings refuse it outside development and tests.
 
 ## Consequences
 
