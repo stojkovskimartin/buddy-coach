@@ -77,6 +77,13 @@ form.inline label {
   border-radius: var(--radius-sm);
   font-weight: 500;
 }
+.notice {
+  color: var(--good);
+  background: var(--good-soft);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
 .traffic {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
@@ -531,6 +538,13 @@ button.small-button {
 }
 button.block {
   width: 100%;
+}
+/* For what cannot be undone */
+button.danger,
+button.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* A panel that opens inside a card */

@@ -88,3 +88,10 @@ class GoalOut(BaseModel):
     priority: GoalPriority
     status: GoalStatus
     created_at: datetime
+
+
+class ProfileExport(BaseModel):
+    """The user's profile (None before onboarding) and all goals, for the data export."""
+
+    profile: ProfileOut | None
+    goals: list[GoalOut]

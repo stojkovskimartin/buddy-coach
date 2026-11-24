@@ -140,6 +140,23 @@ describe("Macedonian", () => {
 });
 
 describe("Macedonian details", () => {
+  it("has the settings page in Macedonian, with a wrong password explained", async () => {
+    const client = api({
+      deleteAccount: vi.fn(async () => {
+        throw new ApiError(403, "invalid_password", "The password is incorrect.");
+      }),
+    });
+    renderIn("/settings", client, true, "mk");
+    expect(await screen.findByRole("heading", { level: 1, name: "Поставки" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Поставки" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Преземи ги моите податоци" })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Лозинка"), "погрешна");
+    await userEvent.click(screen.getByRole("checkbox", { name: /трајно избришани/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Избриши ја мојата сметка" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Лозинката не е точна.");
+  });
+
   it("says in Macedonian when a barcode is unknown", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

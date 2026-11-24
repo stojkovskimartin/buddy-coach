@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/account/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Account
+         * @description Delete the account and all its data for good. Needs the current password.
+         */
+        post: operations["delete_account_api_v1_account_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -557,6 +577,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Data
+         * @description Everything stored about the account as one JSON file (photos as metadata only).
+         */
+        get: operations["export_data_api_v1_privacy_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -790,6 +830,19 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AccountRecord
+         * @description The account for the data export: never the password hash or tokens.
+         */
+        AccountRecord: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+        };
+        /**
          * ActivityType
          * @description Activity of a workout (devices' many types are mapped onto these).
          * @enum {string}
@@ -934,11 +987,69 @@ export interface components {
             soreness: number;
         };
         /**
+         * CheckinRecord
+         * @description A stored check-in as saved, without readiness (for the data export).
+         */
+        CheckinRecord: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Hrv Ms
+             * @description Overnight HRV (RMSSD)
+             */
+            hrv_ms?: number | null;
+            /**
+             * Mood
+             * @description 1 = very low, 5 = great
+             */
+            mood: number;
+            /**
+             * Pain
+             * @description Pain (not normal muscle soreness) today
+             * @default false
+             */
+            pain?: boolean;
+            /**
+             * Resting Hr
+             * @description Beats per minute
+             */
+            resting_hr?: number | null;
+            /** Sleep Hours */
+            sleep_hours?: number | null;
+            /**
+             * Sleep Quality
+             * @description 1 = very poor, 5 = excellent
+             */
+            sleep_quality: number;
+            /**
+             * Soreness
+             * @description 1 = very sore, 5 = not sore at all
+             */
+            soreness: number;
+        };
+        /**
          * CoachStyle
          * @description How the coach talks to the user.
          * @enum {string}
          */
         CoachStyle: "friendly" | "strict" | "data_driven";
+        /**
+         * ConnectionRecord
+         * @description A connected account for the data export: never its tokens or sync cursor.
+         */
+        ConnectionRecord: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Sync At */
+            last_sync_at: string | null;
+            provider: components["schemas"]["Provider"];
+        };
         /**
          * DailyTotalsOut
          * @description Totals of one day that has entries.
@@ -959,6 +1070,34 @@ export interface components {
             protein_g: number;
         };
         /**
+         * DataExport
+         * @description Everything stored about the user, as one JSON document. Photos are metadata only;
+         *     no password hash, tokens or sync cursors.
+         */
+        DataExport: {
+            account: components["schemas"]["AccountRecord"];
+            /** Checkins */
+            checkins: components["schemas"]["CheckinRecord"][];
+            /** Connections */
+            connections: components["schemas"]["ConnectionRecord"][];
+            /**
+             * Exported At
+             * Format: date-time
+             */
+            exported_at: string;
+            /** Goals */
+            goals: components["schemas"]["GoalOut"][];
+            /** Meals */
+            meals: components["schemas"]["MealEntryOut"][];
+            /** Photos */
+            photos: components["schemas"]["PhotoRecord"][];
+            profile: components["schemas"]["ProfileOut"] | null;
+            /** Weights */
+            weights: components["schemas"]["WeightOut"][];
+            /** Workouts */
+            workouts: components["schemas"]["WorkoutOut"][];
+        };
+        /**
          * DayLoadOut
          * @description Training load, fitness, fatigue and form of one day.
          */
@@ -976,6 +1115,14 @@ export interface components {
             form: number;
             /** Load */
             load: number;
+        };
+        /**
+         * DeleteAccountIn
+         * @description Confirm account deletion with the current password.
+         */
+        DeleteAccountIn: {
+            /** Password */
+            password: string;
         };
         /**
          * EnergyGoal
@@ -1317,6 +1464,27 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Height */
+            height: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["PhotoKind"];
+            /** Width */
+            width: number;
+        };
+        /**
+         * PhotoRecord
+         * @description A photo's metadata for the data export (the images are not included).
+         */
+        PhotoRecord: {
             /**
              * Day
              * Format: date
@@ -1817,6 +1985,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    delete_account_api_v1_account_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong password (invalid_password) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
@@ -2870,6 +3076,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_data_api_v1_privacy_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Downloaded as a JSON file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
                 };
             };
         };

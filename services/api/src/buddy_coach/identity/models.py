@@ -34,5 +34,6 @@ class RefreshToken(Base):
     jti_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # "rotated" (replaced by a newer token), "logout" or "reuse" (family revoked after theft).
+    # "rotated" (replaced by a newer token), "logout", "reuse" (family revoked after theft) or
+    # "deleted" (the account is being deleted).
     revoked_reason: Mapped[str | None] = mapped_column(String(16), nullable=True)

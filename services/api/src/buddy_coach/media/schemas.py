@@ -21,3 +21,15 @@ class PhotoOut(BaseModel):
     width: int
     height: int
     created_at: datetime
+
+
+class PhotoRecord(BaseModel):
+    """A photo's metadata for the data export (the images are not included)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: PhotoKind
+    day: date
+    width: int
+    height: int

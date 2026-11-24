@@ -1,6 +1,26 @@
 {
   "components": {
     "schemas": {
+      "AccountRecord": {
+        "description": "The account for the data export: never the password hash or tokens.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "created_at"
+        ],
+        "title": "AccountRecord",
+        "type": "object"
+      },
       "ActivityType": {
         "description": "Activity of a workout (devices' many types are mapped onto these).",
         "enum": [
@@ -302,6 +322,92 @@
         "title": "CheckinOut",
         "type": "object"
       },
+      "CheckinRecord": {
+        "description": "A stored check-in as saved, without readiness (for the data export).",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "hrv_ms": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 300.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overnight HRV (RMSSD)",
+            "title": "Hrv Ms"
+          },
+          "mood": {
+            "description": "1 = very low, 5 = great",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Mood",
+            "type": "integer"
+          },
+          "pain": {
+            "default": false,
+            "description": "Pain (not normal muscle soreness) today",
+            "title": "Pain",
+            "type": "boolean"
+          },
+          "resting_hr": {
+            "anyOf": [
+              {
+                "maximum": 150.0,
+                "minimum": 25.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Beats per minute",
+            "title": "Resting Hr"
+          },
+          "sleep_hours": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Hours"
+          },
+          "sleep_quality": {
+            "description": "1 = very poor, 5 = excellent",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Sleep Quality",
+            "type": "integer"
+          },
+          "soreness": {
+            "description": "1 = very sore, 5 = not sore at all",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Soreness",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sleep_quality",
+          "soreness",
+          "mood",
+          "day"
+        ],
+        "title": "CheckinRecord",
+        "type": "object"
+      },
       "CoachStyle": {
         "description": "How the coach talks to the user.",
         "enum": [
@@ -311,6 +417,38 @@
         ],
         "title": "CoachStyle",
         "type": "string"
+      },
+      "ConnectionRecord": {
+        "description": "A connected account for the data export: never its tokens or sync cursor.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          }
+        },
+        "required": [
+          "provider",
+          "created_at",
+          "last_sync_at"
+        ],
+        "title": "ConnectionRecord",
+        "type": "object"
       },
       "DailyTotalsOut": {
         "description": "Totals of one day that has entries.",
@@ -347,6 +485,92 @@
         "title": "DailyTotalsOut",
         "type": "object"
       },
+      "DataExport": {
+        "description": "Everything stored about the user, as one JSON document. Photos are metadata only;\nno password hash, tokens or sync cursors.",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountRecord"
+          },
+          "checkins": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinRecord"
+            },
+            "title": "Checkins",
+            "type": "array"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionRecord"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "exported_at": {
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalOut"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/MealEntryOut"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoRecord"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/WeightOut"
+            },
+            "title": "Weights",
+            "type": "array"
+          },
+          "workouts": {
+            "items": {
+              "$ref": "#/components/schemas/WorkoutOut"
+            },
+            "title": "Workouts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exported_at",
+          "account",
+          "profile",
+          "goals",
+          "checkins",
+          "workouts",
+          "weights",
+          "meals",
+          "photos",
+          "connections"
+        ],
+        "title": "DataExport",
+        "type": "object"
+      },
       "DayLoadOut": {
         "description": "Training load, fitness, fatigue and form of one day.",
         "properties": {
@@ -380,6 +604,22 @@
           "form"
         ],
         "title": "DayLoadOut",
+        "type": "object"
+      },
+      "DeleteAccountIn": {
+        "description": "Confirm account deletion with the current password.",
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountIn",
         "type": "object"
       },
       "EnergyGoal": {
@@ -1245,6 +1485,41 @@
           "created_at"
         ],
         "title": "PhotoOut",
+        "type": "object"
+      },
+      "PhotoRecord": {
+        "description": "A photo's metadata for the data export (the images are not included).",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PhotoKind"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "day",
+          "width",
+          "height"
+        ],
+        "title": "PhotoRecord",
         "type": "object"
       },
       "ProfileIn": {
@@ -2311,6 +2586,49 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/account/delete": {
+      "post": {
+        "description": "Delete the account and all its data for good. Needs the current password.",
+        "operationId": "delete_account_api_v1_account_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Wrong password (invalid_password)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Account",
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "description": "Log in with email and password.",
@@ -3955,6 +4273,33 @@
         "summary": "Photo Image",
         "tags": [
           "photos"
+        ]
+      }
+    },
+    "/api/v1/privacy/export": {
+      "get": {
+        "description": "Everything stored about the account as one JSON file (photos as metadata only).",
+        "operationId": "export_data_api_v1_privacy_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExport"
+                }
+              }
+            },
+            "description": "Downloaded as a JSON file"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Data",
+        "tags": [
+          "privacy"
         ]
       }
     },

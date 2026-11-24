@@ -11,7 +11,7 @@ type Mode = "login" | "register";
 const MIN_PASSWORD = 10;
 
 export function LoginPage() {
-  const { login, register } = useSession();
+  const { login, register, notice } = useSession();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
@@ -53,6 +53,11 @@ export function LoginPage() {
         <LanguageSwitcher />
         <h1>{registering ? t.login.create : t.login.welcome}</h1>
         <p className="muted">{registering ? t.login.createText : t.login.welcomeText}</p>
+        {notice === "accountDeleted" && (
+          <p role="status" className="notice">
+            {t.login.accountDeleted}
+          </p>
+        )}
         <div className="segmented auth-switch" role="group" aria-label={t.login.account}>
           <button type="button" aria-pressed={!registering} onClick={() => choose("login")}>
             {t.login.haveAccount}

@@ -62,6 +62,8 @@ The shared TypeScript client (`@buddy/api-client`) does steps 3–4 automaticall
 | GET | `/photos/{id}/image?size=full\|thumb` | The JPEG (never cached) |
 | DELETE | `/photos/{id}` | Delete a photo and its files (204) |
 | POST | `/coach/chat` | Ask the coach (single message, max 2000 characters) |
+| GET | `/privacy/export` | Everything stored about the account as one JSON file (`Content-Disposition: attachment; filename="buddy-coach-export-<date>.json"`): `account` (email, created_at), `profile` (with `locale`), `goals`, `checkins`, `workouts`, `weights`, `meals`, `photos` (metadata only: id, kind, day, width, height), `connections` (provider, created_at, last_sync_at). Never the password hash, refresh tokens or a connection's tokens and sync cursor |
+| POST | `/account/delete` | `{password}` → 204: the account and all its rows, photo files and connections are deleted for good. A wrong password is 403 `invalid_password` (not 401, so the client does not refresh) and changes nothing |
 | GET | `/health/live`, `/health/ready` | Probes for load balancers (no `/api/v1` prefix) |
 
 ## Errors
@@ -80,6 +82,7 @@ All errors are [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457
 | `validation_failed` | 422 | A business rule failed (e.g. under 18, target weight in the wrong direction) |
 | `unauthenticated` | 401 | Missing, invalid or expired token |
 | `forbidden` | 403 | Authenticated but not allowed (reserved; not used yet) |
+| `invalid_password` | 403 | The password confirming a sensitive action (account deletion) is wrong |
 | `not_found` | 404 | Missing, or not yours |
 | `payload_too_large` | 413 | Upload larger than the endpoint accepts (photos and FIT files: 10 MB) |
 | `conflict` | 409 | Duplicate (e.g. email already registered) |

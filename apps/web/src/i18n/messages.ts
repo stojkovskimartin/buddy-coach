@@ -32,6 +32,7 @@ const en = {
       coach: "Coach",
       connections: "Connections",
       profile: "Profile",
+      settings: "Settings",
     },
     profilePicture: "Profile picture",
   },
@@ -269,6 +270,32 @@ const en = {
     busy: "One moment…",
     logIn: "Log in",
     createButton: "Create account",
+    accountDeleted: "Your account and all its data have been deleted.",
+  },
+  settings: {
+    title: "Settings",
+    lookTitle: "Language and theme",
+    exportTitle: "Download my data",
+    exportText:
+      "One JSON file with your account, profile, goals, check-ins, workouts, weights, food diary, photo " +
+      "details and connected accounts. The photos themselves are not included.",
+    exportButton: "Download my data",
+    exporting: "Preparing…",
+    deleteTitle: "Delete account",
+    deleteText: "This deletes your account and everything stored with it, for good:",
+    deleteItems: [
+      "your profile and goals",
+      "check-ins, workouts and weights",
+      "your food diary",
+      "all photos",
+      "connected accounts (Withings, WHOOP)",
+    ],
+    deleteHint:
+      "This cannot be undone. Download your data first if you want a copy. Your accounts at Withings " +
+      "or WHOOP stay; you can remove Buddy Coach's access there.",
+    deleteConfirm: "I understand that my account and data are deleted for good.",
+    deleteButton: "Delete my account",
+    deleting: "Deleting…",
   },
   profile: {
     yours: "Your profile",
@@ -301,6 +328,7 @@ const en = {
     not_found: "",
     payload_too_large: "",
     forbidden: "",
+    invalid_password: "",
     provider_error: "",
     reconnect_required: "",
     server_outdated: "",
@@ -333,6 +361,7 @@ const mk: Messages = {
       coach: "Тренер",
       connections: "Поврзувања",
       profile: "Профил",
+      settings: "Поставки",
     },
     profilePicture: "Профилна слика",
   },
@@ -574,6 +603,32 @@ const mk: Messages = {
     busy: "Само момент…",
     logIn: "Најави се",
     createButton: "Направи сметка",
+    accountDeleted: "Твојата сметка и сите нејзини податоци се избришани.",
+  },
+  settings: {
+    title: "Поставки",
+    lookTitle: "Јазик и изглед",
+    exportTitle: "Преземи ги моите податоци",
+    exportText:
+      "Една JSON-датотека со твојата сметка, профилот, целите, дневните проверки, тренинзите, тежината, " +
+      "дневникот за исхрана, податоците за фотографиите и поврзаните сметки. Самите фотографии не се вклучени.",
+    exportButton: "Преземи ги моите податоци",
+    exporting: "Се подготвува…",
+    deleteTitle: "Избриши ја сметката",
+    deleteText: "Ова трајно ја брише твојата сметка и сè што е зачувано со неа:",
+    deleteItems: [
+      "профилот и целите",
+      "дневните проверки, тренинзите и мерењата на тежина",
+      "дневникот за исхрана",
+      "сите фотографии",
+      "поврзаните сметки (Withings, WHOOP)",
+    ],
+    deleteHint:
+      "Ова не може да се врати. Ако сакаш копија, прво преземи ги податоците. Твоите сметки кај Withings " +
+      "или WHOOP остануваат; таму можеш да му го одземеш пристапот на Buddy Coach.",
+    deleteConfirm: "Разбирам дека сметката и податоците ќе бидат трајно избришани.",
+    deleteButton: "Избриши ја мојата сметка",
+    deleting: "Се брише…",
   },
   profile: {
     yours: "Твојот профил",
@@ -610,6 +665,7 @@ const mk: Messages = {
     not_found: "Не е пронајдено.",
     payload_too_large: "Датотеката е преголема.",
     forbidden: "Немаш дозвола за ова.",
+    invalid_password: "Лозинката не е точна.",
     provider_error: "Поврзаната услуга не одговори како што треба. Обиди се подоцна.",
     reconnect_required: "Поврзи ја сметката повторно.",
     server_outdated:

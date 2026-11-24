@@ -81,3 +81,16 @@ def test_science_engines_are_pure() -> None:
         or (name.startswith("buddy_coach.") and not name.startswith("buddy_coach.science"))
     ]
     assert violations == []
+
+
+def test_nothing_imports_the_privacy_module() -> None:
+    """privacy calls every module with user data; an import back would make a cycle. Only the
+    app factory mounts its router."""
+    violations = [
+        f"{path.relative_to(SRC)} imports {name}"
+        for path in SRC.rglob("*.py")
+        if path.parent.name != "privacy" and path != SRC / "main.py"
+        for name in _imports(path)
+        if name == "buddy_coach.privacy" or name.startswith("buddy_coach.privacy.")
+    ]
+    assert violations == []

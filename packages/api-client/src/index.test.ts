@@ -471,4 +471,45 @@ describe("BuddyClient", () => {
     expect(await store.get()).toBeNull();
     expect(await api.calls[0]?.json()).toEqual({ refresh_token: "refresh-1" });
   });
+
+  it("downloads the data export as a blob", async () => {
+    const api = fakeApi({ "GET /api/v1/privacy/export": () => json(200, { account: {} }) });
+    const client = new BuddyClient({
+      baseUrl: BASE,
+      tokens: memoryTokenStore(tokens(1)),
+      fetch: api.fetch,
+    });
+
+    const file = await client.exportData();
+
+    expect(JSON.parse(await file.text())).toEqual({ account: {} });
+    expect(api.calls[0]?.headers.get("Authorization")).toBe("Bearer access-1");
+  });
+
+  it("deletes the account with the password and clears the tokens", async () => {
+    const api = fakeApi({ "POST /api/v1/account/delete": () => new Response(null, { status: 204 }) });
+    const store = memoryTokenStore(tokens(1));
+    const client = new BuddyClient({ baseUrl: BASE, tokens: store, fetch: api.fetch });
+
+    await client.deleteAccount("long-password");
+
+    expect(await api.calls[0]?.json()).toEqual({ password: "long-password" });
+    expect(await store.get()).toBeNull();
+  });
+
+  it("keeps the session when the password is wrong (403, no refresh)", async () => {
+    const api = fakeApi({
+      "POST /api/v1/account/delete": () =>
+        json(403, { code: "invalid_password", detail: "The password is incorrect." }),
+    });
+    const store = memoryTokenStore(tokens(1));
+    const client = new BuddyClient({ baseUrl: BASE, tokens: store, fetch: api.fetch });
+
+    await expect(client.deleteAccount("wrong")).rejects.toMatchObject({
+      status: 403,
+      code: "invalid_password",
+    });
+    expect(api.calls).toHaveLength(1);
+    expect(await store.get()).toEqual(tokens(1));
+  });
 });

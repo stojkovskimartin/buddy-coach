@@ -24,7 +24,7 @@ The full product and architecture spec lives in the shared doc "Personal Buddy C
    own texts in its catalog (`apps/web/src/i18n/messages.ts`); the Macedonian catalog must have every
    English key (typecheck). Server errors are translated by their `code`; English shows the server's text.
 2. **API** – FastAPI app in `services/api`, versioned under `/api/v1`, JWT auth, RFC 9457 errors.
-3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `body` (weight, smart scales), `meals` (food diary), `media` (photos), `integrations` (directly connected accounts), `coach`, `health` (probes). Planned: `planning`, `progress`.
+3. **Domain modules** – `identity`, `profile`, `checkin`, `nutrition`, `workouts`, `body` (weight, smart scales), `meals` (food diary), `media` (photos), `integrations` (directly connected accounts), `coach`, `privacy` (data export, account deletion; no tables), `health` (probes). Planned: `planning`, `progress`.
 4. **Engines** – pure, deterministic science code in `science/`: nutrition targets, micronutrients, recovery nutrition, supplements, training load, readiness.
 5. **Coach agent network** – Head Coach + specialists + Safety Guard, acting only through tools (ADR-0003).
 6. **Infrastructure** – PostgreSQL (TimescaleDB and pgvector later), Redis, an event bus (in-process now, broker later).
@@ -79,6 +79,27 @@ weight, so targets and the coach always use it.
 
 Imports are idempotent by (source, external_id); the athlete's own rating is never overwritten
 by a re-sync. Phone sync (ADR-0007), FIT upload and direct accounts (ADR-0008) bring data in.
+
+## Data export and account deletion
+
+The `privacy` module owns no tables and nothing imports it (an architecture test checks this).
+Every module with user data offers `export_user(user_id)` (its own rows as plain data) and
+`erase_user(user_id)` (one bulk delete per table); both use the request's session and never
+commit. The coach stores nothing.
+
+`POST /account/delete` runs in two transactions:
+
+1. Check the password, mark the account inactive, revoke every refresh token; commit. From now on
+   access tokens are refused (`authenticate_access_token` checks `is_active`) and no refresh works.
+2. `erase_user` of profile, check-in, workouts, body, meals, media, integrations and identity, in
+   that order (the account last); commit. Then the user's photo folder is removed
+   (`PhotoStorage.delete_user`; a failure is logged with the user id only).
+
+A request authenticated just before step 1 committed can still write after step 2 (for example a
+meal saved or a photo file written in the same second). The window is a single request long;
+the rows it leaves have no account and no way to be read. A sweep of such orphans and of photo
+folders without an account is in the backlog. If step 2 fails, the account stays inactive with its
+data; the user cannot log in, so an operator finishes it.
 
 ## Decisions
 

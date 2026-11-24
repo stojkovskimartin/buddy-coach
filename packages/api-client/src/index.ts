@@ -41,6 +41,7 @@ export type WeightSourceSummary = Schemas["WeightSourceOut"];
 export type IntegrationProvider = Schemas["Provider"];
 export type ProviderStatus = Schemas["ProviderOut"];
 export type SyncResult = Schemas["SyncOut"];
+export type DataExport = Schemas["DataExport"];
 
 /** Where the app keeps its tokens: localStorage on web, the OS keychain/keystore on mobile. */
 export interface TokenStore {
@@ -315,6 +316,20 @@ export class BuddyClient {
   async disconnectIntegration(provider: IntegrationProvider): Promise<void> {
     const result = await this.raw.DELETE("/api/v1/integrations/{provider}", { params: { path: { provider } } });
     if (!result.response.ok) unwrap(result);
+  }
+
+  /** Everything stored about the account as one JSON file (photos as metadata only). */
+  async exportData(): Promise<Blob> {
+    const result = await this.raw.GET("/api/v1/privacy/export", { parseAs: "blob" });
+    return unwrap(result as Result<Blob>);
+  }
+
+  /** Delete the account and all its data for good; a wrong password fails with
+   * `invalid_password` (403). Clears the stored tokens on success. */
+  async deleteAccount(password: string): Promise<void> {
+    const result = await this.raw.POST("/api/v1/account/delete", { body: { password } });
+    if (!result.response.ok) unwrap(result);
+    await this.options.tokens.set(null);
   }
 
   async chat(message: string): Promise<ChatReply> {

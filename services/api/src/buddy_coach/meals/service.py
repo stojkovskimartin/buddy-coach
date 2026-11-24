@@ -98,3 +98,11 @@ class MealService:
     async def today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone."""
         return local_date(self._now(), await self._profiles.timezone_for(user_id))
+
+    async def export_user(self, user_id: uuid.UUID) -> list[MealEntryOut]:
+        """Every diary entry of the user, for the data export."""
+        return [MealEntryOut.model_validate(row) for row in await self._repo.all_of(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every diary entry of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)

@@ -27,6 +27,7 @@ from buddy_coach.integrations.router import router as integrations_router
 from buddy_coach.meals.router import router as meals_router
 from buddy_coach.media.router import router as media_router
 from buddy_coach.nutrition.router import router as nutrition_router
+from buddy_coach.privacy.router import router as privacy_router
 from buddy_coach.profile.router import router as profile_router
 from buddy_coach.workouts.router import router as workouts_router
 
@@ -90,6 +91,7 @@ def create_app(
     api.include_router(media_router)
     api.include_router(integrations_router)
     api.include_router(coach_router)
+    api.include_router(privacy_router)
     app.include_router(health_router)
     app.include_router(api)
     return app

@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import Boolean, func, literal_column, select
+from sqlalchemy import Boolean, delete, func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,3 +56,14 @@ class CheckinRepository:
             .order_by(DailyCheckin.day.desc())
         )
         return result.scalars().all()
+
+    async def all_of(self, user_id: uuid.UUID) -> Sequence[DailyCheckin]:
+        """Every check-in of a user, oldest first (for the data export)."""
+        result = await self._session.execute(
+            select(DailyCheckin).where(DailyCheckin.user_id == user_id).order_by(DailyCheckin.day)
+        )
+        return result.scalars().all()
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every check-in of a user."""
+        await self._session.execute(delete(DailyCheckin).where(DailyCheckin.user_id == user_id))

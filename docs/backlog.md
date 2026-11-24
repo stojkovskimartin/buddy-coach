@@ -25,7 +25,7 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Privacy notice: food search terms and barcodes go from the apps directly to Open Food Facts (with the user's IP address, no account data); OFF data is ODbL and attributed in the UI | #33 | Before beta |
 | WHOOP: edits to workouts older than 7 days and deleted workouts are not mirrored (no "changed since" in the API); recovery and sleep for the check-in | #44 | With webhooks |
 | Direct accounts: webhooks and background sync, revoking at the provider on disconnect, detecting the same weigh-in from Withings and a phone health store, a key rotation path (MultiFernet) | ADR-0008 | With WHOOP / Strava |
-| Photos: scheduled purge of expired meal photos (now on the user's next upload), S3-compatible storage with pre-signed URLs, removing a user's photo files when account deletion exists, a per-user photo quota, one avatar per user enforced in the database | #36 | Before beta |
+| Photos: scheduled purge of expired meal photos (now on the user's next upload), S3-compatible storage with pre-signed URLs, a per-user photo quota, one avatar per user enforced in the database | #36 | Before beta |
 | Tests: `BUDDY_*` variables set in the shell (or `uv run --env-file .env pytest`) still reach `Settings` in tests; only the `.env` file is shut out | #50 review | When it bites |
 | `BUDDY_ENVIRONMENT` defaults to `development`: a deployment that forgets it would accept development-only settings such as `BUDDY_FAKE_PROVIDERS`; require it outside local runs | #51 review | Free hosting |
 | Web: the browser bar colour (`theme-color`) follows the device, not a theme chosen in the app | #52 review | With Settings |
@@ -36,3 +36,8 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Web: an error or status message already on screen stays in the old language after switching; the next one uses the new language | #55 review | When it bites |
 | Phone: Macedonian dates use Intl `mk-MK`, which Hermes on Android may lack; check or fall back to month names from the catalog in the phone PR | #55 review | Languages on the phone |
 | Shared web/mobile wording (goal types, coach agents, errors) into @buddy/shared | #56 review | Next i18n change |
+| Account deletion: share the login rate limiter (once it exists) with `POST /account/delete`, so the password cannot be guessed through it | #57 | Accounts v2 |
+| Account deletion: revoke Buddy Coach's access at Withings and WHOOP before the connection is erased (today only our copy of the tokens goes) | #57 | With revoking on disconnect |
+| Data export: the photos themselves (a ZIP with the JSON and the images) | #57 | Photos hardened |
+| Account deletion: a sweep of rows and photo folders whose account no longer exists (a request in flight during deletion, a failed folder removal) | #57 | Free hosting |
+| Units (imperial) and consent toggles in Settings — consents come with 12.6 | #57 review | Privacy (12.6) |

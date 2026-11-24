@@ -18,6 +18,7 @@ from buddy_coach.core.errors import NotFoundError
 from buddy_coach.media.domain import PhotoKind, process_photo, validate_range
 from buddy_coach.media.models import Photo
 from buddy_coach.media.repository import PhotoRepository
+from buddy_coach.media.schemas import PhotoRecord
 from buddy_coach.media.storage import PhotoStorage, Size
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,22 @@ class PhotoService:
     async def today(self, user_id: uuid.UUID) -> date:
         """Today in the athlete's time zone."""
         return local_date(self._now(), await self._profiles.timezone_for(user_id))
+
+    async def export_user(self, user_id: uuid.UUID) -> list[PhotoRecord]:
+        """Every photo record of the user, for the data export."""
+        return [PhotoRecord.model_validate(row) for row in await self._repo.all_of(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every photo record of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
+
+    async def delete_user_files(self, user_id: uuid.UUID) -> None:
+        """Remove all of the user's photo files, after ``erase_user`` was committed."""
+        try:
+            await self._storage.delete_user(user_id)
+        except OSError:
+            # The records are gone; left-over files are only disk space. Id only, no content.
+            logger.warning("photo_dir_not_deleted", extra={"user_id": str(user_id)})
 
     async def _get(self, user_id: uuid.UUID, photo_id: uuid.UUID) -> Photo:
         photo = await self._repo.get(user_id, photo_id)

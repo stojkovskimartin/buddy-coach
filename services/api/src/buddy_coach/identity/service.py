@@ -10,7 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.core.config import Settings
-from buddy_coach.core.errors import AuthenticationError, ConflictError, NotFoundError
+from buddy_coach.core.errors import (
+    AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from buddy_coach.core.events import EventBus
 from buddy_coach.core.security import (
     DUMMY_PASSWORD_HASH,
@@ -25,7 +30,7 @@ from buddy_coach.core.security import (
 from buddy_coach.identity.events import UserRegistered
 from buddy_coach.identity.models import User
 from buddy_coach.identity.repository import IdentityRepository
-from buddy_coach.identity.schemas import CurrentUser, TokenPair
+from buddy_coach.identity.schemas import AccountRecord, CurrentUser, TokenPair
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +38,14 @@ INVALID_CREDENTIALS = "Email or password is incorrect."
 # Mobile apps often fire two refreshes at once on resume. A token revoked this recently is
 # treated as that race, not as theft (same idea as a "reuse interval" in common IdPs).
 REFRESH_REUSE_GRACE = timedelta(seconds=10)
+
+
+class InvalidPasswordError(PermissionDeniedError):
+    """The password confirming a sensitive action is wrong. 403, not 401: a 401 would make the
+    client refresh its token and try again."""
+
+    code = "invalid_password"
+    title = "Invalid password"
 
 
 def normalise_email(email: str) -> str:
@@ -134,6 +147,24 @@ class IdentityService:
         if user is None:
             raise NotFoundError("User not found.")
         return user
+
+    async def export_user(self, user_id: uuid.UUID) -> AccountRecord:
+        """The account (email and creation time), for the data export."""
+        return AccountRecord.model_validate(await self.get_user(user_id))
+
+    async def deactivate(self, user_id: uuid.UUID, password: str) -> None:
+        """First step of account deletion: check the password, block the account and revoke
+        every refresh token. Joins the caller's transaction (no commit)."""
+        user = await self.get_user(user_id)
+        if not verify_password(password, user.password_hash):
+            raise InvalidPasswordError("The password is incorrect.")
+        user.is_active = False
+        await self._repo.revoke_all_for_user(user_id, datetime.now(UTC), "deleted")
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete the account and its refresh tokens; call it after every other module's
+        ``erase_user``. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
 
     async def _issue_pair(self, user_id: uuid.UUID) -> TokenPair:
         access, _ = create_token(user_id, TokenType.ACCESS, self._settings)

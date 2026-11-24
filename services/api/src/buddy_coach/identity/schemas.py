@@ -58,3 +58,18 @@ class CurrentUser:
 
     id: uuid.UUID
     email: str
+
+
+class AccountRecord(BaseModel):
+    """The account for the data export: never the password hash or tokens."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    email: str
+    created_at: datetime
+
+
+class DeleteAccountIn(BaseModel):
+    """Confirm account deletion with the current password."""
+
+    password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
