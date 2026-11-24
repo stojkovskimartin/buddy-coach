@@ -8,19 +8,10 @@ import { PhotoStrip } from "../components/PhotoStrip";
 import { TargetsCard } from "../components/TargetsCard";
 import { WeightCard } from "../components/WeightCard";
 import { Button, Card, ErrorBanner } from "../components/ui";
+import { useI18n } from "../i18n";
+import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
-
-export const GOAL_LABELS: Record<Goal["goal_type"], string> = {
-  lose_weight: "Lose weight",
-  gain_weight: "Gain weight",
-  maintain_weight: "Maintain weight",
-  recomposition: "Recomposition",
-  endurance_event: "Endurance event",
-  mountain_sport: "Mountain sport",
-  strength: "Strength",
-  general_fitness: "General fitness",
-};
 
 /** Whole days from today to an ISO date (negative when it is in the past). */
 export function daysUntil(isoDate: string, today: Date = new Date()): number {
@@ -32,6 +23,7 @@ export function daysUntil(isoDate: string, today: Date = new Date()): number {
 /** `active` is true while the Today tab is shown; data reloads each time it becomes active. */
 export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => void; active?: boolean }) {
   const { api, logout } = useSession();
+  const { t } = useI18n();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +67,7 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
     >
       <Text accessibilityRole="header" style={styles.title}>
-        Today
+        {t.home.title}
       </Text>
       <ErrorBanner message={error} />
       <CheckinCard reloadKey={reloads} />
@@ -84,18 +76,15 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
       <HealthSyncCard onNewWeights={reload} />
       {!loading && !error && !profile && (
         <Card>
-          <Text style={styles.heading}>Set up your profile</Text>
-          <Text style={styles.body}>
-            Your coach needs your body data and weekly time to calculate targets. Complete the
-            setup in the web app for now; the guided setup on the phone comes next.
-          </Text>
+          <Text style={styles.heading}>{t.home.setUp}</Text>
+          <Text style={styles.body}>{t.home.setUpText}</Text>
         </Card>
       )}
       {primary && (
         <Card>
-          <Text style={styles.label}>Main goal</Text>
+          <Text style={styles.label}>{t.home.mainGoal}</Text>
           <Text style={styles.heading}>{primary.title}</Text>
-          <Text style={styles.body}>{GOAL_LABELS[primary.goal_type]}</Text>
+          <Text style={styles.body}>{t.home.goalTypes[primary.goal_type]}</Text>
           {primary.target_date && <Countdown date={primary.target_date} />}
         </Card>
       )}
@@ -103,31 +92,39 @@ export function HomeScreen({ onOpenCoach, active = true }: { onOpenCoach: () => 
         .filter((g) => g !== primary)
         .map((g) => (
           <Card key={g.id}>
-            <Text style={styles.label}>Other goal</Text>
+            <Text style={styles.label}>{t.home.otherGoal}</Text>
             <Text style={styles.heading}>{g.title}</Text>
           </Card>
         ))}
       {!loading && !error && profile && goals.length === 0 && (
-        <Text style={styles.body}>No active goal yet. Add one in the web app.</Text>
+        <Text style={styles.body}>{t.home.noGoal}</Text>
       )}
       {profile && (
         <Card>
           <Text accessibilityRole="header" style={styles.heading}>
-            Profile picture
+            {t.home.profilePicture}
           </Text>
-          <PhotoStrip kind="avatar" title="Profile picture" one="profile picture" reloadKey={reloads} />
+          <PhotoStrip kind="avatar" title={t.home.profilePicture} one={t.home.onePicture} reloadKey={reloads} />
         </Card>
       )}
-      <Button label="Ask your coach" onPress={onOpenCoach} />
-      <Button variant="secondary" label="Log out" onPress={() => void logout()} />
+      <Button label={t.home.askCoach} onPress={onOpenCoach} />
+      <Button variant="secondary" label={t.home.logout} onPress={() => void logout()} />
+      <LanguageSwitch />
     </ScrollView>
   );
 }
 
 function Countdown({ date }: { date: string }) {
+  const { t } = useI18n();
   const days = daysUntil(date);
   const text =
-    days > 1 ? `${days} days to go` : days === 1 ? "Tomorrow" : days === 0 ? "Today is the day" : "Date passed";
+    days > 1
+      ? t.home.daysToGo(days)
+      : days === 1
+        ? t.home.tomorrow
+        : days === 0
+          ? t.home.dayIsHere
+          : t.home.datePassed;
   return (
     <View style={styles.countdown}>
       <Text style={styles.countdownText}>{text}</Text>

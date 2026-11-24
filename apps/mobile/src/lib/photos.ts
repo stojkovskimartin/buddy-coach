@@ -6,6 +6,9 @@
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
+import { LocalizedError, currentLocale } from "../i18n";
+import { MESSAGES } from "../i18n/messages";
+
 const LONG_EDGE = 1600;
 
 export type PhotoSource = "camera" | "library";
@@ -17,11 +20,8 @@ export async function pickPhoto(source: PhotoSource): Promise<Blob | null> {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error(
-      source === "camera"
-        ? "Camera access is off for Buddy Coach. Turn it on in the phone's settings."
-        : "Photo access is off for Buddy Coach. Turn it on in the phone's settings.",
-    );
+    const text = MESSAGES[currentLocale()].photos;
+    throw new LocalizedError(source === "camera" ? text.cameraOff : text.libraryOff);
   }
   const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 1, exif: false };
   const result =

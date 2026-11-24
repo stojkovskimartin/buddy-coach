@@ -1,7 +1,8 @@
-import { scaleSeries, type SeriesPoint } from "@buddy/shared";
+import { INTL_LOCALE, scaleSeries, type SeriesPoint } from "@buddy/shared";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 
+import { useI18n } from "../i18n";
 import { colors, font, space } from "../theme";
 
 const WIDTH = 320;
@@ -17,13 +18,14 @@ export interface Series {
   tone: keyof typeof TONE;
 }
 
-function shortDay(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+function shortDay(day: string, locale: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString(locale, { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function Axes({ days, top, bottom, unit }: { days: readonly [string, string]; top: number; bottom?: number; unit: string }) {
+  const { locale, num } = useI18n();
   const precise = bottom !== undefined && top - bottom < 5;
-  const value = (v: number) => `${precise ? v.toFixed(1) : Math.round(v)} ${unit}`.trim();
+  const value = (v: number) => `${precise ? num(v.toFixed(1)) : Math.round(v)} ${unit}`.trim();
   return (
     <>
       <SvgText x={2} y={PAD + 4} fontSize={10} fill={colors.muted}>
@@ -35,10 +37,10 @@ function Axes({ days, top, bottom, unit }: { days: readonly [string, string]; to
         </SvgText>
       )}
       <SvgText x={PAD} y={HEIGHT - 6} fontSize={10} fill={colors.muted}>
-        {shortDay(days[0])}
+        {shortDay(days[0], INTL_LOCALE[locale])}
       </SvgText>
       <SvgText x={WIDTH - PAD} y={HEIGHT - 6} fontSize={10} fill={colors.muted} textAnchor="end">
-        {shortDay(days[1])}
+        {shortDay(days[1], INTL_LOCALE[locale])}
       </SvgText>
     </>
   );

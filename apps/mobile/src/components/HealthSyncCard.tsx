@@ -1,9 +1,11 @@
-import { importText } from "@buddy/shared";
+import { INTL_LOCALE, type SharedText } from "@buddy/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, StyleSheet, Text, View } from "react-native";
 
 import { HealthSync, phoneHealthSource, type SyncOutcome, type SyncState } from "../health/sync";
 import type { Availability, HealthSource } from "../health/types";
+import { useI18n } from "../i18n";
+import type { Messages } from "../i18n/messages";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
 import { Button, Card, ErrorBanner } from "./ui";
@@ -16,10 +18,10 @@ type View_ =
   | { kind: "disconnected" }
   | { kind: "connected"; lastSync: string | null };
 
-function summary(outcome: SyncOutcome): string {
-  const parts = [importText(outcome)];
-  if (outcome.skipped) parts.push(`${outcome.skipped} skipped (incomplete data)`);
-  if (outcome.weights) parts.push(outcome.weights === 1 ? "1 new weight" : `${outcome.weights} new weights`);
+function summary(outcome: SyncOutcome, t: Messages, s: SharedText): string {
+  const parts = [s.importText(outcome)];
+  if (outcome.skipped) parts.push(t.health.skipped(outcome.skipped));
+  if (outcome.weights) parts.push(t.health.newWeights(outcome.weights));
   return `${parts.join(", ")}.`;
 }
 
@@ -38,6 +40,7 @@ export function HealthSyncCard({
   onNewWeights?: () => void;
 }) {
   const { api } = useSession();
+  const { locale, t, s } = useI18n();
   // Built once: a new source on every render would restart the sync effect in a loop.
   const source = useMemo(
     () => (injected === undefined ? phoneHealthSource() : injected),
@@ -48,7 +51,7 @@ export function HealthSyncCard({
     [source, api, state],
   );
   const [view, setView] = useState<View_>({ kind: "loading" });
-  const [message, setMessage] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<SyncOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [needsWeight, setNeedsWeight] = useState(false);
@@ -63,7 +66,7 @@ export function HealthSyncCard({
     setError(null);
     try {
       const outcome = await sync.sync();
-      setMessage(summary(outcome));
+      setOutcome(outcome);
       if (outcome.weights) newWeights.current?.();
       setView({ kind: "connected", lastSync: outcome.syncedAt });
     } catch (e) {
@@ -107,32 +110,25 @@ export function HealthSyncCard({
   }, [view.kind, runSync]);
 
   if (view.kind === "loading") return null;
-  const store = source ? STORE_NAME[source.platform] : "your health app";
+  const store = source ? STORE_NAME[source.platform] : t.health.yourApp;
 
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.title}>
-        Watch and scale
+        {t.health.title}
       </Text>
       <ErrorBanner message={error} />
       {view.kind === "unavailable" && (
-        <Text style={styles.body}>
-          Syncing needs the installed Buddy Coach app (not Expo Go) on a phone with {store}.
-        </Text>
+        <Text style={styles.body}>{t.health.unavailable(store)}</Text>
       )}
       {view.kind === "update_required" && (
-        <Text style={styles.body}>Update Health Connect in Google Play, then come back.</Text>
+        <Text style={styles.body}>{t.health.updateRequired}</Text>
       )}
       {view.kind === "disconnected" && (
         <>
-          <Text style={styles.body}>
-            Buddy Coach reads your workouts, heart rate and body weight from {store} (read only)
-            to calculate your training load and keep your weight up to date. Garmin, Fitbit,
-            Samsung, Xiaomi, WHOOP and smart scales (Withings, Eufy, Renpho and others) that write
-            there are included.
-          </Text>
+          <Text style={styles.body}>{t.health.intro(store)}</Text>
           <Button
-            label={`Connect ${store}`}
+            label={t.health.connect(store)}
             busy={busy}
             onPress={() => {
               if (!sync) return;
@@ -142,7 +138,7 @@ export function HealthSyncCard({
                 .connect()
                 .then((granted) => {
                   setBusy(false);
-                  if (!granted) return setError(`${store} access was not granted.`);
+                  if (!granted) return setError(t.health.notGranted(store));
                   setView({ kind: "connected", lastSync: null });
                   return runSync();
                 })
@@ -157,25 +153,20 @@ export function HealthSyncCard({
       {view.kind === "connected" && (
         <>
           <View accessible accessibilityLiveRegion="polite">
-            {message && <Text style={styles.body}>{message}</Text>}
+            {outcome && <Text style={styles.body}>{summary(outcome, t, s)}</Text>}
             <Text style={styles.small}>
               {view.lastSync
-                ? `Last synced ${new Date(view.lastSync).toLocaleString()}`
-                : "Not synced yet"}
-              {source?.platform === "apple_health"
-                ? ". No workouts or weights? Check that Buddy Coach may read them in the Health app."
-                : ""}
+                ? t.health.lastSynced(new Date(view.lastSync).toLocaleString(INTL_LOCALE[locale]))
+                : t.health.notSynced}
+              {source?.platform === "apple_health" ? t.health.appleHint : ""}
             </Text>
           </View>
           {needsWeight && (
             <>
-              <Text style={styles.body}>
-                Keep your weight up to date from a smart scale: allow Buddy Coach to read body
-                weight from {store}.
-              </Text>
+              <Text style={styles.body}>{t.health.needsWeight(store)}</Text>
               <Button
                 variant="secondary"
-                label="Allow weight"
+                label={t.health.allowWeight}
                 disabled={busy}
                 onPress={() => {
                   if (!sync) return;
@@ -191,16 +182,16 @@ export function HealthSyncCard({
               />
             </>
           )}
-          <Button label="Sync now" busy={busy} onPress={() => void runSync()} />
+          <Button label={t.health.syncNow} busy={busy} onPress={() => void runSync()} />
           <Button
             variant="secondary"
-            label={`Stop syncing ${store}`}
+            label={t.health.stop(store)}
             disabled={busy}
             onPress={() => {
               sync
                 ?.disconnect()
                 .then(() => {
-                  setMessage(null);
+                  setOutcome(null);
                   setView({ kind: "disconnected" });
                 })
                 .catch((e: unknown) => setError(errorMessage(e)));

@@ -1,20 +1,12 @@
 import type { Checkin, DailyTotals, NutritionTargets, TrainingLoad, WeightHistory } from "@buddy/api-client";
-import {
-  CHECKIN_RANGE_DAYS,
-  PROGRESS_RANGES,
-  daysBefore,
-  foodSummary,
-  localToday,
-  readinessSummary,
-  trainingSummary,
-  trendChangeText,
-} from "@buddy/shared";
+import { CHECKIN_RANGE_DAYS, PROGRESS_RANGES, daysBefore, localToday } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BarChart, LineChart } from "../components/Charts";
 import { PhotoStrip } from "../components/PhotoStrip";
 import { Card, ErrorBanner } from "../components/ui";
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
 
@@ -34,6 +26,7 @@ interface Data {
  * and again each time the tab is shown. */
 export function ProgressScreen({ active = true }: { active?: boolean }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [days, setDays] = useState<number>(PROGRESS_RANGES[0].days);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,9 +69,9 @@ export function ProgressScreen({ active = true }: { active?: boolean }) {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
     >
       <Text accessibilityRole="header" style={styles.title}>
-        Progress
+        {t.progress.title}
       </Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel="Period" style={styles.periods}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t.progress.period} style={styles.periods}>
         {PROGRESS_RANGES.map((r) => (
           <Pressable
             key={r.days}
@@ -87,18 +80,19 @@ export function ProgressScreen({ active = true }: { active?: boolean }) {
             onPress={() => setDays(r.days)}
             style={[styles.period, days === r.days && styles.periodOn]}
           >
-            <Text style={[styles.periodText, days === r.days && styles.periodTextOn]}>{r.label}</Text>
+            <Text style={[styles.periodText, days === r.days && styles.periodTextOn]}>{s.rangeLabel[r.days]}</Text>
           </Pressable>
         ))}
       </View>
       <ErrorBanner message={error} />
-      {!shown && !error && <Text style={styles.muted}>Loading…</Text>}
+      {!shown && !error && <Text style={styles.muted}>{t.loading}</Text>}
       {shown && <Sections data={shown} />}
     </ScrollView>
   );
 }
 
 function Sections({ data }: { data: Data }) {
+  const { t, s, num } = useI18n();
   const { weights, food, targets, load, checkins, days, range, checkinRange } = data;
   const trend = weights.trend.map((t) => ({ day: t.day, value: t.weight_kg }));
   const measured = weights.weights.map((w) => ({ day: w.day, value: w.weight_kg }));
@@ -108,22 +102,22 @@ function Sections({ data }: { data: Data }) {
     <>
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Weight
+          {t.progress.weight}
         </Text>
         {trend.length === 0 ? (
-          <Text style={styles.muted}>No weights in this period yet.</Text>
+          <Text style={styles.muted}>{t.progress.noWeights}</Text>
         ) : (
           <>
             <Text style={styles.body}>
-              {trendChangeText(weights.trend) ?? `Latest ${weights.weights[0]?.weight_kg.toFixed(1)} kg`}
+              {s.trendChangeText(weights.trend) ?? t.progress.latest(num(weights.weights[0]?.weight_kg.toFixed(1) ?? ""))}
             </Text>
             <LineChart
-              label={`Weight over ${days} days, 7-day trend and measurements`}
+              label={t.progress.weightChart(days)}
               days={range}
-              unit="kg"
+              unit={t.units.kg}
               series={[
-                { name: "Measured", points: measured, tone: "muted" },
-                { name: "7-day trend", points: trend, tone: "accent" },
+                { name: t.progress.measured, points: measured, tone: "muted" },
+                { name: t.progress.trend, points: trend, tone: "accent" },
               ]}
             />
           </>
@@ -132,17 +126,17 @@ function Sections({ data }: { data: Data }) {
 
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Food
+          {t.progress.food}
         </Text>
         {food.length === 0 ? (
-          <Text style={styles.muted}>No food logged in this period yet.</Text>
+          <Text style={styles.muted}>{t.progress.noFood}</Text>
         ) : (
           <>
-            <Text style={styles.body}>{foodSummary(food, targets)}</Text>
+            <Text style={styles.body}>{s.foodSummary(food, targets)}</Text>
             <BarChart
-              label={`Calories per logged day over ${days} days${targets ? `, line at today's target of ${targets.kcal} kcal` : ""}`}
+              label={t.progress.kcalChart(days, targets?.kcal ?? null)}
               days={range}
-              unit="kcal"
+              unit={t.units.kcal}
               target={targets?.kcal ?? null}
               points={food.map((d) => ({ day: d.day, value: d.kcal }))}
             />
@@ -152,20 +146,20 @@ function Sections({ data }: { data: Data }) {
 
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Training
+          {t.progress.training}
         </Text>
         {load.days.every((d) => d.load === 0) ? (
-          <Text style={styles.muted}>No workouts in this period yet.</Text>
+          <Text style={styles.muted}>{t.progress.noWorkouts}</Text>
         ) : (
           <>
-            <Text style={styles.body}>{trainingSummary(load.today, load.acute_chronic_ratio)}</Text>
+            <Text style={styles.body}>{s.trainingSummary(load.today, load.acute_chronic_ratio)}</Text>
             <LineChart
-              label={`Fitness and fatigue over ${days} days`}
+              label={t.progress.loadChart(days)}
               days={range}
               unit=""
               series={[
-                { name: "Fitness", points: load.days.map((d) => ({ day: d.day, value: d.fitness })), tone: "accent" },
-                { name: "Fatigue", points: load.days.map((d) => ({ day: d.day, value: d.fatigue })), tone: "warm" },
+                { name: t.progress.fitness, points: load.days.map((d) => ({ day: d.day, value: d.fitness })), tone: "accent" },
+                { name: t.progress.fatigue, points: load.days.map((d) => ({ day: d.day, value: d.fatigue })), tone: "warm" },
               ]}
             />
           </>
@@ -174,27 +168,32 @@ function Sections({ data }: { data: Data }) {
 
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Progress photos
+          {t.progress.photos}
         </Text>
-        <PhotoStrip kind="progress" title="Progress photos" one="progress photo" range={{ from: range[0], to: range[1] }} />
-        <Text style={styles.muted}>Only you can see them. They are stored without location data.</Text>
+        <PhotoStrip
+          kind="progress"
+          title={t.progress.photos}
+          one={t.progress.onePhoto}
+          range={{ from: range[0], to: range[1] }}
+        />
+        <Text style={styles.muted}>{t.progress.photosNote}</Text>
       </Card>
 
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Readiness
+          {t.progress.readiness}
         </Text>
         {readiness.length === 0 ? (
-          <Text style={styles.muted}>No check-ins in this period yet.</Text>
+          <Text style={styles.muted}>{t.progress.noCheckins}</Text>
         ) : (
           <>
-            <Text style={styles.body}>{readinessSummary(readiness.map((r) => r.value), days)}</Text>
+            <Text style={styles.body}>{s.readinessSummary(readiness.map((r) => r.value), days)}</Text>
             <LineChart
-              label="Readiness score per check-in, 0 to 100"
+              label={t.progress.readinessChart}
               days={checkinRange}
               unit=""
               values={[0, 100]}
-              series={[{ name: "Readiness", points: readiness, tone: "accent" }]}
+              series={[{ name: t.progress.readiness, points: readiness, tone: "accent" }]}
             />
           </>
         )}

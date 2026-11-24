@@ -1,17 +1,5 @@
 import type { Checkin, CheckinIn, Readiness } from "@buddy/api-client";
-import {
-  CHECKIN_QUESTIONS,
-  PAIN_LABEL,
-  PAIN_NOTE,
-  READINESS_NOTE,
-  READINESS_TEXT,
-  SCALE_VALUES,
-  SLEEP_HOURS_ERROR,
-  limitingText,
-  parseSleepHours,
-  scaleOptionLabel,
-  type CheckinScale,
-} from "@buddy/shared";
+import { SCALE_VALUES, parseSleepHours, type CheckinScale } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -24,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
 import { Button, Card, ErrorBanner } from "./ui";
@@ -39,6 +28,7 @@ type Load = { state: "loading" } | { state: "failed"; error: string } | { state:
 /** Morning check-in: three taps, then today's readiness. A new `reloadKey` reloads it. */
 export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [today, setToday] = useState<Checkin | null>(null);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [editing, setEditing] = useState(false);
@@ -69,13 +59,13 @@ export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
 
   let body;
   if (load.state === "loading") {
-    body = <Text style={styles.muted}>Loading…</Text>;
+    body = <Text style={styles.muted}>{t.loading}</Text>;
   } else if (load.state === "failed") {
     // Never show an empty form here: saving it would overwrite a check-in we could not load.
     body = (
       <>
         <ErrorBanner message={load.error} />
-        <Button variant="secondary" label="Try again" onPress={() => void fetchToday()} />
+        <Button variant="secondary" label={t.tryAgain} onPress={() => void fetchToday()} />
       </>
     );
   } else if (today && !editing) {
@@ -91,7 +81,7 @@ export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
             request.current++; // a load started before the save must not undo it
             setToday(saved);
             setEditing(false);
-            announce(`Readiness ${saved.readiness.score} of 100. ${READINESS_TEXT[saved.readiness.level]}`);
+            announce(t.checkin.announce(saved.readiness.score, s.readinessText[saved.readiness.level]));
           }}
           onError={(message) => {
             setSaveError(message);
@@ -105,7 +95,7 @@ export function CheckinCard({ reloadKey = 0 }: { reloadKey?: number }) {
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.title}>
-        Morning check-in
+        {t.checkin.title}
       </Text>
       {body}
     </Card>
@@ -118,9 +108,10 @@ function announce(text: string) {
 }
 
 function ReadinessView({ checkin, onEdit }: { checkin: Checkin; onEdit: () => void }) {
+  const { t, s } = useI18n();
   const { score, level, limiting_factors } = checkin.readiness;
   const tone = LEVEL_COLORS[level];
-  const limiting = limitingText(limiting_factors);
+  const limiting = s.limitingText(limiting_factors);
   return (
     <View style={styles.gap}>
       <View
@@ -129,13 +120,13 @@ function ReadinessView({ checkin, onEdit }: { checkin: Checkin; onEdit: () => vo
         testID="readiness"
         style={[styles.traffic, { backgroundColor: tone.background }]}
       >
-        <Text style={[styles.score, { color: tone.text }]}>Readiness {score}/100</Text>
-        <Text style={{ color: tone.text }}>{READINESS_TEXT[level]}</Text>
+        <Text style={[styles.score, { color: tone.text }]}>{t.checkin.readiness(score)}</Text>
+        <Text style={{ color: tone.text }}>{s.readinessText[level]}</Text>
       </View>
       {limiting && <Text style={styles.muted}>{limiting}</Text>}
-      {checkin.pain && <Text style={styles.body}>{PAIN_NOTE}</Text>}
-      <Text style={styles.small}>{READINESS_NOTE}</Text>
-      <Button variant="secondary" label="Change today's answers" onPress={onEdit} />
+      {checkin.pain && <Text style={styles.body}>{s.painNote}</Text>}
+      <Text style={styles.small}>{s.readinessNote}</Text>
+      <Button variant="secondary" label={t.checkin.change} onPress={onEdit} />
     </View>
   );
 }
@@ -152,6 +143,7 @@ function CheckinForm({
   onError: (message: string) => void;
 }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [answers, setAnswers] = useState<Partial<Record<CheckinScale, number>>>(() =>
     initial
       ? { sleep_quality: initial.sleep_quality, soreness: initial.soreness, mood: initial.mood }
@@ -163,7 +155,7 @@ function CheckinForm({
 
   const hours = parseSleepHours(sleepHours);
   const complete =
-    CHECKIN_QUESTIONS.every((q) => answers[q.key] !== undefined) && hours !== "invalid";
+    s.checkinQuestions.every((q) => answers[q.key] !== undefined) && hours !== "invalid";
 
   async function submit() {
     if (hours === "invalid" || !complete || busy) return;
@@ -191,7 +183,7 @@ function CheckinForm({
 
   return (
     <View style={styles.gap}>
-      {CHECKIN_QUESTIONS.map((q) => (
+      {s.checkinQuestions.map((q) => (
         <View key={q.key} style={styles.question}>
           <Text style={styles.label} importantForAccessibility="no" accessible={false}>
             {q.question}
@@ -209,7 +201,7 @@ function CheckinForm({
                   key={value}
                   accessibilityRole="radio"
                   // iOS has no radio groups, so every option names its question.
-                  accessibilityLabel={`${q.question} ${scaleOptionLabel(value, q)}`}
+                  accessibilityLabel={`${q.question} ${s.scaleOptionLabel(value, q)}`}
                   accessibilityState={{ checked: selected }}
                   onPress={() => setAnswers((a) => ({ ...a, [q.key]: value }))}
                   style={[styles.option, selected && styles.selected]}
@@ -226,25 +218,25 @@ function CheckinForm({
         </View>
       ))}
       <View style={styles.question}>
-        <Text style={styles.label}>Hours of sleep (optional)</Text>
+        <Text style={styles.label}>{t.checkin.sleepHours}</Text>
         <TextInput
-          accessibilityLabel="Hours of sleep (optional)"
+          accessibilityLabel={t.checkin.sleepHours}
           keyboardType="decimal-pad"
           value={sleepHours}
           onChangeText={setSleepHours}
           style={styles.input}
         />
-        {hours === "invalid" && <Text style={styles.error}>{SLEEP_HOURS_ERROR}</Text>}
+        {hours === "invalid" && <Text style={styles.error}>{s.sleepHoursError}</Text>}
       </View>
       {/* The whole row is one switch: tapping the text toggles it, and it is read once. */}
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={PAIN_LABEL}
+        accessibilityLabel={s.painLabel}
         accessibilityState={{ checked: pain }}
         onPress={() => setPain((p) => !p)}
         style={styles.row}
       >
-        <Text style={styles.rowLabel}>{PAIN_LABEL}</Text>
+        <Text style={styles.rowLabel}>{s.painLabel}</Text>
         <Switch
           accessible={false}
           importantForAccessibility="no"
@@ -254,7 +246,7 @@ function CheckinForm({
         />
       </Pressable>
       <Button
-        label="Save check-in"
+        label={t.checkin.save}
         onPress={() => void submit()}
         disabled={!complete}
         busy={busy}

@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, ErrorBanner, Field, InfoBanner } from "../components/ui";
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
 
@@ -14,6 +15,7 @@ export const MAX_PASSWORD_LENGTH = 128;
 export function LoginScreen() {
   const { login, register, expired } = useSession();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,11 +50,11 @@ export function LoginScreen() {
           Buddy Coach
         </Text>
         <Text style={styles.subtitle}>
-          {registering ? "Create your account" : "Welcome back"}
+          {registering ? t.login.create : t.login.welcome}
         </Text>
-        <InfoBanner message={expired ? "Your session expired. Please log in again." : null} />
+        <InfoBanner message={expired ? t.login.expired : null} />
         <Field
-          label="Email"
+          label={t.login.email}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
@@ -61,11 +63,11 @@ export function LoginScreen() {
           onChangeText={setEmail}
         />
         <Field
-          label="Password"
+          label={t.login.password}
           secureTextEntry
           maxLength={MAX_PASSWORD_LENGTH}
           accessibilityHint={
-            registering ? `At least ${MIN_PASSWORD_LENGTH} characters.` : undefined
+            registering ? t.login.passwordHint(MIN_PASSWORD_LENGTH) : undefined
           }
           autoComplete={registering ? "new-password" : "current-password"}
           textContentType={registering ? "newPassword" : "password"}
@@ -73,18 +75,18 @@ export function LoginScreen() {
           onChangeText={setPassword}
         />
         {passwordTooShort && password.length > 0 && (
-          <Text style={styles.hint}>At least {MIN_PASSWORD_LENGTH} characters.</Text>
+          <Text style={styles.hint}>{t.login.passwordHint(MIN_PASSWORD_LENGTH)}</Text>
         )}
         <ErrorBanner message={error} />
         <Button
-          label={registering ? "Create account" : "Log in"}
+          label={registering ? t.login.createButton : t.login.logIn}
           onPress={() => void submit()}
           disabled={!canSubmit}
           busy={busy}
         />
         <Button
           variant="secondary"
-          label={registering ? "I already have an account" : "Create an account"}
+          label={registering ? t.login.haveAccount : t.login.newAccount}
           onPress={() => {
             setError(null);
             setMode(registering ? "login" : "register");

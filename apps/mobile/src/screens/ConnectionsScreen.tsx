@@ -4,22 +4,22 @@ import type {
   WeightSourceSummary,
   WorkoutSourceSummary,
 } from "@buddy/api-client";
-import { WEIGHT_SOURCE_LABEL, syncText } from "@buddy/shared";
+import { INTL_LOCALE, type SharedText } from "@buddy/shared";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, ErrorBanner, InfoBanner } from "../components/ui";
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
 
-const PROVIDER: Record<IntegrationProvider, { name: string; what: string; data: "weight" | "workout" }> = {
-  withings: { name: "Withings", what: "weight from Withings smart scales", data: "weight" },
-  whoop: { name: "WHOOP", what: "workouts from WHOOP", data: "workout" },
+const PROVIDER: Record<IntegrationProvider, { name: string; data: "weight" | "workout" }> = {
+  withings: { name: "Withings", data: "weight" },
+  whoop: { name: "WHOOP", data: "workout" },
 };
 
-const SOURCE_LABEL: Record<WorkoutSourceSummary["source"], string> = {
-  ...WEIGHT_SOURCE_LABEL,
-  fit_file: "Watch files",
+/** Brand names; the rest comes in the user's language. */
+const BRANDS: Omit<Record<WorkoutSourceSummary["source"], string>, keyof SharedText["weightSourceLabel"] | "fit_file"> = {
   garmin: "Garmin",
   fitbit: "Fitbit",
   whoop: "WHOOP",
@@ -31,12 +31,18 @@ const SOURCE_LABEL: Record<WorkoutSourceSummary["source"], string> = {
   strava: "Strava",
 };
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-
 /** Where the data comes from: the phone's health app, connected accounts, files and typed-in
  * entries, with sync and disconnect for accounts. Loads each time the tab is shown. */
 export function ConnectionsScreen({ active = true }: { active?: boolean }) {
   const { api } = useSession();
+  const { locale, t, s } = useI18n();
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(INTL_LOCALE[locale], { dateStyle: "medium", timeStyle: "short" });
+  const sourceLabel: Record<WorkoutSourceSummary["source"], string> = {
+    ...s.weightSourceLabel,
+    ...BRANDS,
+    fit_file: t.connections.watchFiles,
+  };
   const [workouts, setWorkouts] = useState<WorkoutSourceSummary[]>([]);
   const [weights, setWeights] = useState<WeightSourceSummary[]>([]);
   const [accounts, setAccounts] = useState<ProviderStatus[]>([]);
@@ -69,7 +75,7 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
     setError(null);
     setMessage(null);
     try {
-      if (action === "sync") setMessage(`${syncText(await api.syncIntegration(provider), PROVIDER[provider].data)}.`);
+      if (action === "sync") setMessage(`${s.syncText(await api.syncIntegration(provider), PROVIDER[provider].data)}.`);
       else await api.disconnectIntegration(provider);
       await load();
     } catch (e) {
@@ -80,14 +86,22 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
   }
 
   const disconnect = (provider: IntegrationProvider) =>
-    Alert.alert(`Disconnect ${PROVIDER[provider].name}?`, "Data already brought in stays.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Disconnect", style: "destructive", onPress: () => void act(provider, "disconnect") },
+    Alert.alert(t.connections.confirmDisconnect(PROVIDER[provider].name), t.connections.dataStays, [
+      { text: t.cancel, style: "cancel" },
+      { text: t.connections.disconnectButton, style: "destructive", onPress: () => void act(provider, "disconnect") },
     ]);
 
   const sources = [
-    ...workouts.map((w) => ({ key: `w-${w.source}`, label: SOURCE_LABEL[w.source], text: `${w.workouts} ${w.workouts === 1 ? "workout" : "workouts"}, latest ${when(w.last_at)}` })),
-    ...weights.map((w) => ({ key: `k-${w.source}`, label: WEIGHT_SOURCE_LABEL[w.source], text: `${w.weights} ${w.weights === 1 ? "weight" : "weights"}, latest ${when(w.last_at)}` })),
+    ...workouts.map((w) => ({
+      key: `w-${w.source}`,
+      label: sourceLabel[w.source],
+      text: t.connections.workouts(w.workouts, when(w.last_at)),
+    })),
+    ...weights.map((w) => ({
+      key: `k-${w.source}`,
+      label: s.weightSourceLabel[w.source],
+      text: t.connections.weights(w.weights, when(w.last_at)),
+    })),
   ];
 
   return (
@@ -96,44 +110,40 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
     >
       <Text accessibilityRole="header" style={styles.title}>
-        Connections
+        {t.connections.title}
       </Text>
       <ErrorBanner message={error} />
       <InfoBanner message={message} />
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Accounts
+          {t.connections.accounts}
         </Text>
-        <Text style={styles.muted}>
-          Connecting an account opens its sign-in page, so it is done once in the Buddy Coach web app in a
-          browser (Connections → Accounts). Here you can sync or disconnect it. If that app already sends the same data
-          to Apple Health or Health Connect, use one of the two, or everything shows up twice.
-        </Text>
+        <Text style={styles.muted}>{t.connections.accountsText}</Text>
         {accounts.map((a) => (
           <View key={a.provider} style={styles.account}>
             <Text style={styles.body}>
-              <Text style={styles.strong}>{PROVIDER[a.provider].name}</Text> · {PROVIDER[a.provider].what}
+              <Text style={styles.strong}>{PROVIDER[a.provider].name}</Text> · {t.connections.what[a.provider]}
             </Text>
             <Text style={styles.muted}>
               {a.connected
                 ? a.last_sync_at
-                  ? `Connected, last sync ${when(a.last_sync_at)}`
-                  : "Connected"
+                  ? t.connections.connectedSynced(when(a.last_sync_at))
+                  : t.connections.connected
                 : a.available
-                  ? "Not connected"
-                  : "Not set up on this server yet"}
+                  ? t.connections.notConnected
+                  : t.connections.notSetUp}
             </Text>
             {a.connected && (
               <>
                 <Button
-                  label={`Sync ${PROVIDER[a.provider].name} now`}
+                  label={t.connections.sync(PROVIDER[a.provider].name)}
                   busy={busy === a.provider}
                   disabled={busy !== null}
                   onPress={() => void act(a.provider, "sync")}
                 />
                 <Button
                   variant="secondary"
-                  label={`Disconnect ${PROVIDER[a.provider].name}`}
+                  label={t.connections.disconnect(PROVIDER[a.provider].name)}
                   disabled={busy !== null}
                   onPress={() => disconnect(a.provider)}
                 />
@@ -144,20 +154,15 @@ export function ConnectionsScreen({ active = true }: { active?: boolean }) {
       </Card>
       <Card>
         <Text accessibilityRole="header" style={styles.heading}>
-          Data so far
+          {t.connections.dataSoFar}
         </Text>
-        {sources.length === 0 && (
-          <Text style={styles.muted}>Nothing yet. Connect your watch or scale on Today, or an account above.</Text>
-        )}
+        {sources.length === 0 && <Text style={styles.muted}>{t.connections.nothingYet}</Text>}
         {sources.map((s) => (
           <Text key={s.key} style={styles.body}>
             <Text style={styles.strong}>{s.label}</Text> <Text style={styles.muted}>· {s.text}</Text>
           </Text>
         ))}
-        <Text style={styles.muted}>
-          Watches and smart scales sync through the phone's health app on Today. Watch files (.fit) are uploaded in
-          the web app.
-        </Text>
+        <Text style={styles.muted}>{t.connections.footer}</Text>
       </Card>
     </ScrollView>
   );

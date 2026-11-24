@@ -1,8 +1,9 @@
 import type { NutritionTargets } from "@buddy/api-client";
-import { ENERGY_GOAL_TEXT, MACROS, NO_TARGETS_TEXT } from "@buddy/shared";
+import { INTL_LOCALE, MACROS } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, radius, space } from "../theme";
 import { Button, Card, ErrorBanner } from "./ui";
@@ -15,6 +16,7 @@ type Load =
 /** Today's calorie and macro targets, with the reasons behind them. A new `reloadKey` reloads it. */
 export function TargetsCard({ reloadKey = 0 }: { reloadKey?: number }) {
   const { api } = useSession();
+  const { locale, t, s, num } = useI18n();
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const request = useRef(0);
 
@@ -36,33 +38,40 @@ export function TargetsCard({ reloadKey = 0 }: { reloadKey?: number }) {
 
   let body;
   if (load.state === "loading") {
-    body = <Text style={styles.muted}>Loading…</Text>;
+    body = <Text style={styles.muted}>{t.loading}</Text>;
   } else if (load.state === "failed") {
     body = (
       <>
         <ErrorBanner message={load.error} />
-        <Button variant="secondary" label="Try again" onPress={() => void fetchTargets()} />
+        <Button variant="secondary" label={t.tryAgain} onPress={() => void fetchTargets()} />
       </>
     );
   } else if (!load.targets) {
-    body = <Text style={styles.muted}>{NO_TARGETS_TEXT}</Text>;
+    body = <Text style={styles.muted}>{s.noTargets}</Text>;
   } else {
-    const t = load.targets;
+    const targets = load.targets;
     body = (
       <>
         <Text style={styles.kcal}>
-          {t.kcal.toLocaleString("en-US")} <Text style={styles.unit}>kcal</Text>
+          {targets.kcal.toLocaleString(INTL_LOCALE[locale])} <Text style={styles.unit}>{t.units.kcal}</Text>
         </Text>
-        <Text style={styles.muted}>{ENERGY_GOAL_TEXT[t.goal]}</Text>
+        <Text style={styles.muted}>{s.energyGoalText[targets.goal]}</Text>
         <View style={styles.macros}>
-          {MACROS.map((m) => (
-            <View key={m.key} style={styles.macro} accessible accessibilityLabel={`${m.label} ${t[m.key]} grams`}>
-              <Text style={styles.muted}>{m.label}</Text>
-              <Text style={styles.macroValue}>{t[m.key]} g</Text>
+          {MACROS.map(({ key }) => (
+            <View
+              key={key}
+              style={styles.macro}
+              accessible
+              accessibilityLabel={t.targets.grams(s.macroLabels[key], num(targets[key]))}
+            >
+              <Text style={styles.muted}>{s.macroLabels[key]}</Text>
+              <Text style={styles.macroValue}>
+                {num(targets[key])} {t.units.g}
+              </Text>
             </View>
           ))}
         </View>
-        {t.reasons.map((r) => (
+        {targets.reasons.map((r) => (
           <Text key={r} style={styles.muted}>
             {r}
           </Text>
@@ -74,7 +83,7 @@ export function TargetsCard({ reloadKey = 0 }: { reloadKey?: number }) {
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.title}>
-        Today's food targets
+        {t.targets.title}
       </Text>
       {body}
     </Card>

@@ -2,7 +2,6 @@ import type { MealDay, MealEntry, NutritionTargets } from "@buddy/api-client";
 import {
   MACROS,
   MEAL_LABEL,
-  OFF_ATTRIBUTION,
   daysBefore,
   foodByBarcode,
   mealForHour,
@@ -18,6 +17,7 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } 
 import { BarcodeScanner } from "../components/BarcodeScanner";
 import { PhotoStrip } from "../components/PhotoStrip";
 import { Button, Card, ErrorBanner, Field } from "../components/ui";
+import { LocalizedError, useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
 
@@ -28,6 +28,7 @@ const MEALS = Object.keys(MEAL_LABEL) as Meal[];
  * from Open Food Facts (search or barcode scan) or typed in. Loads when first shown. */
 export function FoodScreen({ active = true }: { active?: boolean }) {
   const { api } = useSession();
+  const { t, s, num } = useI18n();
   const [picked, setPicked] = useState<string | null>(null); // null = today on the server
   const [day, setDay] = useState<MealDay | null>(null);
   const [targets, setTargets] = useState<NutritionTargets | null>(null);
@@ -73,10 +74,10 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
     });
 
   function remove(entry: MealEntry) {
-    Alert.alert(`Delete ${entry.name}?`, undefined, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t.food.confirmDelete(entry.name), undefined, [
+      { text: t.cancel, style: "cancel" },
       {
-        text: "Delete",
+        text: t.delete,
         style: "destructive",
         onPress: () =>
           void api.deleteMeal(entry.id).then(load, (e: unknown) => setError(errorMessage(e))),
@@ -91,14 +92,14 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
     >
       <Text accessibilityRole="header" style={styles.title}>
-        Food
+        {t.food.title}
       </Text>
       <ErrorBanner message={error} />
       {day && (
         <View style={styles.dayRow}>
-          <Button variant="secondary" label="Previous day" onPress={() => page(-1)} />
-          <Text style={styles.dayText}>{isToday ? "Today" : day.day}</Text>
-          <Button variant="secondary" label="Next day" disabled={isToday} onPress={() => page(1)} />
+          <Button variant="secondary" label={t.food.previous} onPress={() => page(-1)} />
+          <Text style={styles.dayText}>{isToday ? t.food.today : day.day}</Text>
+          <Button variant="secondary" label={t.food.next} disabled={isToday} onPress={() => page(1)} />
         </View>
       )}
       {day && (
@@ -110,36 +111,45 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
             return (
               <View key={meal} style={styles.meal}>
                 <Text accessibilityRole="header" style={styles.heading}>
-                  {MEAL_LABEL[meal]}
+                  {s.mealLabel[meal]}
                 </Text>
                 {entries.map((e) => (
                   <View key={e.id} style={styles.entry}>
                     <Text style={styles.body}>
-                      {e.name} <Text style={styles.muted}>· {e.grams} g · {Math.round(e.kcal)} kcal</Text>
+                      {e.name}{" "}
+                      <Text style={styles.muted}>
+                        · {num(e.grams)} {t.units.g} · {Math.round(e.kcal)} {t.units.kcal}
+                      </Text>
                     </Text>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Delete ${e.name}`}
+                      accessibilityLabel={t.food.deleteEntry(e.name)}
                       onPress={() => remove(e)}
                       style={styles.linkButton}
                     >
-                      <Text style={styles.link}>Delete</Text>
+                      <Text style={styles.link}>{t.delete}</Text>
                     </Pressable>
                   </View>
                 ))}
               </View>
             );
           })}
-          {day.entries.length === 0 && <Text style={styles.muted}>Nothing logged for this day yet.</Text>}
+          {day.entries.length === 0 && <Text style={styles.muted}>{t.food.nothing}</Text>}
         </Card>
       )}
       {day && (
         <Card>
           <Text accessibilityRole="header" style={styles.heading}>
-            Meal photos
+            {t.food.mealPhotos}
           </Text>
-          <PhotoStrip kind="meal" title="Meal photos" one="meal photo" range={{ from: day.day, to: day.day }} canAdd={isToday} />
-          <Text style={styles.muted}>Meal photos are removed after 90 days; what you ate stays.</Text>
+          <PhotoStrip
+            kind="meal"
+            title={t.food.mealPhotos}
+            one={t.food.oneMealPhoto}
+            range={{ from: day.day, to: day.day }}
+            canAdd={isToday}
+          />
+          <Text style={styles.muted}>{t.food.photosNote}</Text>
         </Card>
       )}
       {day && isToday && <AddFood onAdded={load} />}
@@ -148,13 +158,17 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
 }
 
 function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | null }) {
-  const rows = [{ key: "kcal" as const, label: "Calories", unit: "kcal" }, ...MACROS.map((m) => ({ ...m, unit: "g" }))];
+  const { t, s } = useI18n();
+  const rows = [
+    { key: "kcal" as const, label: t.food.calories, unit: t.units.kcal },
+    ...MACROS.map(({ key }) => ({ key, label: s.macroLabels[key], unit: t.units.g })),
+  ];
   return (
     <View style={styles.totals}>
       {rows.map((r) => {
         const eaten = Math.round(day.totals[r.key]);
         const target = targets?.[r.key];
-        const text = target ? `${eaten} of ${target} ${r.unit}` : `${eaten} ${r.unit}`;
+        const text = target ? t.food.ofTarget(eaten, target, r.unit) : `${eaten} ${r.unit}`;
         return (
           <View key={r.key} accessible accessibilityLabel={`${r.label}: ${text}`} style={styles.total}>
             <View style={styles.totalRow}>
@@ -175,6 +189,7 @@ function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | nu
 
 function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
   const { api } = useSession();
+  const { t, s, num } = useI18n();
   const [meal, setMeal] = useState<Meal>(() => mealForHour(new Date().getHours()));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Food[] | null>(null);
@@ -212,7 +227,7 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
       const found =
         (await foodByBarcode(code, fetch)) ??
         (code.length === 13 && code.startsWith("0") ? await foodByBarcode(code.slice(1), fetch) : null);
-      if (!found) throw new Error("No food with this barcode in Open Food Facts. Search by name or type it in.");
+      if (!found) throw new LocalizedError(t.food.noBarcode);
       setResults(null);
       setFood(found);
     });
@@ -220,7 +235,7 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
 
   const add = () => {
     const g = parseGrams(grams);
-    if (!food || g === null) return setError("Enter the grams eaten (1-5000).");
+    if (!food || g === null) return setError(t.food.gramsError);
     void run(async () => {
       await api.logMeal({
         meal,
@@ -243,9 +258,9 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.heading}>
-        Add food
+        {t.food.add}
       </Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel="Meal" style={styles.meals}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t.food.meal} style={styles.meals}>
         {MEALS.map((m) => (
           <Pressable
             key={m}
@@ -254,7 +269,7 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
             onPress={() => setMeal(m)}
             style={[styles.chip, m === meal && styles.chipOn]}
           >
-            <Text style={[styles.chipText, m === meal && styles.chipTextOn]}>{MEAL_LABEL[m]}</Text>
+            <Text style={[styles.chipText, m === meal && styles.chipTextOn]}>{s.mealLabel[m]}</Text>
           </Pressable>
         ))}
       </View>
@@ -271,36 +286,36 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
       ) : (
         <>
           <Field
-            label="Search food"
-            placeholder="e.g. oat flakes"
+            label={t.food.search}
+            placeholder={t.food.placeholder}
             value={query}
             returnKeyType="search"
             onChangeText={setQuery}
             onSubmitEditing={search}
           />
-          <Button label="Search" busy={busy} disabled={!query.trim()} onPress={search} />
-          <Button variant="secondary" label="Scan a barcode" disabled={busy} onPress={() => setScanning(true)} />
+          <Button label={t.food.searchButton} busy={busy} disabled={!query.trim()} onPress={search} />
+          <Button variant="secondary" label={t.food.scan} disabled={busy} onPress={() => setScanning(true)} />
           {results && results.length === 0 && (
-            <Text style={styles.muted}>No match. Try other words or type it in.</Text>
+            <Text style={styles.muted}>{t.food.noMatch}</Text>
           )}
           {results?.map((f) => (
             <View key={f.barcode} style={styles.entry}>
               <Text style={styles.body}>
                 {f.name}{" "}
                 <Text style={styles.muted}>
-                  {f.brand ? `· ${f.brand} ` : ""}· {Math.round(f.per100g.kcal)} kcal / 100 g
+                  {f.brand ? `· ${f.brand} ` : ""}· {Math.round(f.per100g.kcal)} {t.food.per100g}
                 </Text>
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Choose ${f.name}`}
+                accessibilityLabel={t.food.chooseEntry(f.name)}
                 onPress={() => {
                   setFood(f);
                   setResults(null);
                 }}
                 style={styles.linkButton}
               >
-                <Text style={styles.link}>Choose</Text>
+                <Text style={styles.link}>{t.food.choose}</Text>
               </Pressable>
             </View>
           ))}
@@ -310,23 +325,27 @@ function AddFood({ onAdded }: { onAdded: () => Promise<void> }) {
                 <Text style={styles.strong}>{food.name}</Text>
                 {food.brand ? <Text style={styles.muted}> · {food.brand}</Text> : null}
               </Text>
-              <Field label="Grams eaten" keyboardType="decimal-pad" value={grams} onChangeText={setGrams} />
+              <Field label={t.food.gramsEaten} keyboardType="decimal-pad" value={grams} onChangeText={setGrams} />
               {preview && (
                 <Text style={styles.muted}>
-                  {Math.round(preview.kcal)} kcal · protein {preview.protein_g} g · carbs {preview.carbs_g} g · fat{" "}
-                  {preview.fat_g} g
+                  {t.food.preview(
+                    Math.round(preview.kcal),
+                    num(preview.protein_g),
+                    num(preview.carbs_g),
+                    num(preview.fat_g),
+                  )}
                 </Text>
               )}
               <Button
-                label={`Add to ${MEAL_LABEL[meal].toLowerCase()}`}
+                label={t.food.addTo(s.mealLabel[meal])}
                 busy={busy}
                 disabled={!preview}
                 onPress={add}
               />
             </View>
           )}
-          <Button variant="secondary" label="Type in a food instead" onPress={() => setManual(true)} />
-          <Text style={styles.muted}>{OFF_ATTRIBUTION}</Text>
+          <Button variant="secondary" label={t.food.typeInstead} onPress={() => setManual(true)} />
+          <Text style={styles.muted}>{s.offAttribution}</Text>
           <BarcodeScanner visible={scanning} onScanned={scanned} onClose={() => setScanning(false)} />
         </>
       )}
@@ -344,6 +363,7 @@ function ManualFood({
   onCancel: () => void;
 }) {
   const { api } = useSession();
+  const { t, s } = useI18n();
   const [fields, setFields] = useState({ name: "", grams: "", kcal: "", protein_g: "", carbs_g: "", fat_g: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -357,7 +377,7 @@ function ManualFood({
       fat_g: parseAmount(fields.fat_g || "0"),
     };
     if (!fields.name.trim() || grams === null || Object.values(values).some((v) => v === null)) {
-      return setError("Enter a name, the grams (1-5000) and the calories; protein, carbs and fat are optional.");
+      return setError(t.food.manualError);
     }
     setBusy(true);
     setError(null);
@@ -384,15 +404,15 @@ function ManualFood({
   return (
     <View style={styles.portion}>
       <ErrorBanner message={error} />
-      {field("name", "Food")}
-      {field("grams", "Grams eaten")}
-      <Text style={styles.muted}>For the portion eaten:</Text>
-      {field("kcal", "Calories (kcal)")}
-      {field("protein_g", "Protein (g)")}
-      {field("carbs_g", "Carbs (g)")}
-      {field("fat_g", "Fat (g)")}
-      <Button label={`Add to ${MEAL_LABEL[meal].toLowerCase()}`} busy={busy} onPress={() => void submit()} />
-      <Button variant="secondary" label="Back to search" onPress={onCancel} />
+      {field("name", t.food.foodName)}
+      {field("grams", t.food.gramsEaten)}
+      <Text style={styles.muted}>{t.food.forPortion}</Text>
+      {field("kcal", t.food.kcalField)}
+      {field("protein_g", t.food.proteinField)}
+      {field("carbs_g", t.food.carbsField)}
+      {field("fat_g", t.food.fatField)}
+      <Button label={t.food.addTo(s.mealLabel[meal])} busy={busy} onPress={() => void submit()} />
+      <Button variant="secondary" label={t.food.back} onPress={onCancel} />
     </View>
   );
 }

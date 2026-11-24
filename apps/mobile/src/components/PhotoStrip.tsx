@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { dataUri, pickPhoto, type PhotoSource } from "../lib/photos";
 import { colors, font, radius, space } from "../theme";
@@ -11,6 +12,7 @@ import { Button, ErrorBanner } from "./ui";
 /** A private photo: downloaded with the session and shown from memory, never by URL. */
 function PhotoImage({ photo, size, label }: { photo: Photo; size: "full" | "thumb"; label: string }) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [uri, setUri] = useState<string | "failed" | null>(null);
   useEffect(() => {
     let active = true;
@@ -28,10 +30,10 @@ function PhotoImage({ photo, size, label }: { photo: Photo; size: "full" | "thum
   const style = size === "thumb" ? styles.thumb : styles.full;
   if (uri && uri !== "failed")
     return <Image source={{ uri }} style={style} resizeMode={size === "thumb" ? "cover" : "contain"} accessible accessibilityLabel={label} />;
-  const state = uri === "failed" ? "could not be loaded" : "loading";
+  const state = uri === "failed" ? t.photos.failedState : t.photos.loadingState;
   return (
     <View style={[style, styles.placeholder]} accessible accessibilityLabel={`${label} (${state})`}>
-      {size === "full" && <Text style={styles.state}>{uri === "failed" ? "The photo could not be loaded." : "Loading…"}</Text>}
+      {size === "full" && <Text style={styles.state}>{uri === "failed" ? t.photos.failed : t.loading}</Text>}
     </View>
   );
 }
@@ -56,6 +58,7 @@ export function PhotoStrip({
   reloadKey?: number;
 }) {
   const { api } = useSession();
+  const { t } = useI18n();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState<Photo | null>(null);
   const [busy, setBusy] = useState<PhotoSource | "delete" | null>(null);
@@ -104,10 +107,10 @@ export function PhotoStrip({
     });
 
   const remove = (photo: Photo) =>
-    Alert.alert("Delete this photo?", undefined, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t.photos.confirmDelete, undefined, [
+      { text: t.cancel, style: "cancel" },
       {
-        text: "Delete",
+        text: t.delete,
         style: "destructive",
         onPress: () =>
           void change("delete", async () => {
@@ -127,10 +130,10 @@ export function PhotoStrip({
             <Pressable
               key={p.id}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${one} from ${p.day}`}
+              accessibilityLabel={t.photos.open(one, p.day)}
               onPress={() => setOpen(p)}
             >
-              <PhotoImage photo={p} size="thumb" label={`${title} from ${p.day}`} />
+              <PhotoImage photo={p} size="thumb" label={t.photos.label(title, p.day)} />
             </Pressable>
           ))}
         </View>
@@ -139,14 +142,14 @@ export function PhotoStrip({
         <View style={styles.actions}>
           <Button
             variant="secondary"
-            label={avatar ? "Take a profile picture" : "Take a photo"}
+            label={avatar ? t.photos.takeAvatar : t.photos.take}
             busy={busy === "camera"}
             disabled={busy !== null}
             onPress={() => add("camera")}
           />
           <Button
             variant="secondary"
-            label={avatar ? "Choose a profile picture" : "Choose from photos"}
+            label={avatar ? t.photos.chooseAvatar : t.photos.choose}
             busy={busy === "library"}
             disabled={busy !== null}
             onPress={() => add("library")}
@@ -155,11 +158,11 @@ export function PhotoStrip({
       )}
       <Modal visible={open !== null} animationType="fade" onRequestClose={() => setOpen(null)}>
         <SafeAreaView style={styles.viewer}>
-          {open && <PhotoImage photo={open} size="full" label={`${title} from ${open.day}`} />}
+          {open && <PhotoImage photo={open} size="full" label={t.photos.label(title, open.day)} />}
           {open && <Text style={styles.day}>{open.day}</Text>}
           <ErrorBanner message={error} />
-          <Button label="Close" onPress={() => setOpen(null)} />
-          {open && <Button variant="secondary" label="Delete photo" busy={busy === "delete"} onPress={() => remove(open)} />}
+          <Button label={t.close} onPress={() => setOpen(null)} />
+          {open && <Button variant="secondary" label={t.photos.delete} busy={busy === "delete"} onPress={() => remove(open)} />}
         </SafeAreaView>
       </Modal>
     </View>
