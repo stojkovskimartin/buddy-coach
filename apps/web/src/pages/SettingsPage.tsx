@@ -1,6 +1,5 @@
-import type { Profile } from "@buddy/api-client";
-import { localToday, type Locale } from "@buddy/shared";
-import { useEffect, useState, type FormEvent } from "react";
+import { localToday } from "@buddy/shared";
+import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useI18n } from "../i18n";
@@ -23,36 +22,10 @@ function saveFile(file: Blob, name: string): void {
 /** Language, theme, a copy of all data, and deleting the account. Reachable before onboarding,
  * so an account without a profile can still be deleted. */
 export function SettingsPage() {
-  const { api, loggedIn } = useSession();
+  const { loggedIn } = useSession();
   const { t } = useI18n();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!loggedIn) return;
-    let active = true;
-    api.getProfile().then(
-      (p) => active && setProfile(p),
-      () => undefined, // without it the language is only kept on this device
-    );
-    return () => {
-      active = false;
-    };
-  }, [api, loggedIn]);
 
   if (!loggedIn) return <Navigate to="/login" replace />;
-
-  /** The coach writes in the profile's language, so it follows the choice. */
-  async function saveLocale(locale: Locale) {
-    if (!profile || profile.locale === locale) return;
-    const { user_id, updated_at, ...fields } = profile;
-    setError(null);
-    try {
-      setProfile(await api.saveProfile({ ...fields, locale }));
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }
 
   return (
     <main className="stack">
@@ -64,17 +37,12 @@ export function SettingsPage() {
         <h2 id="s-look">{t.settings.lookTitle}</h2>
         <div className="actions">
           <span>{t.shell.language}</span>
-          <LanguageSwitcher onChange={(locale) => void saveLocale(locale)} />
+          <LanguageSwitcher />
         </div>
         <div className="actions">
           <span>{t.shell.theme}</span>
           <ThemeSwitcher />
         </div>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
       </section>
 
       <ExportCard />

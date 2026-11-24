@@ -1089,6 +1089,25 @@ describe("web app", () => {
       expect(within(nav).getByRole("radio", { name: "Македонски" })).toBeChecked();
     });
 
+    it("saves a language chosen in the menu in the profile as well", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const menu = (await screen.findByRole("navigation", { name: "Main" })).parentElement!;
+      await userEvent.click(within(menu).getByRole("radio", { name: "Македонски" }));
+
+      await waitFor(() => expect(api.saveProfile).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0]).toMatchObject({ locale: "mk" });
+    });
+
+    it("does not touch a profile when the language is chosen before logging in", async () => {
+      const api = fakeApi();
+      renderAt("/login", api, false);
+      await userEvent.click(await screen.findByRole("radio", { name: "Македонски" }));
+      expect(await screen.findByRole("button", { name: "Најави се" })).toBeInTheDocument();
+      expect(api.getProfile).not.toHaveBeenCalled();
+      expect(api.saveProfile).not.toHaveBeenCalled();
+    });
+
     it("works before onboarding and keeps the language on the device only", async () => {
       const api = fakeApi({ getProfile: vi.fn(async () => null) });
       renderAt("/settings", api, true);
@@ -1141,6 +1160,8 @@ describe("web app", () => {
       window.localStorage.setItem("buddy-coach.tokens", "{}");
       window.localStorage.setItem("buddy-checkin-skipped", "2026-11-19");
       window.localStorage.setItem("other-app", "keep");
+      window.localStorage.setItem("buddy-locale", "en");
+      window.localStorage.setItem("buddy-theme", "dark");
       const api = fakeApi();
       await openSettings(api);
       const card = settingsCard("Delete account");
@@ -1159,6 +1180,9 @@ describe("web app", () => {
       expect(window.localStorage.getItem("buddy-coach.tokens")).toBeNull();
       expect(window.localStorage.getItem("buddy-checkin-skipped")).toBeNull();
       expect(window.localStorage.getItem("other-app")).toBe("keep");
+      // Device choices are not account data.
+      expect(window.localStorage.getItem("buddy-locale")).toBe("en");
+      expect(window.localStorage.getItem("buddy-theme")).toBe("dark");
       expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
     });
 

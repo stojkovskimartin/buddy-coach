@@ -4,6 +4,7 @@ Each module exports and erases its own rows through its service, in the request'
 without committing; this service owns the transactions. Deletion has two commits: first the
 account is blocked and its refresh tokens revoked (so no new request gets in), then every
 module's rows are deleted in one transaction, the account last. Photo files go after that commit.
+If the second transaction fails, the account is unblocked again so the user can retry.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Protocol, TypeVar
 
+from anyio import CancelScope
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.body.schemas import WeightOut
@@ -48,6 +50,8 @@ class Accounts(Erasable, Protocol):
     async def export_user(self, user_id: uuid.UUID) -> AccountRecord: ...
 
     async def deactivate(self, user_id: uuid.UUID, password: str) -> None: ...
+
+    async def reactivate(self, user_id: uuid.UUID) -> None: ...
 
 
 class Profiles(Erasable, Protocol):
@@ -119,9 +123,19 @@ class PrivacyService:
             self._connections,
             self._accounts,  # last: the account goes only with everything else
         ]
-        for module in modules:
-            await module.erase_user(user_id)
-        await self._session.commit()
+        try:
+            for module in modules:
+                await module.erase_user(user_id)
+            await self._session.commit()
+        except BaseException:
+            # Never leave a blocked account with its data: unblock it so the user can log in again
+            # and retry. Refresh tokens stay revoked.
+            with CancelScope(shield=True):
+                await self._session.rollback()
+                await self._accounts.reactivate(user_id)
+                await self._session.commit()
+            logger.warning("account_deletion_failed", extra={"user_id": str(user_id)})
+            raise
 
         await self._photos.delete_user_files(user_id)
         logger.info("account_deleted", extra={"user_id": str(user_id)})

@@ -161,6 +161,12 @@ class IdentityService:
         user.is_active = False
         await self._repo.revoke_all_for_user(user_id, datetime.now(UTC), "deleted")
 
+    async def reactivate(self, user_id: uuid.UUID) -> None:
+        """Undo ``deactivate`` after a failed deletion; revoked refresh tokens stay revoked, so
+        the user logs in again. Joins the caller's transaction (no commit)."""
+        user = await self.get_user(user_id)
+        user.is_active = True
+
     async def erase_user(self, user_id: uuid.UUID) -> None:
         """Delete the account and its refresh tokens; call it after every other module's
         ``erase_user``. Joins the caller's transaction (no commit)."""

@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from buddy_coach.core.db import Database
 from buddy_coach.core.deps import get_clock
 from buddy_coach.demo import seed
+from buddy_coach.meals.service import MealService
 from buddy_coach.media.deps import get_photo_storage
 from buddy_coach.media.storage import LocalPhotoStorage
 from buddy_coach.models_registry import Base
@@ -158,6 +159,44 @@ async def test_a_wrong_password_is_403_and_changes_nothing(
     assert (await client.get("/api/v1/users/me", headers=a.headers)).status_code == 200
     refresh = await client.post("/api/v1/auth/refresh", json={"refresh_token": a.refresh})
     assert refresh.status_code == 200
+
+
+async def test_a_failed_deletion_unblocks_the_account_for_a_retry(
+    app: FastAPI, client: httpx.AsyncClient, setup: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a, _ = await _two_athletes(app, client)
+    before = await _rows(app, a.id)
+
+    async def broken(self: MealService, user_id: uuid.UUID) -> None:
+        raise RuntimeError("database hiccup")
+
+    monkeypatch.setattr(MealService, "erase_user", broken)
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as failing:
+        response = await failing.post(
+            "/api/v1/account/delete", json={"password": PASSWORD}, headers=a.headers
+        )
+    assert response.status_code == 500
+
+    after = await _rows(app, a.id)
+    # Only the refresh tokens changed: revoked, not deleted.
+    assert after == before
+    assert (setup / str(a.id)).is_dir()
+    refresh = await client.post("/api/v1/auth/refresh", json={"refresh_token": a.refresh})
+    assert refresh.status_code == 401
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "a@example.com", "password": PASSWORD}
+    )
+    assert login.status_code == 200
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    monkeypatch.undo()
+    retry = await client.post(
+        "/api/v1/account/delete", json={"password": PASSWORD}, headers=headers
+    )
+    assert retry.status_code == 204
+    assert await _rows(app, a.id) == dict.fromkeys(before, 0)
+    assert not (setup / str(a.id)).exists()
 
 
 async def test_deleting_needs_a_login(client: httpx.AsyncClient) -> None:

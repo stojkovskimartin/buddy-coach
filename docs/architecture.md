@@ -98,8 +98,8 @@ commit. The coach stores nothing.
 A request authenticated just before step 1 committed can still write after step 2 (for example a
 meal saved or a photo file written in the same second). The window is a single request long;
 the rows it leaves have no account and no way to be read. A sweep of such orphans and of photo
-folders without an account is in the backlog. If step 2 fails, the account stays inactive with its
-data; the user cannot log in, so an operator finishes it.
+folders without an account is in the backlog. If step 2 fails, it is rolled back and the account
+is marked active again (refresh tokens stay revoked): the user logs in again and retries.
 
 ## Decisions
 

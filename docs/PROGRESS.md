@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-24, 15:15
+Last update: 2026-11-24, 15:32
 
 ## How to run it
 
@@ -95,9 +95,9 @@ pull request numbers.
 | #54 | Coach safety in Macedonian: the Safety Guard catches red flags in Macedonian (Cyrillic and Latin letters) and blocks unsafe Macedonian answers (diagnoses, very low calories, harmful advice, supplement overdoses); reviewed Macedonian replies with 112 / 194; the reply language follows what the athlete wrote | +107 |
 | #55 | Web in English and Macedonian: every screen translated; EN / МК switch in the menu and on the login page, remembered per device, else the browser's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording (check-in, readiness, meals, summaries) in both languages for the phone app too | +25 frontend (shared 15, web 10) |
 | #56 | Phone app in English and Macedonian: every screen, alert and screen-reader label translated; EN / МК switch on Today and on the login screen, remembered on the phone (nothing shown until the saved choice is read), else the phone's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording from #55 reused | +9 frontend (mobile 9) |
-| #57 | Settings: language (also saved in the profile, so the coach follows), theme, "Download my data" (one JSON file: account, profile, goals, check-ins, workouts, weights, meals, photo details, connections; no secrets) and "Delete account" (password and confirmation; every module erases its rows in one transaction after the account is blocked, photo files removed, the device cleared); `privacy` module that nothing imports | +9, +11 frontend (web 8, client 3) |
+| #57 | Settings: language (saved in the profile from every switcher when logged in, so the coach follows), theme, "Download my data" (one JSON file: account, profile, goals, check-ins, workouts, weights, meals, photo details, connections; no secrets) and "Delete account" (password and confirmation; every module erases its rows in one transaction after the account is blocked, unblocked again if that fails; photo files removed; session data cleared from the device, language and theme kept); `privacy` module that nothing imports | +11, +13 frontend (web 10, client 3) |
 
-Totals: backend 714 tests, frontend 336 tests (shared 49, client 31, web 132, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 716 tests, frontend 347 tests (shared 49, client 31, web 134, mobile 133); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
