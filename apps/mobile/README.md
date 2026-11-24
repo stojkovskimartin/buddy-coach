@@ -25,6 +25,9 @@ Expo SDK 58 (React Native 0.88), TypeScript, the shared typed client `@buddy/api
   when it returns to the foreground and on "Sync now". Garmin, Fitbit, Samsung, Xiaomi, WHOOP
   and other apps that write there are
   included. Read only; nothing is written back and no workout is stored on the phone.
+- **Languages** – English and Macedonian: EN / МК on Today and on the login screen (remembered on
+  the phone), otherwise the phone's language, else English; chart and sync dates, decimal commas
+  and plurals per language.
 
 Profile setup and new goals are done in the web app for now; the guided mobile onboarding is
 tracked as P-05.

@@ -1,5 +1,5 @@
 import { memoryTokenStore } from "@buddy/api-client";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { HealthSyncCard } from "../src/components/HealthSyncCard";
@@ -7,6 +7,7 @@ import type { SyncState } from "../src/health/sync";
 import type { HealthSource } from "../src/health/types";
 import { SessionProvider } from "../src/lib/session";
 import { fakeApi } from "../test/fakeApi";
+import { renderWithI18n } from "../test/renderWithI18n";
 
 function memoryState(initial: Record<string, string> = {}): SyncState {
   const data = new Map(Object.entries(initial));
@@ -40,7 +41,7 @@ async function renderCard(
   api = fakeApi(),
   onNewWeights?: () => void,
 ) {
-  await render(
+  await renderWithI18n(
     <SessionProvider createApi={() => api} tokens={memoryTokenStore()} restore={async () => true}>
       <HealthSyncCard source={source} state={state} onNewWeights={onNewWeights} />
     </SessionProvider>,

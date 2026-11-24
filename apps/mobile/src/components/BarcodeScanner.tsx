@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Linking, Modal, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useI18n } from "../i18n";
 import { colors, font, space } from "../theme";
 import { Button } from "./ui";
 
@@ -21,6 +22,7 @@ export function BarcodeScanner({
   onClose: () => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
+  const { t } = useI18n();
   const done = useRef(false); // the camera reports the same code many times a second
   useEffect(() => {
     if (visible) done.current = false;
@@ -34,7 +36,7 @@ export function BarcodeScanner({
     >
       <SafeAreaView style={styles.screen}>
         <Text accessibilityRole="header" style={styles.title}>
-          Scan a barcode
+          {t.scanner.title}
         </Text>
         {permission?.granted ? (
           <CameraView
@@ -46,23 +48,23 @@ export function BarcodeScanner({
               done.current = true;
               onScanned(data);
             }}
-            accessibilityLabel="Camera. Point it at the barcode on the package."
+            accessibilityLabel={t.scanner.camera}
           />
         ) : (
           <View style={styles.ask}>
             <Text style={styles.body}>
               {permission && !permission.canAskAgain
-                ? "Camera access is off for Buddy Coach. Turn it on in the phone's settings, or search the food by name."
-                : "Buddy Coach needs the camera to read the barcode. Nothing is recorded."}
+                ? t.scanner.cameraOff
+                : t.scanner.cameraNeeded}
             </Text>
             {!permission || permission.canAskAgain ? (
-              <Button label="Allow camera" onPress={() => void requestPermission()} />
+              <Button label={t.scanner.allow} onPress={() => void requestPermission()} />
             ) : (
-              <Button label="Open settings" onPress={() => void Linking.openSettings()} />
+              <Button label={t.scanner.settings} onPress={() => void Linking.openSettings()} />
             )}
           </View>
         )}
-        <Button variant="secondary" label="Cancel" onPress={onClose} />
+        <Button variant="secondary" label={t.cancel} onPress={onClose} />
       </SafeAreaView>
     </Modal>
   );

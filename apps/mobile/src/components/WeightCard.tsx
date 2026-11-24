@@ -1,16 +1,10 @@
 import type { WeightHistory } from "@buddy/api-client";
-import {
-  WEIGHT_EMPTY_TEXT,
-  WEIGHT_INPUT_ERROR,
-  WEIGHT_SOURCE_LABEL,
-  parseWeightKg,
-  scaleSeries,
-  trendChangeText,
-} from "@buddy/shared";
+import { parseWeightKg, scaleSeries } from "@buddy/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, space } from "../theme";
 import { Button, Card, ErrorBanner, Field } from "./ui";
@@ -23,6 +17,8 @@ type Load = { state: "loading" } | { state: "failed"; error: string } | { state:
 /** Latest weight, its 90-day trend, quick entry and the last few measurements. */
 export function WeightCard({ reloadKey = 0 }: { reloadKey?: number }) {
   const { api } = useSession();
+  const { t, s, num } = useI18n();
+  const kg = (value: number) => num(value.toFixed(1));
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,7 +58,7 @@ export function WeightCard({ reloadKey = 0 }: { reloadKey?: number }) {
   async function save() {
     const weight_kg = parseWeightKg(text);
     if (weight_kg === null) {
-      setError(WEIGHT_INPUT_ERROR);
+      setError(s.weightInputError);
       return;
     }
     if (await change(() => api.logWeight({ weight_kg }))) setText("");
@@ -70,12 +66,12 @@ export function WeightCard({ reloadKey = 0 }: { reloadKey?: number }) {
 
   let body;
   if (load.state === "loading") {
-    body = <Text style={styles.muted}>Loading…</Text>;
+    body = <Text style={styles.muted}>{t.loading}</Text>;
   } else if (load.state === "failed") {
     body = (
       <>
         <ErrorBanner message={load.error} />
-        <Button variant="secondary" label="Try again" onPress={() => void fetchHistory()} />
+        <Button variant="secondary" label={t.tryAgain} onPress={() => void fetchHistory()} />
       </>
     );
   } else {
@@ -89,16 +85,16 @@ export function WeightCard({ reloadKey = 0 }: { reloadKey?: number }) {
     body = latest ? (
       <>
         <Text style={styles.weight}>
-          {latest.weight_kg.toFixed(1)} <Text style={styles.unit}>kg</Text>
+          {kg(latest.weight_kg)} <Text style={styles.unit}>{t.units.kg}</Text>
         </Text>
-        <Text style={styles.muted}>{trendChangeText(trend) ?? `Measured ${latest.day}`}</Text>
+        <Text style={styles.muted}>{s.trendChangeText(trend) ?? t.weight.measured(latest.day)}</Text>
         {scaled.points.length > 1 && (
           <Svg
             width="100%"
             height={CHART.height}
             viewBox={`0 0 ${CHART.width} ${CHART.height}`}
             accessibilityRole="image"
-            accessibilityLabel={`Weight trend (7-day average) from ${scaled.points[0]!.value.toFixed(1)} to ${scaled.points[scaled.points.length - 1]!.value.toFixed(1)} kg`}
+            accessibilityLabel={t.weight.trend(kg(scaled.points[0]!.value), kg(scaled.points[scaled.points.length - 1]!.value))}
           >
             <Path d={scaled.path} stroke={colors.primary} strokeWidth={2.5} fill="none" />
             {scaled.points.map((p) => (
@@ -109,40 +105,43 @@ export function WeightCard({ reloadKey = 0 }: { reloadKey?: number }) {
         {weights.slice(0, RECENT).map((w) => (
           <View key={w.id} style={styles.entry}>
             <Text style={styles.body}>
-              {w.weight_kg.toFixed(1)} kg <Text style={styles.muted}>· {w.day} · {WEIGHT_SOURCE_LABEL[w.source]}</Text>
+              {kg(w.weight_kg)} {t.units.kg}{" "}
+              <Text style={styles.muted}>
+                · {w.day} · {s.weightSourceLabel[w.source]}
+              </Text>
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Delete ${w.weight_kg.toFixed(1)} kg from ${w.day}`}
+              accessibilityLabel={t.weight.deleteEntry(kg(w.weight_kg), w.day)}
               disabled={busy}
               onPress={() => void change(() => api.deleteWeight(w.id))}
               style={styles.delete}
             >
-              <Text style={styles.link}>Delete</Text>
+              <Text style={styles.link}>{t.delete}</Text>
             </Pressable>
           </View>
         ))}
       </>
     ) : (
-      <Text style={styles.muted}>{WEIGHT_EMPTY_TEXT}</Text>
+      <Text style={styles.muted}>{s.weightEmpty}</Text>
     );
   }
 
   return (
     <Card>
       <Text accessibilityRole="header" style={styles.title}>
-        Weight
+        {t.weight.title}
       </Text>
       {body}
       <ErrorBanner message={error} />
       <Field
-        label="Weight now (kg)"
+        label={t.weight.input}
         keyboardType="decimal-pad"
         value={text}
         onChangeText={setText}
         onSubmitEditing={() => void save()}
       />
-      <Button label="Save weight" busy={busy} disabled={!text.trim()} onPress={() => void save()} />
+      <Button label={t.weight.save} busy={busy} disabled={!text.trim()} onPress={() => void save()} />
     </Card>
   );
 }

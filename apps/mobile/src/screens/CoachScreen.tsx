@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "../components/ui";
+import { useI18n } from "../i18n";
 import { errorMessage, useSession } from "../lib/session";
 import { TOUCH_TARGET, colors, font, radius, space } from "../theme";
 
@@ -28,27 +29,12 @@ interface Turn {
   degraded?: boolean;
 }
 
-export const AGENT_LABELS: Record<ChatReply["agent"], string> = {
-  head_coach: "Head Coach",
-  nutrition: "Nutrition",
-  training: "Training",
-  recovery: "Recovery",
-  progress: "Progress",
-  motivation: "Motivation",
-};
-
-export const SUGGESTIONS = [
-  "How many calories should I eat today?",
-  "What should I eat after a hard interval session?",
-  "Should I take creatine?",
-  "I slept badly – should I still train today?",
-];
-
 /** Same limit as the API. */
 const MAX_MESSAGE_LENGTH = 2000;
 
 export function CoachScreen() {
   const { api } = useSession();
+  const { t } = useI18n();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -106,8 +92,8 @@ export function CoachScreen() {
         onContentSizeChange={() => list.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
           <View style={styles.suggestions}>
-            <Text style={styles.muted}>Ask your coach anything, for example:</Text>
-            {SUGGESTIONS.map((s) => (
+            <Text style={styles.muted}>{t.coach.intro}</Text>
+            {t.coach.suggestions.map((s) => (
               <Pressable
                 key={s}
                 accessibilityRole="button"
@@ -123,15 +109,15 @@ export function CoachScreen() {
         ListFooterComponent={
           busy ? (
             <Text accessibilityLiveRegion="polite" style={styles.muted}>
-              Coach is thinking…
+              {t.coach.thinking}
             </Text>
           ) : undefined
         }
       />
       <View style={styles.composer}>
         <TextInput
-          accessibilityLabel="Your message"
-          placeholder="Ask about food, training or recovery…"
+          accessibilityLabel={t.coach.message}
+          placeholder={t.coach.placeholder}
           placeholderTextColor={colors.muted}
           maxLength={MAX_MESSAGE_LENGTH}
           multiline
@@ -139,10 +125,10 @@ export function CoachScreen() {
           onChangeText={setMessage}
           style={styles.input}
         />
-        <Button label="Send" onPress={() => void send(message)} disabled={busy || !message.trim()} />
+        <Button label={t.coach.send} onPress={() => void send(message)} disabled={busy || !message.trim()} />
       </View>
       <Text style={[styles.muted, styles.disclaimer]}>
-        Buddy Coach is not a doctor. For medical questions, see a professional.
+        {t.coach.disclaimer}
       </Text>
     </KeyboardAvoidingView>
   );
@@ -154,6 +140,7 @@ function announce(text: string) {
 }
 
 function Bubble({ turn }: { turn: Turn }) {
+  const { t } = useI18n();
   const alert = turn.escalated || turn.failed;
   return (
     <View
@@ -167,14 +154,14 @@ function Bubble({ turn }: { turn: Turn }) {
         alert && styles.alertBubble,
       ]}
     >
-      {turn.escalated && <Text style={styles.flag}>Important</Text>}
-      {turn.failed && <Text style={styles.flag}>Could not reach your coach</Text>}
+      {turn.escalated && <Text style={styles.flag}>{t.coach.important}</Text>}
+      {turn.failed && <Text style={styles.flag}>{t.coach.unreachable}</Text>}
       {turn.agent && !turn.escalated && (
-        <Text style={styles.agent}>{AGENT_LABELS[turn.agent]}</Text>
+        <Text style={styles.agent}>{t.coach.agents[turn.agent]}</Text>
       )}
       <Text style={turn.from === "you" ? styles.youText : styles.coachText}>{turn.text}</Text>
       {turn.degraded && (
-        <Text style={styles.note}>Short answer: the AI coach was unavailable.</Text>
+        <Text style={styles.note}>{t.coach.degraded}</Text>
       )}
     </View>
   );

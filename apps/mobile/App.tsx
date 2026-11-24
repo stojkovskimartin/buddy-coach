@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import type { TokenStore } from "@buddy/api-client";
 
+import { I18nProvider, useI18n } from "./src/i18n";
 import { SessionProvider, useSession, type CreateApi } from "./src/lib/session";
 import { CoachScreen } from "./src/screens/CoachScreen";
 import { ConnectionsScreen } from "./src/screens/ConnectionsScreen";
@@ -14,7 +15,8 @@ import { HomeScreen } from "./src/screens/HomeScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { TOUCH_TARGET, colors, font, space } from "./src/theme";
 
-type Tab = "home" | "food" | "progress" | "coach" | "connections";
+const TABS = ["home", "food", "progress", "coach", "connections"] as const;
+type Tab = (typeof TABS)[number];
 
 /** Root component. The props are for tests; the app uses the real client and secure storage. */
 export default function App({
@@ -28,20 +30,23 @@ export default function App({
 }) {
   return (
     <SafeAreaProvider>
-      <SessionProvider createApi={createApi} tokens={tokens} restore={restore}>
-        <StatusBar style="dark" />
-        <Root />
-      </SessionProvider>
+      <I18nProvider>
+        <SessionProvider createApi={createApi} tokens={tokens} restore={restore}>
+          <StatusBar style="dark" />
+          <Root />
+        </SessionProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }
 
 function Root() {
   const { status } = useSession();
+  const { t } = useI18n();
   if (status === "loading") {
     return (
       <View style={styles.center}>
-        <ActivityIndicator accessibilityLabel="Loading" color={colors.primary} />
+        <ActivityIndicator accessibilityLabel={t.loading} color={colors.primary} />
       </View>
     );
   }
@@ -59,6 +64,7 @@ function Root() {
  * when first shown. */
 function LoggedIn() {
   const [tab, setTab] = useState<Tab>("home");
+  const { t } = useI18n();
   return (
     <SafeAreaView style={styles.fill} edges={["top", "left", "right", "bottom"]}>
       <View style={[styles.fill, tab !== "home" && styles.hidden]}>
@@ -77,11 +83,9 @@ function LoggedIn() {
         <ConnectionsScreen active={tab === "connections"} />
       </View>
       <View accessibilityRole="tablist" style={styles.tabs}>
-        <TabButton label="Today" active={tab === "home"} onPress={() => setTab("home")} />
-        <TabButton label="Food" active={tab === "food"} onPress={() => setTab("food")} />
-        <TabButton label="Progress" active={tab === "progress"} onPress={() => setTab("progress")} />
-        <TabButton label="Coach" active={tab === "coach"} onPress={() => setTab("coach")} />
-        <TabButton label="Connect" active={tab === "connections"} onPress={() => setTab("connections")} />
+        {TABS.map((key) => (
+          <TabButton key={key} label={t.tabs[key]} active={tab === key} onPress={() => setTab(key)} />
+        ))}
       </View>
     </SafeAreaView>
   );

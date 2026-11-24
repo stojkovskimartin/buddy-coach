@@ -4,6 +4,7 @@
  * the startup check.
  */
 import {
+  ApiError,
   BuddyClient,
   type ChatReply,
   type Checkin,
@@ -44,6 +45,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { LocalizedError, currentLocale, type Locale } from "../i18n";
+import { MESSAGES, type Messages } from "../i18n/messages";
 import { restoreSession, secureTokenStore } from "./tokenStore";
 
 /** The API calls the screens use (a subset of BuddyClient, easy to fake in tests). */
@@ -192,7 +195,23 @@ export function useSession(): SessionValue {
   return value;
 }
 
-/** Human-readable message from any thrown value. */
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+type ErrorCode = keyof Messages["errors"];
+
+/** Server codes that mean the same to the user as one of the translated codes. */
+const SAME_AS: Record<string, ErrorCode> = { invalid_request: "validation_failed" };
+
+/**
+ * The text to show for a failure. English shows the server's own message. Other languages
+ * translate by the problem's code and never show the English text.
+ */
+export function errorMessage(error: unknown, locale: Locale = currentLocale()): string {
+  const errors = MESSAGES[locale].errors;
+  if (error instanceof LocalizedError) return error.message;
+  if (locale === "en") return error instanceof Error ? error.message : errors.unknown;
+  if (error instanceof ApiError) {
+    const code = SAME_AS[error.code] ?? error.code;
+    return Object.hasOwn(errors, code) && errors[code as ErrorCode] ? errors[code as ErrorCode] : errors.unknown;
+  }
+  if (error instanceof TypeError) return errors.network; // fetch failed: no server reached
+  return errors.unknown;
 }

@@ -35,3 +35,4 @@ Tracked here until GitHub issues are available; each item names the PR that defe
 | Macedonian: the reasons under today's food targets come from the server in English; send codes and translate them in the apps. Product names from Open Food Facts stay as the database has them | #55 | With the target engine's next change |
 | Web: an error or status message already on screen stays in the old language after switching; the next one uses the new language | #55 review | When it bites |
 | Phone: Macedonian dates use Intl `mk-MK`, which Hermes on Android may lack; check or fall back to month names from the catalog in the phone PR | #55 review | Languages on the phone |
+| Shared web/mobile wording (goal types, coach agents, errors) into @buddy/shared | #56 review | Next i18n change |

@@ -36,3 +36,8 @@ jest.mock("../src/lib/photos", () => ({
   pickPhoto: jest.fn(async () => new Blob(["jpeg"], { type: "image/jpeg" })),
   dataUri: jest.fn(async () => "data:image/jpeg;base64,AAAA"),
 }));
+
+// Tests run in English unless a test picks another device language.
+jest.mock("expo-localization", () => ({
+  getLocales: jest.fn(() => [{ languageTag: "en-US", languageCode: "en" }]),
+}));

@@ -1,7 +1,7 @@
 # Progress
 
 Living status of the project. Updated with every merge to `main`.
-Last update: 2026-11-20, 06:10
+Last update: 2026-11-24, 15:11
 
 ## How to run it
 
@@ -94,8 +94,9 @@ pull request numbers.
 | #53 | Web dashboard and sign-in: "Dashboard" greets by the time of day; the check-in asks about the day so far after the morning, is optional ("Not now" for the day); goals with a "New goal" panel; the last 7 days' readiness; login and sign-up with a brand panel, account switch and show-password; profile in two groups | +19 frontend (web 19) |
 | #54 | Coach safety in Macedonian: the Safety Guard catches red flags in Macedonian (Cyrillic and Latin letters) and blocks unsafe Macedonian answers (diagnoses, very low calories, harmful advice, supplement overdoses); reviewed Macedonian replies with 112 / 194; the reply language follows what the athlete wrote | +107 |
 | #55 | Web in English and Macedonian: every screen translated; EN / МК switch in the menu and on the login page, remembered per device, else the browser's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording (check-in, readiness, meals, summaries) in both languages for the phone app too | +25 frontend (shared 15, web 10) |
+| #56 | Phone app in English and Macedonian: every screen, alert and screen-reader label translated; EN / МК switch on Today and on the login screen, remembered on the phone (nothing shown until the saved choice is read), else the phone's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording from #55 reused | +9 frontend (mobile 9) |
 
-Totals: backend 704 tests, frontend 325 tests (shared 49, client 28, web 124, mobile 124); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 704 tests, frontend 334 tests (shared 49, client 28, web 124, mobile 133); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 
@@ -106,24 +107,22 @@ Totals: backend 704 tests, frontend 325 tests (shared 49, client 28, web 124, mo
 The owner's priorities of 20 Nov 2026, challenged by an agent; one at a time, each challenged
 before coding and reviewed after (tracker 12.x):
 
-1. Languages on the phone: the Expo app in English and Macedonian with the shared wording from #55
-   and the device's language [12.3].
-2. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
-3. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
-4. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
-5. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
+1. Settings: language, theme, units, consents, data export, account deletion of everything [12.5].
+2. Privacy: notice, consent per purpose (AI, food photos, each account), no AI call without it [12.6].
+3. Free hosting: one small free server, HTTPS, encrypted off-site backups, a restore tested [12.7].
+4. Accounts v2: e-mail verification, password reset by code, login limits and a free CAPTCHA,
    secure cookies on the web [12.8].
-6. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
+5. Second factor: authenticator app (TOTP) and passkeys with recovery codes, verified backup
    e-mail, device list; a reset still asks for the second factor. SMS codes left out: they cost
    money [12.9].
-7. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
-8. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
-    and grams, nutrients come from the food database; free local model by default, and a deterministic dev
-    recognizer for tests and clicking without a model (moved here from fake providers) [12.11].
-9. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
-    phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
-10. Web parity: workout logging, goals, check-in history [12.13].
-11. Click-through tests of every feature in the browser, in CI [12.14].
+6. Photos hardened: encrypted at rest, scheduled clean-up, quota [12.10].
+7. Food photo recognition: a vision model suggests the dish and items, the athlete confirms items
+   and grams, nutrients come from the food database; free local model by default, and a deterministic dev
+   recognizer for tests and clicking without a model (moved here from fake providers) [12.11].
+8. Connections hub: status, last sync, history, what to import; Polar and Oura; QR code to the
+   phone app for Apple Health and Health Connect; Garmin and Strava shown with the reason [12.12].
+9. Web parity: workout logging, goals, check-in history [12.13].
+10. Click-through tests of every feature in the browser, in CI [12.14].
 
 After that: mobile setup and goals on the phone, quick actions, today's session card, latest
 stack versions [3.2.2, 8.3.1, 4.2.4, 1.2.4].
