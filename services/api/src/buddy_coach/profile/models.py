@@ -1,7 +1,7 @@
 """Tables owned by the profile module.
 
 ``user_id`` refers to an identity user but has no foreign key: modules do not couple
-their schemas (ADR-0002). Cleanup on account deletion happens through events.
+their schemas (ADR-0002). Account deletion erases the rows through ``ProfileService.erase_user``.
 """
 
 from __future__ import annotations

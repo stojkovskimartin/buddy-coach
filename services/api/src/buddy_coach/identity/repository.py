@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.identity.models import RefreshToken, User
@@ -47,10 +47,17 @@ class IdentityRepository:
         )
         return result.scalar_one_or_none()
 
-    async def revoke_all_for_user(self, user_id: uuid.UUID, at: datetime) -> None:
-        """Revoke every active refresh token of a user (used on token reuse detection)."""
+    async def revoke_all_for_user(
+        self, user_id: uuid.UUID, at: datetime, reason: str = "reuse"
+    ) -> None:
+        """Revoke every active refresh token of a user (token reuse, account deletion)."""
         await self._session.execute(
             update(RefreshToken)
             .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
-            .values(revoked_at=at, revoked_reason="reuse")
+            .values(revoked_at=at, revoked_reason=reason)
         )
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete the user's refresh tokens and the account itself."""
+        await self._session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+        await self._session.execute(delete(User).where(User.id == user_id))

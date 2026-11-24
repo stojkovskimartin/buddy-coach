@@ -60,3 +60,16 @@ class PhotoRepository:
             query = query.where(Photo.kind == kind)
         result = await self._session.execute(query.order_by(Photo.created_at.desc(), Photo.id))
         return result.scalars().all()
+
+    async def all_of(self, user_id: uuid.UUID) -> Sequence[Photo]:
+        """Every photo record of a user, oldest first (for the data export)."""
+        result = await self._session.execute(
+            select(Photo)
+            .where(Photo.user_id == user_id)
+            .order_by(Photo.day, Photo.created_at, Photo.id)
+        )
+        return result.scalars().all()
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every photo record of a user."""
+        await self._session.execute(delete(Photo).where(Photo.user_id == user_id))

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /** "system" follows the device; the others are a saved choice. */
 export type Theme = "light" | "dark" | "system";
@@ -30,12 +30,22 @@ export function applyTheme(theme: Theme): void {
   }
 }
 
+/** Every mounted switcher (the menu and the settings page), so they always show the same choice. */
+const switchers = new Set<(theme: Theme) => void>();
+
 /** The current choice and a setter that applies and saves it. */
 export function useTheme(): [Theme, (theme: Theme) => void] {
   const [theme, setTheme] = useState<Theme>(savedTheme);
+  useEffect(() => {
+    switchers.add(setTheme);
+    return () => {
+      switchers.delete(setTheme);
+    };
+  }, []);
   const choose = useCallback((next: Theme) => {
     applyTheme(next);
     setTheme(next);
+    switchers.forEach((update) => update(next));
   }, []);
   return [theme, choose];
 }

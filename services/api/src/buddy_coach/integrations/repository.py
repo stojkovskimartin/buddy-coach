@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from buddy_coach.integrations.domain import Provider
@@ -42,3 +42,7 @@ class ConnectionRepository:
     async def remove(self, connection: Connection) -> None:
         """Delete a connection."""
         await self._session.delete(connection)
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every connection of a user."""
+        await self._session.execute(delete(Connection).where(Connection.user_id == user_id))

@@ -84,3 +84,16 @@ class BodyWeightRepository:
             .order_by(BodyWeight.measured_at.desc(), BodyWeight.created_at.desc(), BodyWeight.id)
         )
         return result.scalars().all()
+
+    async def all_of(self, user_id: uuid.UUID) -> Sequence[BodyWeight]:
+        """Every measurement of a user, oldest first (for the data export)."""
+        result = await self._session.execute(
+            select(BodyWeight)
+            .where(BodyWeight.user_id == user_id)
+            .order_by(BodyWeight.measured_at, BodyWeight.id)
+        )
+        return result.scalars().all()
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every measurement of a user."""
+        await self._session.execute(delete(BodyWeight).where(BodyWeight.user_id == user_id))

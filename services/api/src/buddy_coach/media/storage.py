@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import uuid
 from pathlib import Path
 from typing import Literal, Protocol
@@ -23,6 +24,10 @@ class PhotoStorage(Protocol):
     async def get(self, user_id: uuid.UUID, photo_id: uuid.UUID, size: Size) -> bytes: ...
 
     async def delete(self, user_id: uuid.UUID, photo_id: uuid.UUID) -> None: ...
+
+    async def delete_user(self, user_id: uuid.UUID) -> None:
+        """Remove every file of the user; nothing happens if there are none."""
+        ...
 
 
 class LocalPhotoStorage:
@@ -57,3 +62,11 @@ class LocalPhotoStorage:
 
     async def delete(self, user_id: uuid.UUID, photo_id: uuid.UUID) -> None:
         await to_thread.run_sync(self._delete, user_id, photo_id)
+
+    async def delete_user(self, user_id: uuid.UUID) -> None:
+        await to_thread.run_sync(self._delete_user, user_id)
+
+    def _delete_user(self, user_id: uuid.UUID) -> None:
+        folder = self._root / str(user_id)
+        if folder.exists():
+            shutil.rmtree(folder)

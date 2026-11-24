@@ -34,7 +34,7 @@ from buddy_coach.integrations.domain import (
 )
 from buddy_coach.integrations.models import Connection
 from buddy_coach.integrations.repository import ConnectionRepository
-from buddy_coach.integrations.schemas import ProviderOut, SyncOut
+from buddy_coach.integrations.schemas import ConnectionRecord, ProviderOut, SyncOut
 from buddy_coach.workouts.domain import MAX_IMPORT_BATCH as MAX_WORKOUTS
 from buddy_coach.workouts.schemas import ImportedWorkout, ImportResult
 
@@ -171,6 +171,14 @@ class IntegrationsService:
             raise NotFoundError("This account is not connected.")
         await self._repo.remove(connection)
         await self._session.commit()
+
+    async def export_user(self, user_id: uuid.UUID) -> list[ConnectionRecord]:
+        """Every connection of the user, for the data export."""
+        return [ConnectionRecord.model_validate(row) for row in await self._repo.list(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every connection of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
 
     async def _import(
         self,

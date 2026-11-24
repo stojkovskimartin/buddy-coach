@@ -40,3 +40,11 @@ class CheckinOut(CheckinIn):
 
     day: date
     readiness: ReadinessOut
+
+
+class CheckinRecord(CheckinIn):
+    """A stored check-in as saved, without readiness (for the data export)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    day: date

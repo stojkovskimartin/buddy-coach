@@ -96,3 +96,16 @@ class WorkoutRepository:
             query = query.where(Workout.activity.not_in(list(exclude)))
         result = await self._session.execute(query.group_by(Workout.day))
         return {day: float(total) for day, total in result.all()}
+
+    async def all_of(self, user_id: uuid.UUID) -> Sequence[Workout]:
+        """Every workout of a user, oldest first (for the data export)."""
+        result = await self._session.execute(
+            select(Workout)
+            .where(Workout.user_id == user_id)
+            .order_by(Workout.started_at, Workout.id)
+        )
+        return result.scalars().all()
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every workout of a user."""
+        await self._session.execute(delete(Workout).where(Workout.user_id == user_id))

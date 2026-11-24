@@ -19,7 +19,7 @@ from buddy_coach.checkin.domain import (
 from buddy_coach.checkin.events import CheckinSaved
 from buddy_coach.checkin.models import DailyCheckin
 from buddy_coach.checkin.repository import CheckinRepository
-from buddy_coach.checkin.schemas import CheckinIn, CheckinOut, ReadinessOut
+from buddy_coach.checkin.schemas import CheckinIn, CheckinOut, CheckinRecord, ReadinessOut
 from buddy_coach.core.clock import local_date
 from buddy_coach.core.deps import Clock
 from buddy_coach.core.errors import NotFoundError
@@ -85,6 +85,14 @@ class CheckinService:
         validate_range(start, end)
         rows = await self._repo.between(user_id, start - timedelta(days=BASELINE_DAYS), end)
         return [self._out(row, rows) for row in rows if row.day >= start]
+
+    async def export_user(self, user_id: uuid.UUID) -> list[CheckinRecord]:
+        """Every check-in of the user, for the data export."""
+        return [CheckinRecord.model_validate(row) for row in await self._repo.all_of(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every check-in of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
 
     async def _with_readiness(self, user_id: uuid.UUID, checkin: DailyCheckin) -> CheckinOut:
         previous = await self._repo.between(

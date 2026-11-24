@@ -9,16 +9,14 @@ import {
   FoodIcon,
   HomeIcon,
   LogoutIcon,
-  MoonIcon,
   ProfileIcon,
   ProgressIcon,
-  SunIcon,
-  SystemIcon,
+  SettingsIcon,
 } from "./lib/icons";
 import { I18nProvider, useI18n, type Locale } from "./i18n";
 import { LanguageSwitcher } from "./i18n/LanguageSwitcher";
 import { errorMessage, SessionProvider, useSession, type CoachApi } from "./lib/session";
-import { useTheme, type Theme } from "./lib/theme";
+import { ThemeSwitcher } from "./lib/ThemeSwitcher";
 import { CoachPage } from "./pages/CoachPage";
 import { ConnectionCallback, ConnectionsPage } from "./pages/ConnectionsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -27,6 +25,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { PhotoStrip } from "./pages/Photos";
 import { ProgressPage } from "./pages/ProgressPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 /** Logged-in users without a profile go to onboarding first. */
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -76,40 +75,8 @@ const SECTIONS = [
   { to: "/coach", key: "coach", icon: <CoachIcon /> },
   { to: "/connections", key: "connections", icon: <ConnectIcon /> },
   { to: "/onboarding", key: "profile", icon: <ProfileIcon /> },
+  { to: "/settings", key: "settings", icon: <SettingsIcon /> },
 ] as const;
-
-const THEMES: { value: Theme; icon: ReactNode }[] = [
-  { value: "light", icon: <SunIcon /> },
-  { value: "dark", icon: <MoonIcon /> },
-  { value: "system", icon: <SystemIcon /> },
-];
-
-function ThemeSwitcher() {
-  const [theme, setTheme] = useTheme();
-  const { t } = useI18n();
-  return (
-    <fieldset className="theme-switcher">
-      <legend className="visually-hidden">{t.shell.theme}</legend>
-      {THEMES.map((option) => (
-        <label
-          key={option.value}
-          title={t.shell.themes[option.value]}
-          className={theme === option.value ? "selected" : ""}
-        >
-          <input
-            type="radio"
-            name="theme"
-            value={option.value}
-            checked={theme === option.value}
-            onChange={() => setTheme(option.value)}
-          />
-          {option.icon}
-          <span className="visually-hidden">{t.shell.themes[option.value]}</span>
-        </label>
-      ))}
-    </fieldset>
-  );
-}
 
 /** One navigation: a sidebar on wide screens, a top bar with a scrolling strip on phones. */
 function Sidebar() {
@@ -241,6 +208,7 @@ export function AppRoutes() {
               </RequireProfile>
             }
           />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

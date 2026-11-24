@@ -117,6 +117,8 @@ function fakeApi(overrides: Partial<CoachApi> = {}): CoachApi {
     disconnectIntegration: vi.fn(async () => undefined),
     saveTodayCheckin: vi.fn(async (c: CheckinIn) => checkinFor("2026-11-19", c)),
     saveCheckin: vi.fn(async (day: string, c: CheckinIn) => checkinFor(day, c)),
+    exportData: vi.fn(async () => new Blob(["{}"], { type: "application/json" })),
+    deleteAccount: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -1050,6 +1052,157 @@ describe("web app", () => {
       });
       expect(await screen.findByRole("alert")).toHaveTextContent(".fit file");
       expect(api.uploadFit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("settings", () => {
+    afterEach(() => {
+      window.localStorage.clear();
+      document.documentElement.removeAttribute("data-theme");
+      vi.restoreAllMocks();
+    });
+
+    async function openSettings(api: CoachApi) {
+      renderAt("/", api, true);
+      const nav = await screen.findByRole("navigation", { name: "Main" });
+      await userEvent.click(within(nav).getByRole("link", { name: "Settings" }));
+      return screen.findByRole("heading", { level: 1, name: "Settings" });
+    }
+
+    function settingsCard(name: string) {
+      return within(screen.getByRole("region", { name }));
+    }
+
+    it("switches the language and saves it in the profile", async () => {
+      const api = fakeApi();
+      await openSettings(api);
+      await userEvent.click(settingsCard("Language and theme").getByRole("radio", { name: "Македонски" }));
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Поставки" })).toBeInTheDocument();
+      await waitFor(() => expect(api.saveProfile).toHaveBeenCalledTimes(1));
+      const saved = vi.mocked(api.saveProfile).mock.calls[0]?.[0];
+      expect(saved).toMatchObject({ locale: "mk", weight_kg: 79, timezone: "Europe/Zurich" });
+      expect(saved).not.toHaveProperty("user_id");
+      expect(saved).not.toHaveProperty("updated_at");
+      // The menu's switcher follows.
+      const nav = screen.getByRole("navigation", { name: "Главно мени" }).parentElement!;
+      expect(within(nav).getByRole("radio", { name: "Македонски" })).toBeChecked();
+    });
+
+    it("saves a language chosen in the menu in the profile as well", async () => {
+      const api = fakeApi();
+      renderAt("/", api, true);
+      const menu = (await screen.findByRole("navigation", { name: "Main" })).parentElement!;
+      await userEvent.click(within(menu).getByRole("radio", { name: "Македонски" }));
+
+      await waitFor(() => expect(api.saveProfile).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0]).toMatchObject({ locale: "mk" });
+    });
+
+    it("does not touch a profile when the language is chosen before logging in", async () => {
+      const api = fakeApi();
+      renderAt("/login", api, false);
+      await userEvent.click(await screen.findByRole("radio", { name: "Македонски" }));
+      expect(await screen.findByRole("button", { name: "Најави се" })).toBeInTheDocument();
+      expect(api.getProfile).not.toHaveBeenCalled();
+      expect(api.saveProfile).not.toHaveBeenCalled();
+    });
+
+    it("works before onboarding and keeps the language on the device only", async () => {
+      const api = fakeApi({ getProfile: vi.fn(async () => null) });
+      renderAt("/settings", api, true);
+      await screen.findByRole("heading", { level: 1, name: "Settings" });
+      await userEvent.click(settingsCard("Language and theme").getByRole("radio", { name: "Македонски" }));
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Поставки" })).toBeInTheDocument();
+      expect(window.localStorage.getItem("buddy-locale")).toBe("mk");
+      expect(api.saveProfile).not.toHaveBeenCalled();
+    });
+
+    it("switches the theme here and in the menu", async () => {
+      await openSettings(fakeApi());
+      await userEvent.click(settingsCard("Language and theme").getByRole("radio", { name: "Dark" }));
+
+      expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+      const groups = screen.getAllByRole("group", { name: "Theme" });
+      expect(groups).toHaveLength(2);
+      for (const group of groups) expect(within(group).getByRole("radio", { name: "Dark" })).toBeChecked();
+    });
+
+    it("downloads the data as a JSON file", async () => {
+      const api = fakeApi();
+      const saved: string[] = [];
+      Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:export") });
+      Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+        saved.push(this.download);
+      });
+      await openSettings(api);
+      await userEvent.click(screen.getByRole("button", { name: "Download my data" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      expect(api.exportData).toHaveBeenCalledTimes(1);
+      expect(saved[0]).toMatch(/^buddy-coach-export-\d{4}-\d{2}-\d{2}\.json$/);
+    });
+
+    it("shows why the download failed", async () => {
+      const api = fakeApi({
+        exportData: vi.fn(async () => {
+          throw new ApiError(500, "internal_error", "Something went wrong on our side.");
+        }),
+      });
+      await openSettings(api);
+      await userEvent.click(screen.getByRole("button", { name: "Download my data" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");
+    });
+
+    it("deletes the account only with the password and the confirmation, then clears the device", async () => {
+      window.localStorage.setItem("buddy-coach.tokens", "{}");
+      window.localStorage.setItem("buddy-checkin-skipped", "2026-11-19");
+      window.localStorage.setItem("other-app", "keep");
+      window.localStorage.setItem("buddy-locale", "en");
+      window.localStorage.setItem("buddy-theme", "dark");
+      const api = fakeApi();
+      await openSettings(api);
+      const card = settingsCard("Delete account");
+      expect(card.getByText("all photos")).toBeInTheDocument();
+      const button = card.getByRole("button", { name: "Delete my account" });
+      expect(button).toBeDisabled();
+
+      await userEvent.type(card.getByLabelText("Password"), "long-password-1");
+      expect(button).toBeDisabled();
+      await userEvent.click(card.getByRole("checkbox", { name: /deleted for good/ }));
+      await userEvent.click(button);
+
+      expect(await screen.findByRole("status")).toHaveTextContent("Your account and all its data have been deleted.");
+      expect(screen.getByRole("form", { name: "Log in" })).toBeInTheDocument();
+      expect(api.deleteAccount).toHaveBeenCalledWith("long-password-1");
+      expect(window.localStorage.getItem("buddy-coach.tokens")).toBeNull();
+      expect(window.localStorage.getItem("buddy-checkin-skipped")).toBeNull();
+      expect(window.localStorage.getItem("other-app")).toBe("keep");
+      // Device choices are not account data.
+      expect(window.localStorage.getItem("buddy-locale")).toBe("en");
+      expect(window.localStorage.getItem("buddy-theme")).toBe("dark");
+      expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+    });
+
+    it("stays logged in when the password is wrong", async () => {
+      window.localStorage.setItem("buddy-coach.tokens", "{}");
+      const api = fakeApi({
+        deleteAccount: vi.fn(async () => {
+          throw new ApiError(403, "invalid_password", "The password is incorrect.");
+        }),
+      });
+      await openSettings(api);
+      const card = settingsCard("Delete account");
+      await userEvent.type(card.getByLabelText("Password"), "wrong");
+      await userEvent.click(card.getByRole("checkbox", { name: /deleted for good/ }));
+      await userEvent.click(card.getByRole("button", { name: "Delete my account" }));
+
+      expect(await card.findByRole("alert")).toHaveTextContent("The password is incorrect.");
+      expect(card.getByRole("button", { name: "Delete my account" })).toBeEnabled();
+      expect(window.localStorage.getItem("buddy-coach.tokens")).toBe("{}");
+      expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
     });
   });
 });

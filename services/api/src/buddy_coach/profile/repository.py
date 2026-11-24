@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,3 +76,8 @@ class ProfileRepository:
             )
             .values(priority=GoalPriority.SECONDARY)
         )
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete the user's goals and profile."""
+        await self._session.execute(delete(Goal).where(Goal.user_id == user_id))
+        await self._session.execute(delete(Profile).where(Profile.user_id == user_id))

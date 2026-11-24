@@ -33,6 +33,7 @@ from buddy_coach.workouts.schemas import (
     LoadOut,
     RampOut,
     WorkoutData,
+    WorkoutOut,
     WorkoutSourceOut,
 )
 
@@ -192,6 +193,14 @@ class WorkoutService:
             days=series,
             excluded_activities=sorted(a.value for a in LOW_INTENSITY_ACTIVITIES),
         )
+
+    async def export_user(self, user_id: uuid.UUID) -> list[WorkoutOut]:
+        """Every workout of the user, for the data export."""
+        return [WorkoutOut.model_validate(row) for row in await self._repo.all_of(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every workout of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
 
     async def _get(self, user_id: uuid.UUID, workout_id: uuid.UUID) -> Workout:
         workout = await self._repo.get(user_id, workout_id)

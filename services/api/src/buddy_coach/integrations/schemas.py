@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from buddy_coach.integrations.domain import Provider
 
@@ -40,3 +40,13 @@ class SyncOut(BaseModel):
     created: int
     updated: int
     skipped: int
+
+
+class ConnectionRecord(BaseModel):
+    """A connected account for the data export: never its tokens or sync cursor."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    provider: Provider
+    created_at: datetime
+    last_sync_at: datetime | None

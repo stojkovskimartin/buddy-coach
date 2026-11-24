@@ -147,6 +147,14 @@ class BodyService:
         """Today in the athlete's time zone."""
         return local_date(self._now(), await self._profiles.timezone_for(user_id))
 
+    async def export_user(self, user_id: uuid.UUID) -> list[WeightOut]:
+        """Every measurement of the user, for the data export."""
+        return [WeightOut.model_validate(row) for row in await self._repo.all_of(user_id)]
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete every measurement of the user. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
+
     def _refuse_future(self, measured_at: datetime) -> None:
         if measured_at > self._now() + FUTURE_TOLERANCE:
             raise ValidationFailedError("A weight cannot be measured in the future.")

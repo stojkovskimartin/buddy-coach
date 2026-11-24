@@ -70,6 +70,8 @@ export interface CoachApi {
   disconnectIntegration(provider: IntegrationProvider): Promise<void>;
   saveTodayCheckin(checkin: CheckinIn): Promise<Checkin>;
   saveCheckin(day: string, checkin: CheckinIn): Promise<Checkin>;
+  exportData(): Promise<Blob>;
+  deleteAccount(password: string): Promise<void>;
 }
 
 const STORAGE_KEY = "buddy-coach.tokens";
@@ -102,12 +104,32 @@ export function hasStoredSession(storage: Storage = window.localStorage): boolea
   return storage.getItem(STORAGE_KEY) !== null;
 }
 
+/** Device choices (language, theme) that are not account data and stay after a deletion. */
+const DEVICE_KEYS = new Set(["buddy-locale", "buddy-theme"]);
+
+/** Remove the session and account data this app keeps on the device (its keys start with
+ * "buddy"); the language and theme of the device stay. */
+export function clearAppStorage(storage: Storage = window.localStorage): void {
+  try {
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i));
+    for (const key of keys) if (key?.startsWith("buddy") && !DEVICE_KEYS.has(key)) storage.removeItem(key);
+  } catch {
+    // Storage blocked: there is nothing stored to remove.
+  }
+}
+
+/** Shown on the login page after the session ended for a reason the user should know. */
+export type SessionNotice = "accountDeleted";
+
 interface SessionValue {
   api: CoachApi;
   loggedIn: boolean;
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
+  /** Delete the account; on success the session ends and the device is cleared. */
+  deleteAccount(password: string): Promise<void>;
+  notice: SessionNotice | null;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -127,11 +149,13 @@ export function SessionProvider({
   initiallyLoggedIn?: boolean;
 }) {
   const [loggedIn, setLoggedIn] = useState(initiallyLoggedIn ?? hasStoredSession());
+  const [notice, setNotice] = useState<SessionNotice | null>(null);
   const client = useMemo(() => api ?? createDefaultApi(() => setLoggedIn(false)), [api]);
 
   const login = useCallback(
     async (email: string, password: string) => {
       await client.login(email, password);
+      setNotice(null);
       setLoggedIn(true);
     },
     [client],
@@ -153,9 +177,19 @@ export function SessionProvider({
     }
   }, [client]);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await client.deleteAccount(password);
+      clearAppStorage();
+      setNotice("accountDeleted");
+      setLoggedIn(false);
+    },
+    [client],
+  );
+
   const value = useMemo(
-    () => ({ api: client, loggedIn, login, register, logout }),
-    [client, loggedIn, login, register, logout],
+    () => ({ api: client, loggedIn, login, register, logout, deleteAccount, notice }),
+    [client, loggedIn, login, register, logout, deleteAccount, notice],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

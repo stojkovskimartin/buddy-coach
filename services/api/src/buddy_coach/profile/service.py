@@ -21,7 +21,7 @@ from buddy_coach.profile.domain import (
 from buddy_coach.profile.events import GoalChanged, ProfileUpdated
 from buddy_coach.profile.models import Goal, Profile
 from buddy_coach.profile.repository import ProfileRepository
-from buddy_coach.profile.schemas import GoalIn, ProfileIn
+from buddy_coach.profile.schemas import GoalIn, GoalOut, ProfileExport, ProfileIn, ProfileOut
 
 
 def _utc_today() -> date:
@@ -91,6 +91,19 @@ class ProfileService:
         await self._session.commit()
         await self._events.publish(ProfileUpdated(user_id=user_id))
         return profile
+
+    async def export_user(self, user_id: uuid.UUID) -> ProfileExport:
+        """The user's profile and goals, for the data export."""
+        profile = await self._repo.get_profile(user_id)
+        goals = await self._repo.list_goals(user_id, None)
+        return ProfileExport(
+            profile=ProfileOut.model_validate(profile) if profile else None,
+            goals=[GoalOut.model_validate(g) for g in goals],
+        )
+
+    async def erase_user(self, user_id: uuid.UUID) -> None:
+        """Delete the user's profile and goals. Joins the caller's transaction (no commit)."""
+        await self._repo.erase(user_id)
 
     async def list_goals(self, user_id: uuid.UUID, status: GoalStatus | None) -> Sequence[Goal]:
         """The user's goals."""

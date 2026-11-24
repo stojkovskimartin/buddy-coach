@@ -59,3 +59,16 @@ class MealRepository:
             .order_by(MealEntry.day)
         )
         return [(d, float(k), float(p), float(c), float(f)) for d, k, p, c, f in result.all()]
+
+    async def all_of(self, user_id: uuid.UUID) -> Sequence[MealEntry]:
+        """Every diary entry of a user, oldest first (for the data export)."""
+        result = await self._session.execute(
+            select(MealEntry)
+            .where(MealEntry.user_id == user_id)
+            .order_by(MealEntry.eaten_at, MealEntry.id)
+        )
+        return result.scalars().all()
+
+    async def erase(self, user_id: uuid.UUID) -> None:
+        """Delete every diary entry of a user."""
+        await self._session.execute(delete(MealEntry).where(MealEntry.user_id == user_id))
