@@ -1,6 +1,6 @@
 import { ApiError } from "@buddy/api-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { getLocales } from "expo-localization";
 
 import App from "../App";
@@ -17,6 +17,7 @@ function isoInDays(days: number): string {
 }
 
 afterEach(async () => {
+  jest.restoreAllMocks();
   await AsyncStorage.clear();
   deviceLocales.mockImplementation(() => [{ languageTag: "en-US", languageCode: "en" }]);
 });
@@ -28,8 +29,8 @@ describe("Macedonian", () => {
 
     await fireEvent.press(screen.getByRole("radio", { name: "Македонски" }));
 
-    expect(screen.getByRole("tab", { name: "Храна" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Поврзување" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Исхрана" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Поврзувања" })).toBeTruthy();
     expect(screen.getByRole("header", { name: "Денес" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Одјави се" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Македонски", checked: true })).toBeTruthy();
@@ -45,6 +46,30 @@ describe("Macedonian", () => {
     await render(<App {...appProps(fakeApi(), false)} />);
     expect(await screen.findByRole("button", { name: "Најави се" })).toBeTruthy();
     expect(screen.getByLabelText("Лозинка")).toBeTruthy();
+  });
+
+  it("can be chosen on the login screen", async () => {
+    await render(<App {...appProps(fakeApi(), false)} />);
+    await fireEvent.press(await screen.findByRole("radio", { name: "Македонски" }));
+    expect(screen.getByRole("button", { name: "Најави се" })).toBeTruthy();
+    expect(await AsyncStorage.getItem("buddy-locale")).toBe("mk");
+  });
+
+  it("shows nothing until the saved choice is read, so the phone's language never flashes", async () => {
+    let read: (saved: string | null) => void = () => undefined;
+    jest.spyOn(AsyncStorage, "getItem").mockImplementationOnce(() => new Promise((resolve) => (read = resolve)));
+    await render(<App {...appProps(fakeApi(), false)} />);
+    expect(screen.queryByRole("button", { name: "Log in" })).toBeNull();
+
+    await act(async () => read("mk"));
+    expect(await screen.findByRole("button", { name: "Најави се" })).toBeTruthy();
+  });
+
+  it("falls back to the phone's language when the saved choice cannot be read", async () => {
+    deviceLocales.mockImplementation(() => [{ languageTag: "mk-MK", languageCode: "mk" }]);
+    jest.spyOn(AsyncStorage, "getItem").mockRejectedValueOnce(new Error("storage unavailable"));
+    await render(<App {...appProps(fakeApi(), false)} />);
+    expect(await screen.findByRole("button", { name: "Најави се" })).toBeTruthy();
   });
 
   it("keeps a saved English choice on a Macedonian phone", async () => {

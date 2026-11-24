@@ -94,9 +94,9 @@ pull request numbers.
 | #53 | Web dashboard and sign-in: "Dashboard" greets by the time of day; the check-in asks about the day so far after the morning, is optional ("Not now" for the day); goals with a "New goal" panel; the last 7 days' readiness; login and sign-up with a brand panel, account switch and show-password; profile in two groups | +19 frontend (web 19) |
 | #54 | Coach safety in Macedonian: the Safety Guard catches red flags in Macedonian (Cyrillic and Latin letters) and blocks unsafe Macedonian answers (diagnoses, very low calories, harmful advice, supplement overdoses); reviewed Macedonian replies with 112 / 194; the reply language follows what the athlete wrote | +107 |
 | #55 | Web in English and Macedonian: every screen translated; EN / МК switch in the menu and on the login page, remembered per device, else the browser's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording (check-in, readiness, meals, summaries) in both languages for the phone app too | +25 frontend (shared 15, web 10) |
-| #56 | Phone app in English and Macedonian: every screen, alert and screen-reader label translated; EN / МК switch on Today, remembered on the phone, else the phone's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording from #55 reused | +6 frontend (mobile 6) |
+| #56 | Phone app in English and Macedonian: every screen, alert and screen-reader label translated; EN / МК switch on Today and on the login screen, remembered on the phone (nothing shown until the saved choice is read), else the phone's language; dates, numbers (decimal comma) and units per language; Macedonian plurals; server errors in Macedonian by their code; shared wording from #55 reused | +9 frontend (mobile 9) |
 
-Totals: backend 704 tests, frontend 331 tests (shared 49, client 28, web 124, mobile 130); CI green (lint, strict types, tests, no API contract drift).
+Totals: backend 704 tests, frontend 334 tests (shared 49, client 28, web 124, mobile 133); CI green (lint, strict types, tests, no API contract drift).
 
 ## In progress
 

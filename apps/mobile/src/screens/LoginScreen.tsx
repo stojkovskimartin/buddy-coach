@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, ErrorBanner, Field, InfoBanner } from "../components/ui";
 import { useI18n } from "../i18n";
+import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { errorMessage, useSession } from "../lib/session";
 import { colors, font, space } from "../theme";
 
@@ -92,6 +93,7 @@ export function LoginScreen() {
             setMode(registering ? "login" : "register");
           }}
         />
+        <LanguageSwitch />
       </View>
     </KeyboardAvoidingView>
   );

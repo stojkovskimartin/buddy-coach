@@ -1,5 +1,6 @@
 import type { MealDay, MealEntry, NutritionTargets } from "@buddy/api-client";
 import {
+  INTL_LOCALE,
   MACROS,
   MEAL_LABEL,
   daysBefore,
@@ -158,7 +159,8 @@ export function FoodScreen({ active = true }: { active?: boolean }) {
 }
 
 function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | null }) {
-  const { t, s } = useI18n();
+  const { locale, t, s } = useI18n();
+  const amount = (n: number) => n.toLocaleString(INTL_LOCALE[locale]);
   const rows = [
     { key: "kcal" as const, label: t.food.calories, unit: t.units.kcal },
     ...MACROS.map(({ key }) => ({ key, label: s.macroLabels[key], unit: t.units.g })),
@@ -168,7 +170,7 @@ function Totals({ day, targets }: { day: MealDay; targets: NutritionTargets | nu
       {rows.map((r) => {
         const eaten = Math.round(day.totals[r.key]);
         const target = targets?.[r.key];
-        const text = target ? t.food.ofTarget(eaten, target, r.unit) : `${eaten} ${r.unit}`;
+        const text = target ? t.food.ofTarget(amount(eaten), amount(target), r.unit) : `${amount(eaten)} ${r.unit}`;
         return (
           <View key={r.key} accessible accessibilityLabel={`${r.label}: ${text}`} style={styles.total}>
             <View style={styles.totalRow}>

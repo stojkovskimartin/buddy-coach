@@ -4,7 +4,7 @@
  * English shape, so a missing Macedonian text fails the typecheck.
  */
 import type { ChatReply, Goal } from "@buddy/api-client";
-import { mkCount, mkPlural } from "@buddy/shared";
+import { mkCount } from "@buddy/shared";
 
 const en = {
   loading: "Loading…",
@@ -24,7 +24,7 @@ const en = {
     passwordHint: (n: number) => `At least ${n} characters.`,
     logIn: "Log in",
     createButton: "Create account",
-    haveAccount: "I already have an account",
+    haveAccount: "I have an account",
     newAccount: "Create an account",
   },
   home: {
@@ -56,7 +56,7 @@ const en = {
     datePassed: "Date passed",
   },
   checkin: {
-    title: "Morning check-in",
+    title: "Daily check-in",
     readiness: (score: number) => `Readiness ${score}/100`,
     announce: (score: number, text: string) => `Readiness ${score} of 100. ${text}`,
     change: "Change today's answers",
@@ -129,7 +129,7 @@ const en = {
     oneMealPhoto: "meal photo",
     photosNote: "Meal photos are removed after 90 days; what you ate stays.",
     calories: "Calories",
-    ofTarget: (eaten: number, target: number, unit: string) => `${eaten} of ${target} ${unit}`,
+    ofTarget: (eaten: string, target: string, unit: string) => `${eaten} of ${target} ${unit}`,
     add: "Add food",
     meal: "Meal",
     search: "Search food",
@@ -232,7 +232,10 @@ const en = {
       "Watches and smart scales sync through the phone's health app on Today. Watch files (.fit) are " +
       "uploaded in the web app.",
   },
-  /** Only used in Macedonian: English shows the server's own text. */
+  /**
+   * Only used in Macedonian. English shows the server's own message, which is already English, so
+   * these stay empty; only `unknown` (no message at all) needs a text.
+   */
   errors: {
     unauthenticated: "",
     conflict: "",
@@ -258,7 +261,7 @@ const mk: Messages = {
   close: "Затвори",
   units: { kg: "кг", g: "г", kcal: "ккал" },
   language: "Јазик",
-  tabs: { home: "Денес", food: "Храна", progress: "Напредок", coach: "Тренер", connections: "Поврзување" },
+  tabs: { home: "Денес", food: "Исхрана", progress: "Напредок", coach: "Тренер", connections: "Поврзувања" },
   login: {
     welcome: "Добредојде повторно",
     create: "Направи сметка",
@@ -268,7 +271,7 @@ const mk: Messages = {
     passwordHint: (n) => `Најмалку ${n} знаци.`,
     logIn: "Најави се",
     createButton: "Направи сметка",
-    haveAccount: "Веќе имам сметка",
+    haveAccount: "Имам сметка",
     newAccount: "Направи нова сметка",
   },
   home: {
@@ -286,7 +289,7 @@ const mk: Messages = {
     setUp: "Пополни го профилот",
     setUpText:
       "На тренерот му требаат податоци за твоето тело и колку време имаш неделно за да ги пресмета целите. " +
-      "Засега пополни го профилот во веб-апликацијата; водичот за поставување на телефонот доаѓа следно.",
+      "Засега пополни го профилот во веб-апликацијата; водичот за поставување на телефонот ќе биде достапен наскоро.",
     mainGoal: "Главна цел",
     otherGoal: "Друга цел",
     noGoal: "Сè уште немаш активна цел. Додади една во веб-апликацијата.",
@@ -296,11 +299,11 @@ const mk: Messages = {
     logout: "Одјави се",
     daysToGo: (n) => `Уште ${mkCount(n, "ден", "дена")}`,
     tomorrow: "Утре",
-    dayIsHere: "Денеска е денот",
+    dayIsHere: "Денес е денот",
     datePassed: "Датумот помина",
   },
   checkin: {
-    title: "Утринска проверка",
+    title: "Дневна проверка",
     readiness: (score) => `Подготвеност ${score}/100`,
     announce: (score, text) => `Подготвеност ${score} од 100. ${text}`,
     change: "Промени ги денешните одговори",
@@ -311,7 +314,7 @@ const mk: Messages = {
     title: "Часовник и вага",
     yourApp: "твојата здравствена апликација",
     skipped: (n) => `${mkCount(n, "прескокнат", "прескокнати")} (нецелосни податоци)`,
-    newWeights: (n) => `${n} ${mkPlural(n) === "one" ? "ново мерење" : "нови мерења"}`,
+    newWeights: (n) => mkCount(n, "ново мерење", "нови мерења"),
     unavailable: (store) =>
       `За синхронизација е потребна инсталираната апликација Buddy Coach (не Expo Go) на телефон со ${store}.`,
     updateRequired: "Ажурирај го Health Connect во Google Play, па врати се.",
@@ -325,9 +328,9 @@ const mk: Messages = {
     notSynced: "Сè уште не е синхронизирано",
     appleHint: ". Нема тренинзи или мерења? Провери во апликацијата Health дали Buddy Coach смее да ги чита.",
     needsWeight: (store) =>
-      `Тежината од паметна вага нека ти биде секогаш ажурна: дозволи Buddy Coach да ја чита телесната ` +
-      `тежина од ${store}.`,
-    allowWeight: "Дозволи тежина",
+      `Тежината од паметна вага нека ти биде секогаш ажурна: дозволи му на Buddy Coach да ја чита ` +
+      `телесната тежина од ${store}.`,
+    allowWeight: "Дозволи читање на тежината",
     syncNow: "Синхронизирај сега",
     stop: (store) => `Прекини ја синхронизацијата со ${store}`,
   },
@@ -354,8 +357,8 @@ const mk: Messages = {
     loadingState: "се вчитува",
     failedState: "не може да се вчита",
     failed: "Фотографијата не може да се вчита.",
-    label: (title, day) => `${title}, ${day}`,
-    open: (one, day) => `Отвори ${one}, ${day}`,
+    label: (title, day) => `${title} од ${day}`,
+    open: (one, day) => `Отвори: ${one} од ${day}`,
     confirmDelete: "Да се избрише фотографијава?",
     takeAvatar: "Фотографирај профилна слика",
     take: "Фотографирај",
@@ -366,7 +369,7 @@ const mk: Messages = {
     libraryOff: "Пристапот до фотографиите е исклучен за Buddy Coach. Вклучи го во поставките на телефонот.",
   },
   food: {
-    title: "Храна",
+    title: "Исхрана",
     previous: "Претходен ден",
     next: "Следен ден",
     today: "Денес",
@@ -413,7 +416,7 @@ const mk: Messages = {
     weightChart: (days) => `Тежина за ${days} дена, тренд за 7 дена и мерења`,
     measured: "Измерено",
     trend: "Тренд за 7 дена",
-    food: "Храна",
+    food: "Исхрана",
     noFood: "Сè уште нема внесена храна во овој период.",
     kcalChart: (days, target) =>
       `Калории по внесен ден за ${days} дена${target ? `, линија на денешната цел од ${target} ккал` : ""}`,

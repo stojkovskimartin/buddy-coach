@@ -73,7 +73,7 @@ describe("FoodScreen", () => {
     jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => buttons?.[1]?.onPress?.());
     await openFood(api);
 
-    expect(await screen.findByLabelText("Calories: 300 of 2400 kcal")).toBeTruthy();
+    expect(await screen.findByLabelText("Calories: 300 of 2,400 kcal")).toBeTruthy();
     expect(screen.getByText(/Oat flakes/)).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Delete Oat flakes" }));
     expect(api.deleteMeal).toHaveBeenCalledWith("m1");

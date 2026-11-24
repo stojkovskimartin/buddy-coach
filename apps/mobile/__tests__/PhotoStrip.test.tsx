@@ -1,17 +1,18 @@
 import type { Photo } from "@buddy/api-client";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import { PhotoStrip } from "../src/components/PhotoStrip";
 import { SessionProvider } from "../src/lib/session";
 import { fakeApi } from "../test/fakeApi";
+import { renderWithI18n } from "../test/renderWithI18n";
 
 const { pickPhoto } = jest.requireMock("../src/lib/photos");
 
 const PHOTO = { id: "p1", kind: "meal", day: "2026-11-19", width: 1280, height: 960, created_at: "2026-11-19T12:00:00Z" } as Photo;
 
 async function show(api: ReturnType<typeof fakeApi>, props: Partial<Parameters<typeof PhotoStrip>[0]> = {}) {
-  await render(
+  await renderWithI18n(
     <SessionProvider createApi={() => api} restore={async () => true}>
       <PhotoStrip kind="meal" title="Meal photos" one="meal photo" range={{ from: "2026-11-19", to: "2026-11-19" }} {...props} />
     </SessionProvider>,
